@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KognaServer", "KognaServer\KognaServer.csproj", "{D5753F18-1F7B-4067-A095-BA4CEFD59708}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kogna.Controller", "App\KognaController.csproj", "{D5753F18-1F7B-4067-A095-BA4CEFD59708}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

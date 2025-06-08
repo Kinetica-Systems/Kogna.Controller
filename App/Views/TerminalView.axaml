@@ -1,0 +1,32 @@
+<UserControl
+  xmlns="https://github.com/avaloniaui"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:vm="clr-namespace:KognaServer.ViewModels"
+  x:Class="KognaServer.Views.TerminalView"
+  x:DataType="vm:TerminalViewModel">
+
+  <DockPanel Margin="8">
+    <!-- Output -->
+    <ScrollViewer DockPanel.Dock="Top" Height="300"
+                  VerticalScrollBarVisibility="Auto">
+      <!-- bind to your ObservableCollection<string> -->
+      <ItemsControl ItemsSource="{Binding OutputLines}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontFamily="Consolas" Margin="2"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <!-- Input -->
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="4">
+      <!-- Bind Text and handle Enter in code‐behind -->
+      <TextBox Width="400"
+               Watermark="Enter command…"
+               Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
+               KeyUp="OnInputKeyUp"/>
+      <Button Content="Send" Command="{Binding SendCommand}"/>
+    </StackPanel>
+  </DockPanel>
+</UserControl>

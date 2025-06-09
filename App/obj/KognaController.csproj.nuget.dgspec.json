@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj": {}
+    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj": {}
   },
   "projects": {
-    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj": {
+    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
+        "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
         "projectName": "KognaController",
-        "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
+        "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
         "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\obj\\",
+        "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

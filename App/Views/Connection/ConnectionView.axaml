@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:KognaServer.ViewModels"
+             x:Class="KognaServer.Views.ConnectionView"
+             x:DataType="vm:ConnectionViewModel">
+  
+  
+  <StackPanel>
+    <Ellipse Width="20" Height="20"
+             Stroke="Black"
+             HorizontalAlignment="Center"
+             VerticalAlignment="Center"
+             Margin="0,0,0,0"
+             Fill="{Binding ButtonBrush}" />
+
+    <Button Content="{Binding ButtonConnectionStatus}"
+            Height="35"
+            Width="300"
+            VerticalAlignment="Center"
+            HorizontalAlignment="Center"
+            Margin="0,0,0,0"
+            />
+    </StackPanel>
+  
+
+</UserControl>

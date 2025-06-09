@@ -257,7 +257,7 @@ public int WriteLineReadLine(int board, string send, out string response)
             char c = (char)one[0];
             if (c == '\n')      // end-of-line
                 break;
-            if (c == '\r' || c == '\x1B')  
+            if (c < ' ')  
                 continue;        // skip CR and any ESC prefixes
             sb.Append(c);
         }

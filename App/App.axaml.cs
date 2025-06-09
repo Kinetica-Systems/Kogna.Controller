@@ -6,8 +6,12 @@ using System.Linq;
 using Avalonia.Markup.Xaml;
 using KognaServer.ViewModels;
 using KognaServer.Views;
+
+
 using KognaServer.Server.KognaServer;
 using System.Net;
+using Avalonia.Metadata;
+
 
 namespace KognaServer;
 
@@ -33,14 +37,20 @@ public partial class App : Application
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
 
-            var serverHost = new KognaServerMain("192.168.0.50", 2000);
-            serverHost.Start(); // only once!
+        var serverHost = new KognaServerMain("192.168.0.50", 2000);
+        serverHost.Start();
 
-            var vm = new MainWindowViewModel(serverHost);
-            this.DataContext = vm;
+        // 2) Create your two feature VMs, passing in the same server
+        var droVm      = new DroViewModel(serverHost);
+        var terminalVm = new TerminalViewModel(serverHost);
+        var connectionVm = new ConnectionViewModel(serverHost);
+
+        // 3) Now build the shell VM with both sub-VMs
+            var mainVm = new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm);
+            
             desktop.MainWindow = new MainWindow
                 {
-                    DataContext = vm
+                    DataContext = mainVm
                 };
         }
 

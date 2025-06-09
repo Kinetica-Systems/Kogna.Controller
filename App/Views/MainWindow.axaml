@@ -20,24 +20,12 @@
 
 
 <StackPanel>
-    <Ellipse Width="20" Height="20"
-             Stroke="Black"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center"
-             Margin="0,0,0,0"
-             Fill="{Binding ButtonBrush}" />
 
-    <Button Content="{Binding ButtonConnectionStatus}"
-            Height="35"
-            Width="300"
-            VerticalAlignment="Center"
-            HorizontalAlignment="Center"
-            Margin="0,0,0,0"
-            />
+<views:ConnectionView DataContext="{Binding ConnectionVm}" DockPanel.Dock="Top"/>
 
 <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
 
-            
+<views:DroView DataContext="{Binding DroVm}" />
 
 
                 

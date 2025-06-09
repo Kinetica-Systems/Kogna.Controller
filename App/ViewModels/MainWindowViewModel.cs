@@ -10,40 +10,27 @@ using Avalonia.Threading;
 using System;
 using System.Net;
 
-namespace KognaServer.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+namespace KognaServer.ViewModels
 {
-    private readonly KognaServerMain _server;
-    public TerminalViewModel TerminalViewModel { get; }
-    public MainWindowViewModel(KognaServerMain server)
+    public partial class MainWindowViewModel : ViewModelBase
     {
-        _server = server;
+        private KognaServerMain _server { get; }
+        public DroViewModel DroVm { get; }
+        public TerminalViewModel TerminalViewModel { get; }
+        public ConnectionViewModel ConnectionVm { get; }
 
-        TerminalViewModel = new TerminalViewModel("192.168.0.50", 2000);
-        // subscribe to the server’s ConnectionChanged event
-        _server.ConnectionChanged += connected =>
+        public MainWindowViewModel(
+            KognaServerMain    server,
+            ConnectionViewModel connectionVm,
+            DroViewModel       droVm,
+            TerminalViewModel  terminalVm)
         {
-            Dispatcher.UIThread.Post(() =>
-            {
-                OnPropertyChanged(nameof(IsConnected));
-                OnPropertyChanged(nameof(ButtonBrush));
-                OnPropertyChanged(nameof(ButtonConnectionStatus));
-            });
-        };
+            _server = server;
+            ConnectionVm = connectionVm;
+            DroVm = droVm;
+            TerminalViewModel = terminalVm;
+
+        }
     }
-
-    public bool IsConnected
-        => _server.IsConnected;
-
-    public IBrush ButtonBrush
-        => IsConnected ? Brushes.Green : Brushes.Red;
-
-    public string ButtonConnectionStatus
-        => IsConnected ? "Connected" : "Disconnected";
-
-    // If you want buttons to manually connect/disconnect:
-    [RelayCommand]
-    public void Connect() => _server.Start();
-
 }

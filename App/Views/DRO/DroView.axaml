@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:KognaServer.ViewModels"
+             x:Class="KognaServer.Views.DroView"
+             x:DataType="vm:DroViewModel">
+  
+  
+  
+  
+  <StackPanel Margin="8" Spacing="6">
+    <DataGrid ItemsSource="{Binding Axes}"
+              AutoGenerateColumns="False"
+              HeadersVisibility="Column"
+              CanUserResizeColumns="False"
+              Height="180">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="Axis"   Binding="{Binding Name}" Width="60"/>
+        <DataGridTextColumn Header="Actual" Binding="{Binding Actual, StringFormat=N3}" Width="*"/>
+        <DataGridTextColumn Header="Target" Binding="{Binding Target, StringFormat=N3}" Width="*"/>
+        <DataGridCheckBoxColumn Header="On?"  Binding="{Binding Enabled}" Width="100"/>
+      </DataGrid.Columns>
+    </DataGrid>
+
+    
+  </StackPanel>
+</UserControl>

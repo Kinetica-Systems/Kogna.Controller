@@ -12,10 +12,6 @@ namespace KognaServer.Views
       InitializeComponent();
     }
 
-    private void OnInputKeyUp(object? sender, KeyEventArgs e)
-    {
-      if (e.Key == Key.Enter && DataContext is TerminalViewModel vm)
-        vm.SendCommand.Execute(null);
-    }
+    
   }
 }

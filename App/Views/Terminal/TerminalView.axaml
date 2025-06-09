@@ -5,27 +5,29 @@
   x:Class="KognaServer.Views.TerminalView"
   x:DataType="vm:TerminalViewModel">
 
-  <DockPanel Margin="8">
+  <DockPanel Margin="8" Width="600" >
     <!-- Output -->
     <ScrollViewer DockPanel.Dock="Top" Height="300"
-                  VerticalScrollBarVisibility="Auto">
-      <!-- bind to your ObservableCollection<string> -->
-      <ItemsControl ItemsSource="{Binding OutputLines}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <TextBlock Text="{Binding}" FontFamily="Consolas" Margin="2"/>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+                  >
+
+          
+            <TextBox 
+            Text="{Binding ConsoleText}" 
+            FontFamily="Consolas" 
+            Margin="2" 
+            HorizontalAlignment="Stretch" 
+            AcceptsReturn="True"
+            IsReadOnly="True"/>
+
     </ScrollViewer>
 
     <!-- Input -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="4">
       <!-- Bind Text and handle Enter in code‐behind -->
       <TextBox Width="400"
-               Watermark="Enter command…"
-               Text="{Binding InputText, UpdateSourceTrigger=PropertyChanged}"
-               KeyUp="OnInputKeyUp"/>
+               Watermark="Enter Kogna command…"
+               Text="{Binding InputText}"
+               />
       <Button Content="Send" Command="{Binding SendCommand}"/>
     </StackPanel>
   </DockPanel>

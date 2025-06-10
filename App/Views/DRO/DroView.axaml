@@ -7,17 +7,17 @@
   
   
   
-  <StackPanel Margin="8" Spacing="6">
+  <StackPanel Margin="8" Spacing="6" MaxWidth="600">
     <DataGrid ItemsSource="{Binding Axes}"
               AutoGenerateColumns="False"
               HeadersVisibility="Column"
-              CanUserResizeColumns="False"
-              Height="180">
+              CanUserResizeColumns="True"
+              >
       <DataGrid.Columns>
-        <DataGridTextColumn Header="Axis"   Binding="{Binding Name}" Width="60"/>
+        <DataGridTextColumn Header="Axis"   Binding="{Binding Name}" Width="*"/>
         <DataGridTextColumn Header="Actual" Binding="{Binding Actual, StringFormat=N3}" Width="*"/>
         <DataGridTextColumn Header="Target" Binding="{Binding Target, StringFormat=N3}" Width="*"/>
-        <DataGridCheckBoxColumn Header="On?"  Binding="{Binding Enabled}" Width="100"/>
+        <DataGridCheckBoxColumn Header="On?"  Binding="{Binding Enabled}" Width="*"/>
       </DataGrid.Columns>
     </DataGrid>
 

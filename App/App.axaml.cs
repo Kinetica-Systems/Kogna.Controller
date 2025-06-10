@@ -2,71 +2,81 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
-using System.Linq;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 using KognaServer.ViewModels;
 using KognaServer.Views;
-
-
 using KognaServer.Server.KognaServer;
-using System.Net;
-using Avalonia.Metadata;
 
-
-namespace KognaServer;
-
-
-public partial class App : Application
+namespace KognaServer
 {
-
-
-
-    public override void Initialize()
+    public partial class App : Application
     {
-        AvaloniaXamlLoader.Load(this);
-    }
+        public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
-    public override void OnFrameworkInitializationCompleted()
-    {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        // Use async void so we can await splash rendering and startup tasks
+        public override async void OnFrameworkInitializationCompleted()
         {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                // 1) Show splash
+                var splash = new SplashWindow();
+                splash.Show();
 
+                // 2) Prevent duplicate data-annotation validators
+                splash.ReportProgress(10);
+                DisableAvaloniaDataAnnotationValidation();
 
+                // 3) Give the splash time to render
+                await Task.Delay(100);
 
-            // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
-            // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
-            DisableAvaloniaDataAnnotationValidation();
+                // 4) Perform startup work off the UI thread
+                var mainVm = await Task.Run(() =>
+                {
+                    // Start Kogna server
+                    splash.ReportProgress(30);
+                    var serverHost = new KognaServerMain("192.168.0.50", 2000);
+                    serverHost.Start();
 
-        var serverHost = new KognaServerMain("192.168.0.50", 2000);
-        serverHost.Start();
+                    // Start IPC server
+                    splash.ReportProgress(60);
+                    var ipc = new SocketIpcServer(serverHost, port: 5000);
+                    ipc.Start();
 
-        // 2) Create your two feature VMs, passing in the same server
-        var droVm      = new DroViewModel(serverHost);
-        var terminalVm = new TerminalViewModel(serverHost);
-        var connectionVm = new ConnectionViewModel(serverHost);
+                    // Create sub-ViewModels
+                    splash.ReportProgress(80);
+                    var droVm = new DroViewModel(serverHost);
+                    var terminalVm = new TerminalViewModel();
+                    var connectionVm = new ConnectionViewModel();
 
-        // 3) Now build the shell VM with both sub-VMs
-            var mainVm = new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm);
-            
-            desktop.MainWindow = new MainWindow
+                    // Build MainWindowViewModel
+                    splash.ReportProgress(100);
+                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm);
+                });
+
+                // 5) Initialize and show MainWindow
+                var mainWindow = new MainWindow
                 {
                     DataContext = mainVm
                 };
+                desktop.MainWindow = mainWindow;
+                mainWindow.Show();
+
+                // 6) Close the splash
+                splash.Close();
+            }
+
+            base.OnFrameworkInitializationCompleted();
         }
 
-        base.OnFrameworkInitializationCompleted();
-    }
-
-    private void DisableAvaloniaDataAnnotationValidation()
-    {
-        // Get an array of plugins to remove
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        // remove each entry found
-        foreach (var plugin in dataValidationPluginsToRemove)
+        private void DisableAvaloniaDataAnnotationValidation()
         {
-            BindingPlugins.DataValidators.Remove(plugin);
+            var pluginsToRemove = BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
+            foreach (var plugin in pluginsToRemove)
+                BindingPlugins.DataValidators.Remove(plugin);
         }
     }
 }

@@ -38,46 +38,49 @@ namespace KognaServer.Server.KognaServer
 
         const double degPerCount = 360.0 / 2000.0;  // 0.18° per pulse
 
-        public async Task StartAsync(CancellationToken ct)
+    public async Task StartAsync(CancellationToken ct)
+    {
+        const int axisCount = 6;
+        _coord.GetAxisDefinitions();
+
+        while (!ct.IsCancellationRequested)
         {
-            _coord.GetAxisDefinitions();
+            _io.ServiceConsole();    // pick up any console‐print lines
 
-            while (!ct.IsCancellationRequested)
+            // 1) Batch‐read raw counts into arrays
+            var rawActCounts = new double[axisCount];
+            var rawTgtCounts = new double[axisCount];
+            for (int i = 0; i < axisCount; i++)
             {
-                _io.ServiceConsole();    // pick up any console‐print lines
-                Console.WriteLine("[DRO] Loop tick");
-
-
-                var status = new KognaStatus();
-                            // poll each logical axis (0=X,1=Y,…5=C)
-                            for (int i = 0; i < 6; i++)
-                            {
-                                try
-                                {
-                                
-                               
-                        // raw counts
-                                    var rawAct = _coord.GetPosition(i);
-                                    var rawTgt = _coord.GetDestination(i);
-                                    Console.WriteLine($"[DRO] Axis {i}: rawAct={rawAct}, rawTgt={rawTgt}");
-                                    // convert to degrees
-                                    status.JointsActual[i] = rawAct * degPerCount;
-                                    status.JointsTarget[i] = rawTgt * degPerCount;
-                                    status.JointsEnabled[i] = true;
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($"[DRO] Axis {i} poll failed: {ex.Message}");
-                                }
-                            }
-                            
-                            // fire update
-                            OnStatusUpdate?.Invoke(status);
-
-
-                await Task.Delay(50, ct);
+                try
+                {
+                    rawActCounts[i] = _coord.GetPosition(i);
+                    rawTgtCounts[i] = _coord.GetDestination(i);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DRO] Axis {i} poll failed: {ex.Message}");
+                    rawActCounts[i] = 0;
+                    rawTgtCounts[i] = 0;
+                }
             }
+
+            // 2) Convert to degrees and populate status
+            var status = new KognaStatus();
+            for (int i = 0; i < axisCount; i++)
+            {
+                status.JointsActual[i]  = rawActCounts[i] * degPerCount;
+                status.JointsTarget[i]  = rawTgtCounts[i] * degPerCount;
+                status.JointsEnabled[i] = true;
+            }
+
+            // 3) Fire the update event
+            OnStatusUpdate?.Invoke(status);
+
+            await Task.Delay(500, ct);
         }
+    }
+
 
 
 

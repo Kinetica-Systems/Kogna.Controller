@@ -16,22 +16,50 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    
+
+<DockPanel>
+
+<Menu DockPanel.Dock="Top">
+      <MenuItem Header="_File">
+        <MenuItem Header="_Open..."/>
+        <Separator/>
+        <MenuItem Header="_Exit"/>
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem Header="Copy"/>
+        <MenuItem Header="Paste"/>
+      </MenuItem>
+    </Menu>
 
 
-<StackPanel>
+<Expander HorizontalAlignment="Left" ExpandDirection="Right">
+        <StackPanel >
+        <views:ConnectionView DataContext="{Binding ConnectionVm}"  />
 
-<views:ConnectionView DataContext="{Binding ConnectionVm}" DockPanel.Dock="Top"/>
+        <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
+        </StackPanel>
+</Expander>
 
-<views:TerminalView DataContext="{Binding TerminalViewModel}"/>
+        <TabControl Margin="5">
+        <TabItem Header="Tab 1">
+            <TextBlock Margin="5">This is tab 1 content</TextBlock>
+        </TabItem>
+        <TabItem Header="Tab 2">
+            <TextBlock Margin="5">This is tab 2 content</TextBlock>
+        </TabItem>
+        <TabItem Header="Tab 3">
+            <TextBlock Margin="5">This is tab 3 content</TextBlock>
+        </TabItem>
+        </TabControl>
 
-<views:DroView DataContext="{Binding DroVm}" />
-
+<Expander HorizontalAlignment="Right" ExpandDirection="Left">
+        <views:DroView DataContext="{Binding DroVm}" />
+</Expander>
 
                 
 
 
-                
-</StackPanel>
+
+</DockPanel>
 
 </Window>

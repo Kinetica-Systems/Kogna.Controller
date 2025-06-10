@@ -38,5 +38,8 @@ build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 [c:/Users/liamb/Programming/Kogna.Controller/App/Views/MainWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
+[c:/Users/liamb/Programming/Kogna.Controller/App/Views/SplashWindow/SplashWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
 [c:/Users/liamb/Programming/Kogna.Controller/App/Views/Terminal/TerminalView.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml

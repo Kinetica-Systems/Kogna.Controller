@@ -4,21 +4,34 @@
   xmlns:vm="clr-namespace:KognaServer.ViewModels"
   x:Class="KognaServer.Views.TerminalView"
   x:DataType="vm:TerminalViewModel">
+  
+  
+  <UserControl.DataContext>
+    <vm:TerminalViewModel/>
+  </UserControl.DataContext>
 
-  <DockPanel Margin="8" Width="600" >
+
+  <DockPanel  HorizontalAlignment="Center" MaxWidth="600">
     <!-- Output -->
-    <ScrollViewer DockPanel.Dock="Top" Height="300"
-                  >
-
-          
-            <TextBox 
-            Text="{Binding ConsoleText}" 
-            FontFamily="Consolas" 
-            Margin="2" 
-            HorizontalAlignment="Stretch" 
-            AcceptsReturn="True"
-            IsReadOnly="True"/>
-
+    <ScrollViewer x:Name="ConsoleScroll"
+                  Grid.Row="1"
+                  VerticalScrollBarVisibility="Auto"
+                  DockPanel.Dock="Top"
+                  Height="175"
+                  Margin="10">
+      <ItemsControl ItemsSource="{Binding Lines}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <!-- simple StackPanel—no virtualization -->
+            <StackPanel/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <TextBlock Text="{Binding}" FontFamily="Consolas" TextWrapping="WrapWithOverflow"/>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </ScrollViewer>
 
     <!-- Input -->

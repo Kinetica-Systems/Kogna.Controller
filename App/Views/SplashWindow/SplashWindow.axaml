@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="KognaServer.Views.SplashWindow"
+        WindowStartupLocation="CenterScreen"
+Width="1024"
+Height="1026"
+        SystemDecorations="None"
+        Background="#FF1E1E1E">
+   
+   
+   
+
+  
+  
+  <Grid>
+    <!-- 1) Your logo, centered -->
+    <Image Source="avares://KognaController/Assets/splash-logo.png"
+           Width="1024" Height="1026"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center"/>
+
+    <!-- 2) Indeterminate bar overlaid at the bottom of the image -->
+    <ProgressBar Name="LoadingBar"
+                 Width="200"
+                 Height="6"
+                 Margin="0,0,0,30"         
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Bottom"
+                 IsIndeterminate="True"
+                 ZIndex="1"/>
+  </Grid>
+</Window>

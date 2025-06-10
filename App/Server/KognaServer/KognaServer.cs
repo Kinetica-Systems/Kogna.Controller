@@ -30,24 +30,13 @@ namespace KognaServer.Server.KognaServer
     {
         private readonly CancellationTokenSource _cts = new();
         public readonly KognaIO _io = null!;
+        public KognaMonitor monitor;
 
-        public event Action<bool>? ConnectionChanged;
         public event Action<KognaStatus>? OnStatusUpdate;
-        public event Action<string>? ConsoleOutput;
-        private bool _isConnected;
-        public bool IsConnected
-        {
-            get => _isConnected;
-            private set
-            {
-                if (_isConnected != value)
-                {
-                    _isConnected = value;
-                    ConnectionChanged?.Invoke(value);
-                }
-            }
-        }
-
+        //public event Action<string>? ConsoleOutput;
+       // private bool _isConnected;
+        public bool IsConnected => _io != null && _io.Connected;   // or however you check “up”  
+        
         public (double X, double Y, double Z, double A, double B, double C)ComputeTcp(double[] jointsActual)
         {
             return (0, 0, 0, 0, 0, 0);
@@ -63,7 +52,8 @@ namespace KognaServer.Server.KognaServer
         {
 
             _io = new KognaIO(ipAddress, port);
-      
+            monitor = new KognaMonitor(_io);
+
             
 
         }
@@ -83,8 +73,6 @@ namespace KognaServer.Server.KognaServer
             else
             {
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Connected to Kogna at {_io.USBLocation()}");
-                IsConnected = true;
-                var monitor = new KognaMonitor(_io);
                 monitor.OnStatusUpdate += s => OnStatusUpdate?.Invoke(s);
                 _ = monitor.StartAsync(_cts.Token);
             }
@@ -93,7 +81,7 @@ namespace KognaServer.Server.KognaServer
         }
 
         
-        public string SendCommand(string cmd, int board = 0)
+        public string SendCommand(string cmd, int board)
         {
             // you may need to tweak the board-ID; 1 is common on KMotion setups
             var ok = _io.WriteLineReadLine(board, cmd, out var resp);

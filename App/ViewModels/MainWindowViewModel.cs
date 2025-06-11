@@ -19,17 +19,21 @@ namespace KognaServer.ViewModels
         public DroViewModel DroVm { get; }
         public TerminalViewModel TerminalViewModel { get; }
         public ConnectionViewModel ConnectionVm { get; }
+        public GCodeEditorViewModel GcodeVm { get; }
+
 
         public MainWindowViewModel(
-            KognaServerMain    server,
+            KognaServerMain server,
             ConnectionViewModel connectionVm,
-            DroViewModel       droVm,
-            TerminalViewModel  terminalVm)
+            DroViewModel droVm,
+            TerminalViewModel terminalVm,
+            GCodeEditorViewModel gCodeEditor)
         {
             _server = server;
             ConnectionVm = connectionVm;
             DroVm = droVm;
             TerminalViewModel = terminalVm;
+            GcodeVm = gCodeEditor;
 
         }
     }

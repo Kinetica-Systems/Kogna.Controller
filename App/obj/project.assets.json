@@ -101,6 +101,18 @@
           }
         }
       },
+      "Avalonia.AvaloniaEdit/11.3.0": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "11.0.0"
+        },
+        "compile": {
+          "lib/net6.0/AvaloniaEdit.dll": {}
+        },
+        "runtime": {
+          "lib/net6.0/AvaloniaEdit.dll": {}
+        }
+      },
       "Avalonia.BuildServices/0.0.31": {
         "type": "package",
         "build": {
@@ -1017,6 +1029,20 @@
         "runtimes/win-arm64/native/av_libglesv2.dll",
         "runtimes/win-x64/native/av_libglesv2.dll",
         "runtimes/win-x86/native/av_libglesv2.dll"
+      ]
+    },
+    "Avalonia.AvaloniaEdit/11.3.0": {
+      "sha512": "9M/jJb4DPqQmKtNMZn6+vpqlf+ZGMtK8vEBpPVP3De1xRCu1hv4ZAtoA8hY6bYj2hgv/luete3ixoOsEQ++YJQ==",
+      "type": "package",
+      "path": "avalonia.avaloniaedit/11.3.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "avalonia.avaloniaedit.11.3.0.nupkg.sha512",
+        "avalonia.avaloniaedit.nuspec",
+        "lib/net6.0/AvaloniaEdit.dll",
+        "lib/netstandard2.0/AvaloniaEdit.dll"
       ]
     },
     "Avalonia.BuildServices/0.0.31": {
@@ -2027,6 +2053,7 @@
   "projectFileDependencyGroups": {
     "net9.0": [
       "Avalonia >= 11.3.0",
+      "Avalonia.AvaloniaEdit >= 11.3.0",
       "Avalonia.Desktop >= 11.3.0",
       "Avalonia.Diagnostics >= 11.3.0",
       "Avalonia.Fonts.Inter >= 11.3.0",
@@ -2092,6 +2119,10 @@
         "targetAlias": "net9.0",
         "dependencies": {
           "Avalonia": {
+            "target": "Package",
+            "version": "[11.3.0, )"
+          },
+          "Avalonia.AvaloniaEdit": {
             "target": "Package",
             "version": "[11.3.0, )"
           },

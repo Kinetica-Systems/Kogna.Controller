@@ -48,13 +48,15 @@ namespace KognaServer
 
                     // Create sub-ViewModels
                     splash.ReportProgress(80);
-                    var droVm = new DroViewModel(serverHost);
-                    var terminalVm = new TerminalViewModel();
-                    var connectionVm = new ConnectionViewModel();
+                    var droVm           = new DroViewModel(serverHost);
+                    var terminalVm      = new TerminalViewModel();
+                    var connectionVm    = new ConnectionViewModel();
+                    var GcodeVm         = new GCodeEditorViewModel();
+
 
                     // Build MainWindowViewModel
                     splash.ReportProgress(100);
-                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm);
+                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm, GcodeVm);
                 });
 
                 // 5) Initialize and show MainWindow
@@ -63,6 +65,8 @@ namespace KognaServer
                     DataContext = mainVm
                 };
                 desktop.MainWindow = mainWindow;
+
+                
                 mainWindow.Show();
 
                 // 6) Close the splash

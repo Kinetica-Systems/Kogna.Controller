@@ -35,6 +35,9 @@ build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 [c:/Users/liamb/Programming/Kogna.Controller/App/Views/DRO/DroView.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
+[c:/Users/liamb/Programming/Kogna.Controller/App/Views/GCode/GCodeEditorView.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
 [c:/Users/liamb/Programming/Kogna.Controller/App/Views/MainWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 

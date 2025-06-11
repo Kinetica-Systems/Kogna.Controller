@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "d2j07DeUMBc=",
+  "dgSpecHash": "JVgHie5hqBw=",
   "success": true,
   "projectFilePath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia\\11.3.0\\avalonia.11.3.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.22045.20230930\\avalonia.angle.windows.natives.2.1.22045.20230930.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.avaloniaedit\\11.3.0\\avalonia.avaloniaedit.11.3.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.buildservices\\0.0.31\\avalonia.buildservices.0.0.31.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.colorpicker\\11.3.0\\avalonia.controls.colorpicker.11.3.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.datagrid\\11.2.1\\avalonia.controls.datagrid.11.2.1.nupkg.sha512",

@@ -1,8 +1,12 @@
 <UserControl
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:KognaServer.ViewModels;assembly=KognaController"
     xmlns:avaloniaEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
-    x:Class="KognaServer.Views.GCodeEditorView">
+    x:Class="KognaServer.Views.GCodeEditorView"
+    x:DataType="vm:GCodeEditorViewModel"  >
+  
+
 
   <DockPanel>
     <!-- Toolbar with Open/Save buttons -->
@@ -10,8 +14,8 @@
                 Orientation="Horizontal"
                 Spacing="8"
                 Margin="0,0,0,4">
-      <Button Content="Open…" Click="OnOpenClicked"/>
-      <Button Content="Save…" Click="OnSaveClicked"/>
+      <Button Content="Open…" Click="OpenFileButton_Clicked"/>
+      <Button Content="Save…" Click="SaveFileButton_Clicked"/>
     </StackPanel>
 
     <!-- The code editor itself -->
@@ -19,6 +23,9 @@
         x:Name="Editor"
         ShowLineNumbers="True"
         FontFamily="Consolas,Monospace"
-        FontSize="12"/>
+        FontSize="12">
+    </avaloniaEdit:TextEditor>
+
   </DockPanel>
+  
 </UserControl>

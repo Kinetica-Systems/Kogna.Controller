@@ -34,7 +34,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 
 using KognaServer.ViewModels;
-using Avalonia.Platform.Storage;
+using KognaServer.Server;
 using System.Reactive.Joins;             // for TextDocument
 
 namespace KognaServer.ViewModels
@@ -44,14 +44,13 @@ namespace KognaServer.ViewModels
 
         private readonly TextEditor? _editor = null!;
         private string fileContent { get; set; }
-        
 
         public GCodeEditorViewModel()
         {
-
+            
         }
 
-        
+
 
         
 

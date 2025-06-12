@@ -35,9 +35,11 @@ using System.Collections.ObjectModel;
 using System.Collections.Generic;
 
 using KognaServer.ViewModels;
-using Avalonia.Platform.Storage;
+using KognaServer.Server;
+
 using System.Reactive.Joins;
 using System.Security.Cryptography.X509Certificates;
+using Avalonia.Controls.Documents;
 
 namespace KognaServer.Views
 {
@@ -48,12 +50,17 @@ namespace KognaServer.Views
         public string fileContent { get; set; }
         public bool IsModified { get; set; }
         public TextDocument Document { get; set; }
+        private GCodeStreamer bufferCommandFile{ get; set; } = null!;
+        private String[] bufferedLines= [];
+
+
 
         public GCodeEditorView()
         {
             InitializeComponent();
             _editor = this.FindControl<TextEditor>("Editor");
             _editor.Background = Brushes.Transparent;
+            _editor.Foreground = Brushes.LightGray;
             _editor.ShowLineNumbers = true;
 
 
@@ -108,7 +115,51 @@ namespace KognaServer.Views
                     await stream.CopyToAsync(writeStream);
 
                 }
+
         }
 
+        private async void OnStream_Click(object sender, RoutedEventArgs args)
+        {
+            // how many lines the editor thinks it has
+            int lineCount = _editor.Document.LineCount;
+
+            // allocate your array
+            var bufferedLines = new string[lineCount];
+            
+           // Console.WriteLine("Checking", lineCount, bufferedLines);
+            // for each DocumentLine, pull out the exact substring
+            for (int i = 0; i < lineCount; i++)
+            {
+                var line = _editor.Document.Lines[i];
+                // GetText(offset, length) returns just that one line’s text
+                bufferedLines[i] = _editor.Document.GetText(line.Offset, line.Length);
+            }
+            TerminalPrint();
+
+
+
+            // await stream.CopyToAsync(writeStream);
+
+        }
+
+                    private async Task TerminalPrint()
+                    {
+                        // 1) Turn each DocumentLine into its exact text
+                        var lines = _editor.Document.Lines
+                                    .Select(line => 
+                                            _editor.Document.GetText(line.Offset, line.Length))
+                                    .ToArray();
+
+                        // 2) (Optional) log how many you got, so you can debug “is it empty?”
+                        Console.WriteLine($"[Debug] Found {lines.Length} lines in the document.");
+
+                        // 3) Now print (or send) each one
+                        foreach (var line in lines)
+                        {
+                            Console.WriteLine(line);
+                            // await SendToTerminalAsync(line);
+                            // await Task.Delay(...);  // if you need pacing
+                        }
+                    }
     }
 }

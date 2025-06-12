@@ -16,6 +16,7 @@
                 Margin="0,0,0,4">
       <Button Content="Open…" Click="OpenFileButton_Clicked"/>
       <Button Content="Save…" Click="SaveFileButton_Clicked"/>
+      <Button Content="Stream" Click="OnStream_Click"/>
     </StackPanel>
 
     <!-- The code editor itself -->
@@ -27,5 +28,5 @@
     </avaloniaEdit:TextEditor>
 
   </DockPanel>
-  
+
 </UserControl>

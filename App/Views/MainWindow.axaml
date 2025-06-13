@@ -32,7 +32,7 @@
     </Menu>
 
 
-<Expander HorizontalAlignment="Left" ExpandDirection="Right">
+<Expander HorizontalAlignment="Left" ExpandDirection="Right"           IsExpanded="True">
         <StackPanel >
         <views:ConnectionView DataContext="{Binding ConnectionVm}"  />
 
@@ -42,7 +42,7 @@
 
         <TabControl Margin="5">
         <TabItem Header="Tab 1">
-            <TextBlock Margin="5">This is tab 1 content</TextBlock>
+        <views:GCodeEditorView DataContext="{Binding GcodeVm}"  />
         </TabItem>
         <TabItem Header="Tab 2">
             <TextBlock Margin="5">This is tab 2 content</TextBlock>
@@ -52,7 +52,7 @@
         </TabItem>
         </TabControl>
 
-<Expander HorizontalAlignment="Right" ExpandDirection="Left">
+<Expander HorizontalAlignment="Right" ExpandDirection="Left"          IsExpanded="True">
         <views:DroView DataContext="{Binding DroVm}" />
 </Expander>
 

@@ -15,5 +15,12 @@
         <semi:ColorPickerSemiTheme />
         <semi:DataGridSemiTheme />
         <semi:TreeDataGridSemiTheme />
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>
+
+  <Application.Resources>
+    <x:Double x:Key="ControlContentThemeFontSize">14</x:Double>
+    <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI</FontFamily>
+  </Application.Resources>
+
 </Application>

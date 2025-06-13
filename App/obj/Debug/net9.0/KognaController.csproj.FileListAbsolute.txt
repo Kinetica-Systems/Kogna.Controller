@@ -14,6 +14,7 @@ C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.MicroC
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.OpenGL.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.Vulkan.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\AvaloniaEdit.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.Controls.ColorPicker.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.Controls.DataGrid.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Avalonia.Controls.TreeDataGrid.dll

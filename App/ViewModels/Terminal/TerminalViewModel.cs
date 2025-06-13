@@ -38,7 +38,7 @@ namespace KognaServer.ViewModels
             // 1) Initialize the socket
             try
             {
-                _ipcClient = new TcpClient("127.0.0.1", 5000);
+                _ipcClient = new TcpClient("localhost", 5000);
                 var stream = _ipcClient.GetStream();
                 _ipcReader = new StreamReader(stream, Encoding.UTF8);
                 _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
@@ -47,7 +47,7 @@ namespace KognaServer.ViewModels
             }
             catch (Exception ex)
             {
-                EnqueueConsole($"❌ IPC connection failed: {ex.Message}\n");
+                EnqueueConsole($" IPC connection failed: {ex.Message}\n");
 
                 // fall back to harmless, never-null stubs
                 _ipcClient = new TcpClient();                  

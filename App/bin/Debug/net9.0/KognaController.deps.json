@@ -9,6 +9,7 @@
       "KognaController/1.0.0": {
         "dependencies": {
           "Avalonia": "11.3.0",
+          "Avalonia.AvaloniaEdit": "11.3.0",
           "Avalonia.Desktop": "11.3.0",
           "Avalonia.Diagnostics": "11.3.0",
           "Avalonia.Fonts.Inter": "11.3.0",
@@ -95,6 +96,17 @@
             "rid": "win-x86",
             "assetType": "native",
             "fileVersion": "2.1.22045.0"
+          }
+        }
+      },
+      "Avalonia.AvaloniaEdit/11.3.0": {
+        "dependencies": {
+          "Avalonia": "11.3.0"
+        },
+        "runtime": {
+          "lib/net6.0/AvaloniaEdit.dll": {
+            "assemblyVersion": "11.3.0.0",
+            "fileVersion": "11.3.0.0"
           }
         }
       },
@@ -634,6 +646,13 @@
       "sha512": "sha512-Bo3qOhKC1b84BIhiogndMdAzB3UrrESKK7hS769f5HWeoMw/pcd42US5KFYW2JJ4ZSTrXnP8mXwLTMzh+S+9Lg==",
       "path": "avalonia.angle.windows.natives/2.1.22045.20230930",
       "hashPath": "avalonia.angle.windows.natives.2.1.22045.20230930.nupkg.sha512"
+    },
+    "Avalonia.AvaloniaEdit/11.3.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-9M/jJb4DPqQmKtNMZn6+vpqlf+ZGMtK8vEBpPVP3De1xRCu1hv4ZAtoA8hY6bYj2hgv/luete3ixoOsEQ++YJQ==",
+      "path": "avalonia.avaloniaedit/11.3.0",
+      "hashPath": "avalonia.avaloniaedit.11.3.0.nupkg.sha512"
     },
     "Avalonia.BuildServices/0.0.31": {
       "type": "package",

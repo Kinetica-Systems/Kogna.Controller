@@ -53,6 +53,7 @@ namespace KognaServer
                     var terminalVm      = new TerminalViewModel();
                     var connectionVm    = new ConnectionViewModel();
                     var GcodeVm         = new GCodeEditorViewModel();
+                   // var Advanced        = new AdvancedSettingsWindowViewModel();
 
 
                     // Build MainWindowViewModel

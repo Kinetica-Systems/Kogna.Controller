@@ -29,6 +29,9 @@
         <MenuItem Header="Copy"/>
         <MenuItem Header="Paste"/>
       </MenuItem>
+      <MenuItem Header="_Config">
+          <MenuItem Header="_Advanced Kogna" Click="OpenSettings_Click"/>
+      </MenuItem>
     </Menu>
 
 

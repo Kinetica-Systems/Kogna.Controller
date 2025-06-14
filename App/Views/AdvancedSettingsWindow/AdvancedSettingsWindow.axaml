@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:KognaServer.ViewModels"
+        x:Class="KognaServer.Views.AdvancedSettingsWindow"
+        Title="Kogna Settings"
+        Width="800" Height="600">
+  <Window.DataContext>
+    <vm:AdvancedSettingsWindowViewModel/>
+  </Window.DataContext>
+
+<StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" Margin="8">
+  <TabControl Margin="5">
+        <TabItem Header="Configuration">
+            <TextBlock Margin="1">This is tab 2 content</TextBlock>
+        </TabItem>
+        <TabItem Header="Program Threads">
+            <TextBlock Margin="5">This is tab 2 content</TextBlock>
+        </TabItem>
+        <TabItem Header="Saved Programs">
+            <TextBlock Margin="5">This is tab 3 content</TextBlock>
+        </TabItem>
+        <TabItem Header="Trajectory Planner">
+            <TextBlock Margin="5">This is tab 4 content</TextBlock>
+        </TabItem>
+    </TabControl>
+    <!-- Save Button -->
+      <Button Content="Save"  />
+    </StackPanel>
+  
+</Window>

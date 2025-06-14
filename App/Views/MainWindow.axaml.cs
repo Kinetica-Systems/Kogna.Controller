@@ -34,6 +34,12 @@ public partial class MainWindow : Window
 
     }
 
+    private void OpenSettings_Click(object? sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new AdvancedSettingsWindow();
+        settingsWindow.Show();
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);

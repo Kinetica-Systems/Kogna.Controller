@@ -1,8 +1,10 @@
 using System;
+using System.Globalization;
 using System.Text;
 using Avalonia.Controls.Platform;
+using static KinematicEngine.RS274NGC;
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
     // Enums from canon.h
     public enum CANON_PLANE
@@ -22,7 +24,7 @@ namespace KognaServer.Server.KinematicEngine
 
     public enum CANON_SPINDLE_MODE
     {
-        CANON_NORMAL = 1, CANON_CSS = 2
+        CANON_SPINDLE_NORMAL = 1, CANON_SPINDLE_CSS = 2
     }
 
     public enum CANON_SPEED_FEED_MODE
@@ -33,12 +35,12 @@ namespace KognaServer.Server.KinematicEngine
 
     public enum CANON_DIRECTION
     {
-        Stopped = 1, Clockwise = 2, Counterclockwise = 3
+        CANON_STOPPED = 1, CANON_CLOCKWISE = 2, CANON_COUNTERCLOCKWISE = 3
     }
 
     public enum CANON_FEED_REFERENCE
     {
-        Workpiece = 1, Xyz = 2
+        CANON_WORKPIECE = 1, CANON_XYZ = 2
     }
 
     public enum CANON_AXIS
@@ -48,7 +50,7 @@ namespace KognaServer.Server.KinematicEngine
 
     public enum CANON_SIDE
     {
-        Right = 1, Left = 2, Off = 3
+        CANON_SIDE_RIGHT = 1, CANON_SIDE_LEFT = 2, CANON_SIDE_OFF = 3
     }
 
     public struct CANON_VECTOR
@@ -69,7 +71,7 @@ namespace KognaServer.Server.KinematicEngine
         public double Length, Diameter, XOffset, YOffset, FeedTime, FeedDist;
         public string? Comment, ToolImage;
     }
-    
+
 
 
     public class Canon
@@ -79,12 +81,12 @@ namespace KognaServer.Server.KinematicEngine
         static CANON_UNITS lengthUnits = CANON_UNITS.Mm;
         private static CANON_PLANE activePlane = CANON_PLANE.XY;
         static CANON_MOTION_MODE motionMode = CANON_MOTION_MODE.CANON_EXACT_STOP;
-        static CANON_SPINDLE_MODE spindleMode = CANON_SPINDLE_MODE.CANON_NORMAL;
+        static CANON_SPINDLE_MODE spindleMode = CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL;
 
         public static StringBuilder Output = new StringBuilder();
         public static StringBuilder ErrorOutput = new StringBuilder();
 
-// Host application must assign these
+        // Host application must assign these
         public static GCodeInterpreter GC = null!;
         public static CCoordMotion CM = null!;
 
@@ -104,11 +106,7 @@ namespace KognaServer.Server.KinematicEngine
 
 
 
-
-        public static void SET_ORIGIN_OFFSETS(
-            double x, double y, double z,
-            double a, double b, double c,
-            double u, double v)
+        public static void SET_ORIGIN_OFFSETS(double x, double y, double z, double a, double b, double c, double u, double v)
         {
             // emit canonical line
             Print($"SET_ORIGIN_OFFSETS({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
@@ -133,11 +131,11 @@ namespace KognaServer.Server.KinematicEngine
             // push into the motion engine
             CM.SetOriginOffsets(xi, yi, zi, ai, bi, ci, ui, vi);
 
-           
+
         }
 
 
-//Device and Init
+        //Device and Init
         public static void SET_CANON_DEVICE(int device)
         {
             Print($"SET_CANON_DEVICE({device})");
@@ -176,17 +174,54 @@ namespace KognaServer.Server.KinematicEngine
         }
 
 
-//Traverse and Feeds
+        //Traverse and Feeds
 
         public static void SET_TRAVERSE_RATE(double rate)
         {
             Print($"SET_TRAVERSE_RATE({rate:F4})");
         }
 
-        public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v)
+        public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback, int seq, int id) //11 args
         {
             Print($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
+
+            if (CheckIfThreadingInProgress()) return;
+
+            GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
+
+            CM.StraightTraverse(GC.UserUnitsToInchesX(x + _setup.axis_offset_x + _setup.origin_offset_x + _setup.tool_xoffset),
+                                GC.UserUnitsToInches(y + _setup.axis_offset_y + _setup.origin_offset_y + _setup.tool_yoffset),
+                                GC.UserUnitsToInches(z + _setup.axis_offset_z + _setup.origin_offset_z + _setup.tool_length_offset),
+                                GC.UserUnitsToInchesOrDegA(a + _setup.AA_axis_offset + _setup.AA_origin_offset),
+                                GC.UserUnitsToInchesOrDegB(b + _setup.BB_axis_offset + _setup.BB_origin_offset),
+                                GC.UserUnitsToInchesOrDegC(c + _setup.CC_axis_offset + _setup.CC_origin_offset),
+                                GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
+                                GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
+                false, _setup.sequence_number, 0);
+
         }
+
+        public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v) //8 args
+        {
+            Print($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
+
+            if (CheckIfThreadingInProgress()) return;
+
+            GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
+
+            CM.StraightTraverse(GC.UserUnitsToInchesX(x + _setup.axis_offset_x + _setup.origin_offset_x + _setup.tool_xoffset),
+                                GC.UserUnitsToInches(y + _setup.axis_offset_y + _setup.origin_offset_y + _setup.tool_yoffset),
+                                GC.UserUnitsToInches(z + _setup.axis_offset_z + _setup.origin_offset_z + _setup.tool_length_offset),
+                                GC.UserUnitsToInchesOrDegA(a + _setup.AA_axis_offset + _setup.AA_origin_offset),
+                                GC.UserUnitsToInchesOrDegB(b + _setup.BB_axis_offset + _setup.BB_origin_offset),
+                                GC.UserUnitsToInchesOrDegC(c + _setup.CC_axis_offset + _setup.CC_origin_offset),
+                                GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
+                                GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
+                false, _setup.sequence_number, 0);
+
+        }
+        //public void STRAIGHT_TRAVERSE(double x, double y, double z, int sequence_number, bool noCallback = false)
+        // { /* stub */ }
 
 
         public static void SET_FEED_RATE(double rate)
@@ -196,17 +231,18 @@ namespace KognaServer.Server.KinematicEngine
 
         public static void SET_FEED_REFERENCE(CANON_FEED_REFERENCE r)
         {
-            
-             r = CANON_FEED_REFERENCE.Workpiece;
-             
+
+            r = CANON_FEED_REFERENCE.CANON_WORKPIECE;
+
             Print($"SET_FEED_REFERENCE({r})");
-            
+
         }
 
         public static void SET_MOTION_CONTROL_MODE(CANON_MOTION_MODE m)
         {
-            
+
             Print($"SET_MOTION_CONTROL_MODE({m})");
+
         }
 
         public static void START_SPEED_FEED_SYNCH()
@@ -219,9 +255,7 @@ namespace KognaServer.Server.KinematicEngine
             Print("STOP_SPEED_FEED_SYNCH()");
         }
 
-        public static void STRAIGHT_FEED(double x, double y, double z,
-                                        double a, double b, double c,
-                                        double u, double v)
+        public static void STRAIGHT_FEED(double x, double y, double z, double a, double b, double c, double u, double v)
         {
             // 1) print line header
             Print($"STRAIGHT_FEED({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
@@ -246,7 +280,7 @@ namespace KognaServer.Server.KinematicEngine
             // 5) lookup feed rate from GC/_setup (in units per minute), convert
             double rawFeed = GC.CurrentFeedRate; // or however you track it
             double feedRate = pureAngle
-                ? rawFeed / 60.0 
+                ? rawFeed / 60.0
                 : GC.UserUnitsToInches(rawFeed) / 60.0;
 
             // 6) save state before issuing segments
@@ -268,13 +302,7 @@ namespace KognaServer.Server.KinematicEngine
             programOrigin = new CANON_VECTOR { X = x, Y = y, Z = z /* etc */ };
         }
 
-        public static void ARC_FEED(CANON_FEED_REFERENCE rf,
-                                    double firstEnd, double secondEnd,
-                                    double firstAxis, double secondAxis,
-                                    int rotation,
-                                    double axisEndPoint,
-                                    double a, double b, double c,
-                                    double u, double v)
+        public static void ARC_FEED(CANON_FEED_REFERENCE rf, double firstEnd, double secondEnd, double firstAxis, double secondAxis, int rotation, double axisEndPoint, double a, double b, double c, double u, double v)
         {
             Print($"ARC_FEED({firstEnd:F4}, {secondEnd:F4}, {firstAxis:F4}, {secondAxis:F4}, {rotation}, {axisEndPoint:F4})");
             if (CheckIfThreadingInProgress())
@@ -282,10 +310,10 @@ namespace KognaServer.Server.KinematicEngine
 
             // compute target XYZ from rf/firstAxis/secondAxis
             double x, y, z;
-            if (rf == CANON_FEED_REFERENCE.Workpiece)
+            if (rf == CANON_FEED_REFERENCE.CANON_WORKPIECE)
             {
                 // interpret firstAxis/secondAxis as offsets in current workpiece plane
-                CM.ResolveArcCartesian(programOrigin, activePlane, firstEnd, secondEnd, firstAxis, secondAxis, rotation, out x, out y, out z);
+                CCoordMotion.ResolveArcCartesian(programOrigin, activePlane, firstEnd, secondEnd, firstAxis, secondAxis, rotation, out x, out y, out z);
             }
             else // CanonFeedReference.Xyz
             {
@@ -336,10 +364,13 @@ namespace KognaServer.Server.KinematicEngine
         }
 
 
-// Dwell & Coolant
+        // Dwell & Coolant
         public static void DWELL(double seconds)
         {
             Print($"DWELL({seconds:F4})");
+            if (CheckIfThreadingInProgress()) return;
+            GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
+            CM.Dwell(seconds, _setup.sequence_number, _setup);
         }
 
         public static void FLOOD_ON()
@@ -363,9 +394,12 @@ namespace KognaServer.Server.KinematicEngine
         }
 
 
-// Spindle & Tool
+        // Spindle & Tool
         public static void SET_SPINDLE_MODE(CANON_SPINDLE_MODE mode)
-        { Print($"SET_SPINDLE_MODE({mode})"); }
+        {
+            Print($"SET_SPINDLE_MODE({mode})");
+            GC.SetCSS((int)mode);
+        }
 
         public static void START_SPINDLE_CLOCKWISE()
         {
@@ -396,7 +430,7 @@ namespace KognaServer.Server.KinematicEngine
             Print($"CHANGE_TOOL({slot})");
         }
 
-// Axis Controls & Messages
+        // Axis Controls & Messages
         public static void CLAMP_AXIS(CANON_AXIS ax)
         {
             Print($"CLAMP_AXIS({ax})");
@@ -406,28 +440,28 @@ namespace KognaServer.Server.KinematicEngine
         {
             Print($"UNCLAMP_AXIS({ax})");
         }
-      
+
         public static void MESSAGE(string s)
         {
             Print($"MESSAGE(\"{s}\")");
         }
-      
+
         public static void PALLET_SHUTTLE()
         {
             Print("PALLET_SHUTTLE()");
         }
-       
+
         public static void TURN_PROBE_ON()
         {
             Print("TURN_PROBE_ON()");
         }
-      
+
         public static void TURN_PROBE_OFF()
         {
             Print("TURN_PROBE_OFF()");
         }
 
-// NURBS
+        // NURBS
         public static void NURB_KNOT_VECTOR()
         {
             Print("NURB_KNOT_VECTOR()");
@@ -443,7 +477,7 @@ namespace KognaServer.Server.KinematicEngine
             Print($"NURB_FEED({s0:F4}, {s1:F4})");
         }
 
-// Program Flow
+        // Program Flow
         public static void OPTIONAL_PROGRAM_STOP()
         {
             Print("OPTIONAL_PROGRAM_STOP()");
@@ -506,7 +540,7 @@ namespace KognaServer.Server.KinematicEngine
             return 0.0;
         }
 
-        public static CANON_UNITS  GET_EXTERNAL_LENGTH_UNIT_TYPE()
+        public static CANON_UNITS GET_EXTERNAL_LENGTH_UNIT_TYPE()
         {
             return lengthUnits;
         }
@@ -560,51 +594,51 @@ namespace KognaServer.Server.KinematicEngine
             return true;
         }
         // returns the current a-axis position
-        public static double GET_EXTERNAL_POSITION_A()  
+        public static double GET_EXTERNAL_POSITION_A()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current b-axis position
-        public static double GET_EXTERNAL_POSITION_B() 
+        public static double GET_EXTERNAL_POSITION_B()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current c-axis position
-        public static double GET_EXTERNAL_POSITION_C() 
+        public static double GET_EXTERNAL_POSITION_C()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current u-axis position
-        public static double GET_EXTERNAL_POSITION_U() 
+        public static double GET_EXTERNAL_POSITION_U()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current v-axis position
-        public static double GET_EXTERNAL_POSITION_V() 
+        public static double GET_EXTERNAL_POSITION_V()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current x-axis position
-        public static double GET_EXTERNAL_POSITION_X()  
+        public static double GET_EXTERNAL_POSITION_X()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current y-axis position
-        public static double GET_EXTERNAL_POSITION_Y()  
+        public static double GET_EXTERNAL_POSITION_Y()
         {
-                    return 0.0; 
+            return 0.0;
         }
 
         // returns the current z-axis position
-        public static double GET_EXTERNAL_POSITION_Z()  
+        public static double GET_EXTERNAL_POSITION_Z()
         {
-                    return 0.0; 
+            return 0.0;
         }
         public static double GET_EXTERNAL_SPEED()
         {
@@ -643,13 +677,13 @@ namespace KognaServer.Server.KinematicEngine
         }
 
         public static CANON_MOTION_MODE GET_EXTERNAL_MOTION_CONTROL_MODE()
-        {            
+        {
             Print($"GET_EXTERNAL_MOTION_CONTROL_MODE({motionMode})");
             return motionMode;
         }
 
         public static CANON_SPINDLE_MODE GET_EXTERNAL_SPINDLE_MODE()
-        {            
+        {
             Print($"GET_EXTERNAL_MOTION_CONTROL_MODE({spindleMode})");
             return spindleMode;
         }
@@ -669,6 +703,39 @@ namespace KognaServer.Server.KinematicEngine
             Print($"M100({mcode})");
             return 0;
         }
-   
+
+                /// <summary>
+        /// Pulls slot n out of your external tool‐changer / tool‐offset store.
+        /// Must return a fully‐populated CANON_TOOL_TABLE.
+        /// If you don’t have any real tooling data yet, just return an “empty” table.
+        /// </summary>
+        public static CANON_TOOL_TABLE GET_EXTERNAL_TOOL_TABLE(int n)
+        {
+            // TODO: replace this with your real hardware / DB call
+            return new CANON_TOOL_TABLE {
+                // the C version zeroes everything but the id, so we’ll do the same:
+                Slot      = n,
+                Id        = 0,
+                Length    = 0.0,
+                Diameter  = 0.0,
+                XOffset   = 0.0,
+                YOffset   = 0.0,
+                FeedTime  = 0.0,
+                FeedDist  = 0.0,
+                Comment   = string.Empty,
+                ToolImage = string.Empty
+            };
+        }
+
+        public static string GET_EXTERNAL_PARAMETER_FILE_NAME() => throw new NotImplementedException();
+        public static bool GET_EXTERNAL_FLOOD() => throw new NotImplementedException();
+        public static bool GET_EXTERNAL_MIST() => throw new NotImplementedException();
+        public static int GET_EXTERNAL_FEEDRATE() => throw new NotImplementedException();
+        public static int CutterComp() => throw new NotImplementedException();
+        public static int GET_DEFAULT_ARC_TOLERANCE() => throw new NotImplementedException();
+        public static int GET_EXTERNAL_PLANE() => throw new NotImplementedException();
+        public static int SPIN() => throw new NotImplementedException();
+        
+
     }
 }

@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Collections.Generic;
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
     /// <summary>
     /// Static lookup of all rs274ngc error messages, keyed by error code.

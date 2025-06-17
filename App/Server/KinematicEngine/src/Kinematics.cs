@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
     // Simple 2D/3D point structs
     public struct CPT2D { public double x, y; }
@@ -53,7 +53,8 @@ namespace KognaServer.Server.KinematicEngine
         public int NRows, NCols;
         public double GeoSpacingX, GeoSpacingY;
         public double GeoOffsetX, GeoOffsetY;
-
+        public static int MaxDecelTime(int axis, double vel, double accel, double jerk) => throw new NotImplementedException();
+        public static int NominalFROTime(char axis) => throw new NotImplementedException();
         public CKinematics()
         {
             m_MotionParams = new MotionParams

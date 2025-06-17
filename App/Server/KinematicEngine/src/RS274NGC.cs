@@ -1,24 +1,50 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Threading;
 using System.Collections.Generic;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using AvaloniaEdit.Editing;
+using Semi.Avalonia.Tokens;
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
     public partial class RS274NGC
     {
 
+        public const string RS274NGC_PARAMETER_FILE_NAME_DEFAULT = "rs274ngc.var";    //:contentReference[oaicite:0]{index=0}  
+        public const string RS274NGC_PARAMETER_FILE_BACKUP_SUFFIX = ".bak";          //  :contentReference[oaicite:1]{index=1}  
+        public const bool OFF = false;            //    :contentReference[oaicite:2]{index=2}  
+        public const bool ON = true;            //    :contentReference[oaicite:3]{index=3}  
+        public const int UNITS_PER_MINUTE = 0;              //  :contentReference[oaicite:4]{index=4}  
+        public const int INVERSE_TIME = 1;            //    :contentReference[oaicite:5]{index=5}  
+        public const int UNITS_PER_REV = 2;            //    :contentReference[oaicite:6]{index=6}  
+        public const int EMC_COMP_ENTRY_STYLE = 0;             //   :contentReference[oaicite:7]{index=7}  
+        public const int FANUC_COMP_ENTRY_STYLE = 1;            //    :contentReference[oaicite:8]{index=8}
+        private const int M_COOLANT_ON = 7;
+        private const int M_COOLANT_OFF = 9;
+        private const int M_MIST_ON = 8;
+        private const int M_FLOOD_ON = 7;
+        private const int M_FLOOD_OFF = 9;
+        private const int M_M100 = 100;
+        private const int EXIT_CODE = RS274NGC_EXIT;
+        public const int MAX_EMS = 8;
+        private const int MaxGComment = 256;  // <-- use the exact value from your header
 
         // --- Limits from rs274ngc.h --- :contentReference[oaicite:1]{index=1}
         private const int RS274NGC_TEXT_SIZE = 256;
         private const int RS274NGC_MAX_PARAMETERS = 5400;   // actual value from header
         private const int MAX_PARAM_CHANGES = 50;
+        private const int MAX_FILENAME_SIZE = 100;
         private const int RS274NGC_ACTIVE_G_CODES = 12;
         private const int RS274NGC_ACTIVE_M_CODES = 7;
         private const int RS274NGC_ACTIVE_SETTINGS = 3;
         private const int CANON_TOOL_MAX = 100;    // placeholder
+        private const double SIGMA = 1e-6; //chord-error tolerance
+
 
         // --- “Required” parameters list for restore/save --- :contentReference[oaicite:2]{index=2}
         private static readonly int[] requiredParameters = new int[]
@@ -58,11 +84,8 @@ namespace KognaServer.Server.KinematicEngine
         private static double[] _actualParameterValues = new double[RS274NGC_MAX_PARAMETERS];
 
         // --- interfaces?
-
+        private static readonly int[] m_modal_group = Enumerable.Repeat(0, 120).ToArray();
         public static SetupData _setup;
-
-
-
 
         /// <summary>
         /// Initialize interpreter. :contentReference[oaicite:4]{index=4}
@@ -70,10 +93,10 @@ namespace KognaServer.Server.KinematicEngine
         public static int Init()
         {
             _setup = new SetupData();
+            _setup.CM = new CCoordMotion();
             // call into your hardware interface
             Canon.INIT_CANON();
-            _setup.stack_index = 0;
-
+            SetupData.StackIndex = 0;
             _setup.length_units = Canon.GET_EXTERNAL_LENGTH_UNIT_TYPE();
             Canon.USE_LENGTH_UNITS(_setup.length_units);
 
@@ -89,15 +112,59 @@ namespace KognaServer.Server.KinematicEngine
                 return NCE_COORDINATE_SYSTEM_INDEX_PARAMETER_5220_OUT_OF_RANGE;
 
             int k = 5200 + _setup.origin_index * 20;
-            Canon.SET_ORIGIN_OFFSETS(
-                pars[k + 1] + pars[5211], pars[k + 2] + pars[5212], pars[k + 3] + pars[5213],
+            Canon.SET_ORIGIN_OFFSETS(pars[k + 1] + pars[5211], pars[k + 2] + pars[5212], pars[k + 3] + pars[5213],
                 pars[k + 4] + pars[5214], pars[k + 5] + pars[5215], pars[k + 6] + pars[5216],
                 pars[k + 7] + pars[5217], pars[k + 8] + pars[5218]);
 
-            Canon.SET_FEED_REFERENCE(CANON_FEED_REFERENCE.Workpiece);
+            Canon.SET_FEED_REFERENCE(CANON_FEED_REFERENCE.CANON_XYZ);
 
             _setup.AA_axis_offset = pars[5214];
             _setup.AA_origin_offset = pars[k + 4];
+            _setup.axis_offset_x = pars[5211];
+            _setup.axis_offset_y = pars[5212];
+            _setup.axis_offset_z = pars[5213];
+            _setup.BB_axis_offset = pars[5215];
+            _setup.BB_origin_offset = pars[k + 5];
+            _setup.blocktext[0] = '\0';
+            _setup.CC_axis_offset = pars[5216];
+            _setup.CC_origin_offset = pars[k + 6];
+            _setup.UU_axis_offset = pars[5217];
+            _setup.UU_origin_offset = pars[k + 7];
+            _setup.VV_axis_offset = pars[5218];
+            _setup.VV_origin_offset = pars[k + 8];
+            _setup.cutter_comp_side = 0;
+            _setup.CompEntryStyle = EMC_COMP_ENTRY_STYLE;
+            _setup.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE;
+            _setup.feed_mode = UNITS_PER_MINUTE;
+            _setup.feed_override = true;
+            _setup.filename[0] = '\0';
+            _setup.file_pointer = null;
+            _setup.length_offset_index = -1;
+            _setup.line_length = 0;
+            _setup.linetext[0] = '\0';
+            _setup.motion_mode = G_80;
+            _setup.origin_offset_x = pars[k + 1];
+            _setup.origin_offset_y = pars[k + 2];
+            _setup.origin_offset_z = pars[k + 3];
+            _setup.probe_flag = 0;
+            _setup.program_x = 0;	/* for cutter comp */
+            _setup.program_y = 0;	/* for cutter comp */
+            _setup.pending_comp_x = 0;	/* for fanuc cutter comp */
+            _setup.pending_comp_y = 0;	/* for fanuc cutter comp */
+            _setup.sequence_number = 0;	/* DOES THIS NEED TO BE AT TOP? */
+            _setup.speed_feed_mode = (double)CANON_SPEED_FEED_MODE.CANON_SYNCHED;
+            _setup.speed_override = true;
+            _setup.tool_length_offset = 0.0;
+            _setup.tool_xoffset = 0.0;
+            _setup.tool_yoffset = 0.0;
+            _setup.current_tool_index = 1;
+
+
+            WriteGCodes((Block)null!, _setup);
+            WriteMCodes((Block)null!, _setup);
+            WriteSettings(_setup);
+
+            Synch();
 
             LoadToolTable();
             Reset();
@@ -107,7 +174,7 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Execute one line or block (MDI or previously read). :contentReference[oaicite:5]{index=5}
         /// </summary>
-        public static int Execute(string command = null)
+        public static int Execute(string command = null!)
         {
             int status = CHECK_INIT_ON_EXEC();
             if (status != RS274NGC_OK) return status;
@@ -117,12 +184,11 @@ namespace KognaServer.Server.KinematicEngine
 
             // copy any parameter settings into parameters[]
             for (int i = 0; i < _setup.parameter_occurrence; i++)
-                _setup.parameters[_setup.parameter_numbers[i]] =
-                    _setup.parameter_values[i];
+                _setup.parameters[_setup.parameter_numbers[i]] = _setup.parameter_values[i];
 
             if (_setup.line_length != 0)
             {
-                status = ExecuteBlock(_setup.blocktext, _setup);
+                status = ExecuteBlock(_setup.block1, _setup);
                 WriteGCodes(_setup.block1, _setup);
                 WriteMCodes(_setup.block1, _setup);
                 WriteSettings(_setup);
@@ -143,7 +209,7 @@ namespace KognaServer.Server.KinematicEngine
         /// </summary>
         public static int Exit()
         {
-            var fn = Canon.GetCanonParameterFileName();
+            var fn = Canon.GET_EXTERNAL_PARAMETER_FILE_NAME();
             if (string.IsNullOrEmpty(fn))
                 fn = RS274NGC_PARAMETER_FILE_NAME_DEFAULT;
             SaveParameters(fn);
@@ -170,12 +236,16 @@ namespace KognaServer.Server.KinematicEngine
             double[] pars = _setup.parameters;
             Array.Clear(pars, 0, pars.Length);
 
-            if (!File.Exists(filename))
+            if (File.Exists(filename))
                 return NCE_UNABLE_TO_OPEN_FILE;
 
             using var reader = new StreamReader(filename);
             int requiredIdx = 0;
+
+            int[] _requiredParameters = new int[requiredIdx++];
+
             int nextRequired = _requiredParameters[requiredIdx++];
+
 
             while (!reader.EndOfStream)
             {
@@ -236,6 +306,7 @@ namespace KognaServer.Server.KinematicEngine
             using var writer = new StreamWriter(filename, false);
 
             int requiredIdx = 0;
+            int[] _requiredParameters = new int[requiredIdx++];
             int nextRequired = _requiredParameters[requiredIdx++];
 
             while (!reader.EndOfStream)
@@ -283,21 +354,21 @@ namespace KognaServer.Server.KinematicEngine
         /// </summary>
         private static int Synch()
         {
-            _setup.control_mode = Canon.GET_EXTERNAL_MOTION_CONTROL_MODE();
-            _setup.spindle_mode = Canon.GET_EXTERNAL_SPINDLE_MODE();
+            _setup.control_mode = (int)CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL;
+            _setup.spindle_mode = (int)Canon.GET_EXTERNAL_SPINDLE_MODE();
             _setup.AA_current = Canon.GET_EXTERNAL_POSITION_A();
             _setup.BB_current = Canon.GET_EXTERNAL_POSITION_B();
             _setup.CC_current = Canon.GET_EXTERNAL_POSITION_C();
             _setup.UU_current = Canon.GET_EXTERNAL_POSITION_U();
             _setup.VV_current = Canon.GET_EXTERNAL_POSITION_V();
-            _setup.feed_rate = Canon.GetExternalFeedRate();
-            _setup.flood = Canon.GetExternalFlood() != 0;
+            _setup.feed_rate = Canon.GET_EXTERNAL_FEEDRATE();
+            _setup.flood = Canon.GET_EXTERNAL_FLOOD() ? true : false;
             _setup.length_units = Canon.GET_EXTERNAL_LENGTH_UNIT_TYPE();
-            _setup.mist = (Canon.GET_EXTERNAL_MIST() != 0 )? 1 : 0;
-            _setup.plane = Canon.GET_EXTERNAL_PLANE() ;
+            _setup.mist = Canon.GET_EXTERNAL_MIST() ? true : false;
+            _setup.plane = Canon.GET_EXTERNAL_PLANE();
             _setup.selected_tool_slot = Canon.GET_EXTERNAL_TOOL_SLOT();
-            _setup.speed = Canon.GET_EXTERNAL_SPEED();
-            _setup.spindle_turning = Canon.GET_EXTERNAL_SPINDLE();
+            _setup.speed = (int)Canon.GET_EXTERNAL_SPEED();
+            _setup.spindle_turning = Canon.SPIN();
             _setup.tool_max = Canon.GET_EXTERNAL_TOOL_MAX();
             _setup.traverse_rate = Canon.GET_EXTERNAL_TOOL_SLOT();
             _setup.arc_radius_tol = Canon.GET_DEFAULT_ARC_TOLERANCE();
@@ -326,14 +397,14 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Open an NC‐code file (with '%' handling). :contentReference[oaicite:13]{index=13}
         /// </summary>
-        public static int Open(string filename)
+        public static int Open(string fileName)
         {
             if (_setup.file_pointer != null) return NCE_A_FILE_IS_ALREADY_OPEN;
-            if (filename.Length >= RS274NGC_TEXT_SIZE) return NCE_COMMAND_TOO_LONG;
+            if (fileName.Length >= RS274NGC_TEXT_SIZE) return NCE_COMMAND_TOO_LONG;
 
             try
             {
-                _setup.file_pointer = new StreamReader(filename);
+                _setup.file_pointer = new StreamReader(fileName);
             }
             catch
             {
@@ -343,14 +414,15 @@ namespace KognaServer.Server.KinematicEngine
             int result = SkipPercent();
             if (result != RS274NGC_OK) return result;
 
-            _setup.filename = filename;
+
             Reset();
+
             return RS274NGC_OK;
         }
 
         private static int SkipPercent()
         {
-            string line;
+            string? line;
             bool seenFirstPercent = false;
 
             while ((line = _setup.file_pointer.ReadLine()) != null)
@@ -378,19 +450,24 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Read next NC line or MDI text. :contentReference[oaicite:14]{index=14}
         /// </summary>
-        public static int Read(string mdi = null)
+        public static int Read(string? mdi = null)
         {
             if (mdi == null && _setup.file_pointer == null)
                 return NCE_FILE_NOT_OPEN;
 
-            string text = mdi ?? _setup.file_pointer.ReadLine();
+            string? text = mdi ?? _setup.file_pointer.ReadLine();
             if (text == null) return RS274NGC_ENDFILE;
 
             _setup.linetext = text.ToCharArray();
             _setup.line_length = _setup.linetext.Length;
             if (_setup.line_length > 0)
-                ParseLine(_setup.linetext, out _setup.blocktext);
-            return RS274NGC_OK;
+            {
+                int st = ParseLine(text, out Block b);
+                if (st != RS274NGC_OK) return st;
+                _setup.block1 = b;
+                return RS274NGC_OK;
+            }
+            return 0;
         }
 
         // …and similarly port the “getter” APIs:
@@ -412,9 +489,9 @@ namespace KognaServer.Server.KinematicEngine
 
         public static void ErrorText(int errorCode, StringBuilder errorText, int maxSize)
         {
-            if (errorCode >= 0 && errorCode < Rs274NgcErrors.Messages.Count)
+            if (errorCode >= 0 && errorCode < Messages.Count)
             {
-                var msg = Rs274NgcErrors.Get(errorCode);
+                var msg = Get(errorCode);
                 if (msg.Length < maxSize)
                 {
                     errorText.Clear();
@@ -452,11 +529,11 @@ namespace KognaServer.Server.KinematicEngine
 
         public static int SequenceNumber() => _setup.sequence_number;
 
-        public static void StackName(int index, StringBuilder functionName, int maxSize)
+        public static void stack_name(int index, StringBuilder functionName, int maxSize)
         {
             string name = string.Empty;
-            if (_setup.stack != null && index >= 0 && index < _setup.stack.Length)
-                name = _setup.stack[index] ?? string.Empty;
+            if (SetupData.Stack != null && index >= 0 && index < SetupData.Stack.Length)
+                name = SetupData.Stack[index] ?? string.Empty;
             if (name.Length < maxSize)
             {
                 functionName.Clear();
@@ -483,44 +560,12 @@ namespace KognaServer.Server.KinematicEngine
             LineText(sb, 100);
             return sb.ToString();
         }
-        public static string File()
-        {
-            var sb = new StringBuilder(100);
-            FileName(sb, 100);
-            return sb.ToString();
-        }
+
 
         /// <summary>
         /// Mirrors the C struct block_struct. :contentReference[oaicite:1]{index=1}
         /// </summary>
-        private class Block
-        {
-            public bool a_flag; public double a_number;
-            public bool b_flag; public double b_number;
-            public bool c_flag; public double c_number;
-            public bool u_flag; public double u_number;
-            public bool v_flag; public double v_number;
-            public char[] comment = new char[256];
-            public int d_number; public bool d_flag;
-            public double f_number;
-            public int[] g_modes = new int[15];
-            public int h_number;
-            public bool i_flag; public double i_number;
-            public bool j_flag; public double j_number;
-            public bool k_flag; public double k_number;
-            public bool l_flag; public int l_number;
-            public int line_number;
-            public int motion_to_be;
-            public int m_count; public int[] m_modes = new int[11];
-            public bool p_flag; public double p_number;
-            public bool q_flag; public double q_number;
-            public bool r_flag; public double r_number;
-            public double s_number;
-            public int t_number;
-            public bool x_flag; public double x_number;
-            public bool y_flag; public double y_number;
-            public bool z_flag; public double z_number;
-        }
+
 
         /// <summary>
         /// Reset every field in a Block to its “not present” sentinel. :contentReference[oaicite:2]{index=2}
@@ -549,7 +594,7 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// Top‐level line parser. Calls init_block, read_items, enhance_block, check_items. :contentReference[oaicite:3]{index=3}</summary>
-        private static int ParseLine(string line, out Block block)
+        public static int ParseLine(string line, out Block block)
         {
             block = new Block();
             int status = InitBlock(block);
@@ -574,77 +619,102 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Execute one block of parsed instructions in the correct order:
         /// comment → feed-mode → feed-rate → S → T → M → G → stop. :contentReference[oaicite:4]{index=4}</summary>
-        private static int ExecuteBlock(Block block, SetupData s)
+        public static int ExecuteBlock(Block block, SetupData s)
         {
             int status;
             if (block.comment[0] != '\0')
-                CHP(ConvertComment(new string(block.comment)));
-
-            if (block.g_modes[5] != -1)
-                CHP(ConvertFeedMode(block.g_modes[5], s));
-
-            if (block.f_number > -1.0 && s.feed_mode != DistanceMode.INVERSE_TIME)
-                CHP(ConvertFeedRate(block, s));
-
-            if (block.g_modes[14] != -1)
             {
-                // G96/G97
-                CHP(ConvertSpindleMode(block.g_modes[14], s));
+                CHP(() => ConvertComment(new string(block.comment)), nameof(ConvertComment));
             }
 
+            // feed mode (G-code 5)
+            if (block.g_modes[5] != -1)
+            {
+                CHP(() => ConvertFeedMode(block.g_modes[5], s), nameof(ConvertFeedMode));
+            }
+
+            // feed rate (F-word), unless inverse-time mode
+            if (block.f_number > -1.0 && s.feed_mode != (int)RS274NGC_FEED_MODE.INVERSE_TIME)
+            {
+                CHP(() => ConvertFeedRate(block, s), nameof(ConvertFeedRate));
+            }
+
+            // spindle mode (G96/G97)
+            if (block.g_modes[14] != -1)
+            {
+                CHP(() => ConvertSpindleMode(block.g_modes[14], s), nameof(ConvertSpindleMode));
+            }
+
+            // S-speed (S-word)
             if (block.s_number > -1.0)
-                CHP(ConvertSpeed(block, s));
+            {
+                CHP(() => ConvertSpeed(block, s), nameof(ConvertSpeed));
+            }
 
+            // T-tool select
             if (block.t_number != -1)
-                CHP(ConvertToolSelect(block, s));
+            {
+                CHP(() => ConvertToolSelect(block, s), nameof(ConvertToolSelect));
+            }
 
-            CHP(ConvertM(block, s));
-            CHP(ConvertG(block, s));
+            // plain M- and G-codes
+            CHP(() => ConvertM(block, s), nameof(ConvertM));
+            CHP(() => ConvertG(block, s), nameof(ConvertG));
 
+            // special M-codes (e.g. M0/M30)
             if (block.m_modes[4] != -1)
             {
                 status = ConvertStop(block, s);
-                if (status == RS274NGC_EXIT) return RS274NGC_EXIT;
-                else if (status != RS274NGC_OK) ERM(status);
+                if (status == RS274NGC_EXIT)
+                    return RS274NGC_EXIT;
+                else if (status != RS274NGC_OK)
+                    ERM(status, nameof(ConvertStop));
             }
 
-            return s.probe_flag == ON ? RS274NGC_EXECUTE_FINISH : RS274NGC_OK;
+            // final return: if probe_flag is ON, finish; otherwise just OK
+            return ((int)s.probe_flag == 1) ? RS274NGC_EXECUTE_FINISH : RS274NGC_OK;
         }
 
         /// <summary>
         /// Write out the active G-codes into the setup snapshot. :contentReference[oaicite:5]{index=5}</summary>
-        private static int WriteGCodes(Block block, SetupData s)
+        public static int WriteGCodes(Block block, SetupData s)
         {
             var g = s.active_g_codes;
+            var compSide = (cutter_comp)s.cutter_comp_side;
+            var units = (CANON_UNITS)s.length_units;
             g[0] = s.sequence_number;
             g[1] = s.motion_mode;
             g[2] = block == null ? -1 : block.g_modes[0];
-            g[3] = s.plane == CanonPlane.XY ? G_17 : s.plane == CanonPlane.XZ ? G_18 : G_19;
-            g[4] = s.cutter_comp_side == CutterComp.Left ? G_41 : s.cutter_comp_side == CutterComp.Right ? G_42 : G_40;
-            g[5] = s.length_units == Units.Inches ? G_20 : G_21;
-            g[6] = s.distance_mode == DistanceMode.ABSOLUTE ? G_90 : G_91;
-            g[7] = s.feed_mode == FeedMode.INVERSE_TIME ? G_93 :
-                    s.feed_mode == FeedMode.UNITS_PER_MINUTE ? G_94 : G_95;
+            g[3] = s.plane == (int)CANON_PLANE.XY ? G_17 : s.plane == (int)CANON_PLANE.XZ ? G_18 : G_19;
+            g[4] = compSide switch
+            {
+                cutter_comp.LEFT => G_41,
+                cutter_comp.RIGHT => G_42,
+                _ => G_40
+            };
+            g[5] = units == CANON_UNITS.Inches ? G_20 : G_21;
+            g[6] = s.distance_mode == (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE ? G_90 : G_91;
+            g[7] = s.feed_mode == (int)RS274NGC_FEED_MODE.INVERSE_TIME ? G_93 :
+                    s.feed_mode == (int)RS274NGC_FEED_MODE.PER_MINUTE ? G_94 : G_95;
             g[8] = s.origin_index < 7 ? 530 + 10 * s.origin_index : 584 + s.origin_index;
             g[9] = s.tool_length_offset == 0 && s.tool_xoffset == 0 && s.tool_yoffset == 0 ? G_49 : G_43;
-            g[10] = s.retract_mode == RetractMode.OLD_Z ? G_98 : G_99;
-            g[11] = s.control_mode == CanonControl.CONTINUOUS ? G_64 : G_61;
-            g[12] = s.spindle_mode == SpindleMode.NORMAL ? G_97 : G_96;
+            g[10] = s.retract_mode == block.OLD_Z ? G_98 : G_99;
+            g[11] = s.motion_mode == (int)CANON_MOTION_MODE.CANON_CONTINUOUS ? G_64 : G_61;
+            g[12] = s.spindle_mode == (int)CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL ? G_97 : G_96;
             return RS274NGC_OK;
         }
 
         /// <summary>
         /// Write out the active M-codes into the setup snapshot. :contentReference[oaicite:6]{index=6}</summary>
-        private static int WriteMCodes(Block block, SetupData s)
+        public static int WriteMCodes(Block block, SetupData s)
         {
             var m = s.active_m_codes;
             m[0] = s.sequence_number;
             m[1] = block == null ? -1 : block.m_modes[4];
-            m[2] = s.spindle_turning == SpindleState.STOPPED ? 5 :
-                   s.spindle_turning == SpindleState.CW ? 3 : 4;
+            m[2] = s.spindle_turning == (int)SPINDLE_STATE.STOPPED ? 5 : s.spindle_turning == (int)SPINDLE_STATE.CW ? 3 : 4;
             m[3] = block == null ? -1 : block.m_modes[6];
-            m[4] = s.mist ? 7 :
-                   s.flood ? -1 : 9;
+            m[4] = s.mist ? 7 : s.flood ? -1 : 9;
+
             m[5] = s.flood ? 8 : -1;
             m[6] = s.feed_override ? 48 : 49;
             return RS274NGC_OK;
@@ -652,11 +722,11 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// Write out feed, speed, and sequence into active_settings. :contentReference[oaicite:7]{index=7}</summary>
-        private static int WriteSettings(SetupData s)
+        public static int WriteSettings(SetupData s)
         {
             var a = s.active_settings;
             a[0] = s.sequence_number;
-            a[1] = s.feed_rate;
+            a[1] = (int)s.feed_rate;
             a[2] = s.speed;
             return RS274NGC_OK;
         }
@@ -671,7 +741,7 @@ namespace KognaServer.Server.KinematicEngine
             if (counter < length && line[counter] == '/')
             {
                 counter++;
-                if (_setup.block_delete)
+                if (_setup.block_delete != 0)
                     length = 1;
             }
 
@@ -728,6 +798,12 @@ namespace KognaServer.Server.KinematicEngine
 
             return status;
         }
+
+
+
+
+
+
         /// <summary>
         /// Read line number “N”/“O”: unsigned int → block.line_number. :contentReference[oaicite:2]{index=2}</summary>
         private static int ReadLineNumber(string line, ref int counter, Block block)
@@ -838,23 +914,23 @@ namespace KognaServer.Server.KinematicEngine
             int si = 0;
 
             // Read first value and operation
-            int status = ReadRealValue(line, ref counter, out values[0], parameters);
-            if (status != RS274NGC_OK) { result = 0; return status; }
+            double status = ReadRealValue(line, ref counter, out values[0], parameters);
+            if (status != RS274NGC_OK) { result = 0; return (int)status; }
             status = ReadOperation(line, ref counter, out ops[0]);
-            if (status != RS274NGC_OK) { result = 0; return status; }
+            if (status != RS274NGC_OK) { result = 0; return (int)status; }
 
             // Process until RIGHT_BRACKET on ops[0]
             while (ops[0] != RIGHT_BRACKET)
             {
                 status = ReadRealValue(line, ref counter, out values[++si], parameters);
-                if (status != RS274NGC_OK) { result = 0; return status; }
+                if (status != RS274NGC_OK) { result = 0; return (int)status; }
                 status = ReadOperation(line, ref counter, out ops[si]);
-                if (status != RS274NGC_OK) { result = 0; return status; }
+                if (status != RS274NGC_OK) { result = 0; return (int)status; }
 
                 while (si > 0 && Precedence(ops[si]) <= Precedence(ops[si - 1]))
                 {
-                    status = ExecuteBinary(ref values[si - 1], ops[si - 1], ref values[si]);
-                    if (status != RS274NGC_OK) { result = 0; return status; }
+                    status = ExecuteBinary(values[si - 1], ops[si - 1], values[si]);
+                    if (status != RS274NGC_OK) { result = 0; return (int)status; }
                     ops[si - 1] = ops[si];
                     si--;
                 }
@@ -867,6 +943,7 @@ namespace KognaServer.Server.KinematicEngine
         /// Binary op: + - * / ** and, or, xor, mod, logicals, etc. :contentReference[oaicite:8]{index=8}</summary>
         private static int ReadOperation(string line, ref int counter, out int op)
         {
+            op = 0;
             char c = line[counter++];
             switch (c)
             {
@@ -920,7 +997,7 @@ namespace KognaServer.Server.KinematicEngine
         /// Unary op names: abs, acos, asin, atan, cos, exp, etc. :contentReference[oaicite:9]{index=9}</summary>
         private static int ReadUnary(string line, ref int counter, out double result, double[] parameters)
         {
-            int operation;
+            double operation;
             int status = ReadOperationUnary(line, ref counter, out operation);
             if (status != RS274NGC_OK) { result = 0; return status; }
 
@@ -939,7 +1016,7 @@ namespace KognaServer.Server.KinematicEngine
             if (operation == ATAN)
                 return ReadAtan(line, ref counter, ref result, parameters);
             else
-                return ExecuteUnary(ref result, operation);
+                return ExecuteUnary(result, (int)operation);
         }
 
         /// <summary>
@@ -968,10 +1045,17 @@ namespace KognaServer.Server.KinematicEngine
         private static int ReadU(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'u', v => { b.u_flag = true; b.u_number = v; });
         private static int ReadV(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'v', v => { b.v_flag = true; b.v_number = v; });
         private static int ReadF(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'f', v => b.f_number = v, mustBePositive: true);
-        private static int ReadS(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 's', v => b.s_number = v, mustBePositive: true);
+        private static int ReadG(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'g', v => { b.g_flag = true; b.g_number = v; });
+        //private static int ReadH(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'h', v => { b.h_flag = true; b.h_number = v; });
+        private static int ReadI(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'i', v => { b.i_flag = true; b.i_number = v; });
+        private static int ReadJ(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'j', v => { b.j_flag = true; b.j_number = v; });
+        private static int ReadK(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'k', v => { b.k_flag = true; b.k_number = v; });
+        //private static int ReadL(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'l', v => { b.l_flag = true; b.l_number = v; });
+        //private static int ReadM(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'm', v => { b.m_flag = true; b.m_number = v; });
         private static int ReadP(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'p', v => { b.p_flag = true; b.p_number = v; });
         private static int ReadQ(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'q', v => { b.q_flag = true; b.q_number = v; });
         private static int ReadR(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 'r', v => { b.r_flag = true; b.r_number = v; });
+        private static int ReadS(string line, ref int counter, Block b, double[] p) => ReadAxis(line, ref counter, 's', v => b.s_number = v, mustBePositive: true);
         private static int ReadT(string line, ref int counter, Block b, double[] p)
         {
             if (line[counter] != 't') return NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED;
@@ -1019,19 +1103,35 @@ namespace KognaServer.Server.KinematicEngine
         }
         private static int ReadM(string line, ref int counter, Block b, double[] p)
         {
-            if (line[counter] != 'm') return NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED;
+            // 1) Must start with an 'm'
+            if (line[counter] != 'm')
+                return NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED;
             counter++;
-            int status = ReadIntegerValue(line, ref counter, out int mCode, p);
-            if (status != RS274NGC_OK) return status;
-            if (mCode < 0) return NCE_NEGATIVE_M_CODE_USED;
-            if (mCode > 119) return NCE_M_CODE_GREATER_THAN_119;
-            int modal = _ems[mCode];
-            if (modal == -1) return NCE_UNKNOWN_M_CODE_USED;
-            if (b.m_modes[modal] != -1) return NCE_TWO_M_CODES_USED_FROM_SAME_MODAL_GROUP;
+
+            // 2) Delegate the numeric parsing to ReadI (ref counter, Block, and p)
+            int status = ReadI(line, ref counter, b, p);
+            if (status != RS274NGC_OK)
+                return status;
+
+            // 3) Pull the code back out of the Block
+            int mCode = (int)b.i_number;
+            if (mCode < 0 || mCode > 119)
+                return NCE_M_CODE_GREATER_THAN_119;
+
+            // 4) Modal-group lookup (using your m_modal_group[])
+            int modal = m_modal_group[mCode];
+            if (modal == -1)
+                return NCE_UNKNOWN_M_CODE_USED;
+            if (b.m_modes[modal] != -1)
+                return NCE_TWO_M_CODES_USED_FROM_SAME_MODAL_GROUP;
+
+            // 5) Record the code in the block
             b.m_modes[modal] = mCode;
             b.m_count++;
+
             return RS274NGC_OK;
         }
+
 
         // Helper for all single-letter real-value readers
         private static int ReadAxis(string line, ref int counter, char letter, Action<double> assign, bool mustBePositive = false)
@@ -1112,21 +1212,21 @@ namespace KognaServer.Server.KinematicEngine
 
         // === feed mode (G93/94/95) ===
 
-        private static int ConvertFeedMode(int gCode, SetupData s)
+        private static int ConvertFeedMode(int code, SetupData s)
         {
-            switch (gCode)
+            switch (code)
             {
-                case G93:
+                case G_93:
                     Comment("interpreter: feed mode set to inverse time");
-                    s.FeedMode = FeedMode.InverseTime;
+                    s.feed_mode = (int)RS274NGC_FEED_MODE.INVERSE_TIME;
                     break;
-                case G94:
+                case G_94:
                     Comment("interpreter: feed mode set to units per minute");
-                    s.FeedMode = FeedMode.UnitsPerMinute;
+                    s.feed_mode = (int)RS274NGC_FEED_MODE.PER_MINUTE;
                     break;
-                case G95:
+                case G_95:
                     Comment("interpreter: feed mode set to units per rev");
-                    s.FeedMode = FeedMode.UnitsPerRev;
+                    s.feed_mode = (int)RS274NGC_FEED_MODE.PER_REV;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G93_OR_G94_OR_G95");
@@ -1138,24 +1238,24 @@ namespace KognaServer.Server.KinematicEngine
 
         private static int ConvertFeedRate(Block b, SetupData s)
         {
-            SetFeedRate(b.FNumber);
-            s.FeedRate = b.FNumber;
+            SetFeedRate(b.f_number);
+            s.feed_rate = b.f_number;
             return 0;
         }
 
         // === spindle mode (G96/G97) ===
 
-        private static int ConvertSpindleMode(int gCode, SetupData s)
+        private static int ConvertSpindleMode(int code, SetupData s)
         {
-            switch (gCode)
+            switch (code)
             {
-                case G96:
-                    SetSpindleMode(SpindleMode.Css);
-                    s.SpindleMode = SpindleMode.Css;
+                case G_96:
+                    Canon.SET_SPINDLE_MODE(CANON_SPINDLE_MODE.CANON_SPINDLE_CSS);
+                    s.spindle_mode = (int)CANON_SPINDLE_MODE.CANON_SPINDLE_CSS;
                     break;
-                case G97:
-                    SetSpindleMode(SpindleMode.Normal);
-                    s.SpindleMode = SpindleMode.Normal;
+                case G_97:
+                    Canon.SET_SPINDLE_MODE(CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL);
+                    s.spindle_mode = (int)CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G96_OR_G97");
@@ -1167,8 +1267,8 @@ namespace KognaServer.Server.KinematicEngine
 
         private static int ConvertSpeed(Block b, SetupData s)
         {
-            SetSpindleSpeed(b.SNumber);
-            s.SpindleSpeed = b.SNumber;
+            Canon.SET_SPINDLE_SPEED(b.s_number);
+            s.spindle_speed = (int)b.s_number;
             return 0;
         }
 
@@ -1177,8 +1277,8 @@ namespace KognaServer.Server.KinematicEngine
         private static int ConvertToolSelect(Block b, SetupData s)
         {
             // mirror C++: ConvertToolToIndex(settings, number, &index)
-            int index = LookupToolIndex(s, (int)b.TNumber);
-            s.SelectedToolSlot = index;
+            int index = LookupToolIndex(s, (int)b.t_number);
+            s.selected_tool_slot = index;
             return 0;
         }
 
@@ -1187,69 +1287,74 @@ namespace KognaServer.Server.KinematicEngine
         private static int ConvertM(Block b, SetupData s)
         {
             // 1) Tool change (M6)
-            if (b.Modes[6] != -1)
+            if (b.g_modes[6] != -1)
             {
-                ConvertToolChange(s);
+                _setup.feed_rate = Canon.GET_EXTERNAL_FEEDRATE();
+
             }
             // 2) Spindle start/stop
-            switch (b.Modes[7])
+            switch (b.g_modes[7])
             {
                 case 3:
-                    StartSpindleClockwise();
-                    s.SpindleTurning = SpindleTurning.Clockwise;
+                    Canon.START_SPINDLE_CLOCKWISE();
+                    s.spindle_turning = (int)CANON_DIRECTION.CANON_CLOCKWISE;
                     break;
                 case 4:
-                    StartSpindleCounterClockwise();
-                    s.SpindleTurning = SpindleTurning.CounterClockwise;
+                    Canon.START_SPINDLE_COUNTERCLOCKWISE();
+                    s.spindle_turning = (int)CANON_DIRECTION.CANON_COUNTERCLOCKWISE;
                     break;
                 case 5:
-                    StopSpindleTurning();
-                    s.SpindleTurning = SpindleTurning.Stopped;
+                    Canon.STOP_SPINDLE_TURNING();
+                    s.spindle_turning = (int)CANON_DIRECTION.CANON_STOPPED;
                     break;
             }
             // 3) Coolant
-            switch (b.Modes[8])
+            switch (b.g_modes[8])
             {
                 case 7:
                     MistOn();
-                    s.Mist = CoolantState.On;
+                    s.mist = true;
+                    CoolantState(ON);
                     break;
                 case 8:
                     FloodOn();
-                    s.Flood = CoolantState.On;
+                    s.flood = true;
+                    CoolantState(ON);
                     break;
                 case 9:
                     MistOff();
                     FloodOff();
-                    s.Mist = CoolantState.Off;
-                    s.Flood = CoolantState.Off;
+                    s.mist = false;
+                    CoolantState(OFF);
+                    s.flood = false;
+                    CoolantState(OFF);
                     break;
             }
             // 4) Overrides (M48/M49)
-            if (b.Modes[9] == 48)
+            if (b.g_modes[9] == 48)
             {
                 EnableFeedOverride();
                 EnableSpeedOverride();
-                s.FeedOverride = true;
-                s.SpeedOverride = true;
+                s.feed_override = true;
+                s.speed_override = true;
             }
-            else if (b.Modes[9] == 49)
+            else if (b.g_modes[9] == 49)
             {
-                if (b.PFlag && b.PNumber == 1)
+                if (b.p_flag && b.p_number == 1)
                 {
                     DisableFeedOverride();
                     EnableSpeedOverride();
-                    s.FeedOverride = false;
-                    s.SpeedOverride = true;
+                    s.feed_override = false;
+                    s.speed_override = true;
                 }
-                else if (b.PFlag && b.PNumber == 2)
+                else if (b.p_flag && b.p_number == 2)
                 {
                     EnableFeedOverride();
                     DisableSpeedOverride();
-                    s.FeedOverride = true;
-                    s.SpeedOverride = false;
+                    s.feed_override = true;
+                    s.speed_override = false;
                 }
-                else if (b.PFlag)
+                else if (b.p_flag)
                 {
                     throw new InvalidOperationException("NCE_INVALID_PWORD_M49");
                 }
@@ -1257,14 +1362,14 @@ namespace KognaServer.Server.KinematicEngine
                 {
                     DisableFeedOverride();
                     DisableSpeedOverride();
-                    s.FeedOverride = false;
-                    s.SpeedOverride = false;
+                    s.feed_override = false;
+                    s.speed_override = false;
                 }
             }
             // optional M100, etc.
-            if (b.Modes[10] != -1)
+            if (b.g_modes[10] != -1)
             {
-                M100(b.Modes[10]);
+                M100(b.g_modes[10]);
             }
             return 0;
         }
@@ -1274,48 +1379,48 @@ namespace KognaServer.Server.KinematicEngine
         private static int ConvertG(Block b, SetupData s)
         {
             // 1) dwell (G4)
-            if (b.GModes[0] == G4)
-                ConvertDwell(b.PNumber);
+            if (b.g_modes[0] == G_4)
+                ConvertDwell(b.p_number);
 
             // 2) plane select (G17/G18/G19)
-            if (b.GModes[2] != -1)
-                ConvertSetPlane(b.GModes[2], s);
+            if (b.g_modes[2] != -1)
+                ConvertSetPlane(b.g_modes[2], s);
 
             // 3) length units (G20/G21)
-            if (b.GModes[6] != -1)
-                ConvertLengthUnits(b.GModes[6], s);
+            if (b.g_modes[6] != -1)
+                ConvertLengthUnits(b.g_modes[6], s);
 
             // 4) cutter comp (G40/G41/G42)
-            if (b.GModes[7] != -1)
-                ConvertCutterCompensation(b.GModes[7], b, s);
+            if (b.g_modes[7] != -1)
+                ConvertCutterCompensation(b.g_modes[7], b, s);
 
             // 5) tool length offset (G43/G49)
-            if (b.GModes[8] != -1)
-                ConvertToolLengthOffset(b.GModes[8], b, s);
+            if (b.g_modes[8] != -1)
+                ConvertToolLengthOffset(b.g_modes[8], b, s);
 
             // 6) coordinate system (G54–G59.s)
-            if (b.GModes[12] != -1)
-                ConvertCoordinateSystem(b.GModes[12], s);
+            if (b.g_modes[12] != -1)
+                ConvertCoordinateSystem(b.g_modes[12], s);
 
             // 7) control mode (G61/G61.1/G64)
-            if (b.GModes[13] != -1)
-                ConvertControlMode(b.GModes[13], s);
+            if (b.g_modes[13] != -1)
+                ConvertControlMode(b.g_modes[13], s);
 
             // 8) distance mode (G90/G91)
-            if (b.GModes[3] != -1)
-                ConvertDistanceMode(b.GModes[3], s);
+            if (b.g_modes[3] != -1)
+                Convertdistance_mode(b.g_modes[3], s);
 
             // 9) retract mode (G98/G99)
-            if (b.GModes[10] != -1)
-                ConvertRetractMode(b.GModes[10], s);
+            if (b.g_modes[10] != -1)
+                ConvertRetractMode(b.g_modes[10], s);
 
             // 10) modal-0 codes (G10, G28, G30, G92, …)
-            if (b.GModes[0] != -1)
-                ConvertModal0(b.GModes[0], b, s);
+            if (b.g_modes[0] != -1)
+                ConvertModal0(b.g_modes[0], b, s);
 
             // 11) any implicit or explicit motion (G0, G1, G2, G3, canned, etc.)
-            if (b.MotionToBe != -1)
-                ConvertMotion(b.MotionToBe, b, s);
+            if (b.motion_to_be != -1)
+                ConvertMotion(b.motion_to_be, b, s);
 
             return 0;
         }
@@ -1324,7 +1429,7 @@ namespace KognaServer.Server.KinematicEngine
 
         private static int ConvertStop(Block b, SetupData s)
         {
-            int m = b.Modes[0];
+            int m = b.g_modes[0];
             if (m == 0 || m == 1 || m == 2 || m == 30 || m == 60)
                 return EXIT_CODE;    // signal interpreter exit
             else
@@ -1337,17 +1442,17 @@ namespace KognaServer.Server.KinematicEngine
         {
             switch (gCode)
             {
-                case G61:
-                    SetMotionControlMode(MotionControl.ExactPath);
-                    s.ControlMode = MotionControl.ExactPath;
+                case G_61:
+                    SetMotionControlMode((int)CANON_MOTION_MODE.CANON_EXACT_PATH);
+                    s.control_mode = (int)CANON_MOTION_MODE.CANON_EXACT_PATH;
                     break;
-                case G61_1:
-                    SetMotionControlMode(MotionControl.ExactStop);
-                    s.ControlMode = MotionControl.ExactStop;
+                case G_61_1:
+                    SetMotionControlMode((int)CANON_MOTION_MODE.CANON_EXACT_STOP);
+                    s.control_mode = (int)CANON_MOTION_MODE.CANON_EXACT_STOP;
                     break;
-                case G64:
-                    SetMotionControlMode(MotionControl.Continuous);
-                    s.ControlMode = MotionControl.Continuous;
+                case G_64:
+                    SetMotionControlMode((int)CANON_MOTION_MODE.CANON_CONTINUOUS);
+                    s.control_mode = (int)CANON_MOTION_MODE.CANON_CONTINUOUS;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G61_G61_1_OR_G64");
@@ -1355,15 +1460,15 @@ namespace KognaServer.Server.KinematicEngine
             return 0;
         }
 
-        private static int ConvertDistanceMode(int gCode, SetupData s)
+        private static int ConvertDistanceMode(int code, SetupData s)
         {
-            switch (gCode)
+            switch (code)
             {
-                case G90:
-                    s.DistanceMode = DistanceMode.Absolute;
+                case G_90:
+                    s.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE;
                     break;
-                case G91:
-                    s.DistanceMode = DistanceMode.Incremental;
+                case G_91:
+                    s.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_INCREMENTAL;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G90_OR_G91");
@@ -1373,19 +1478,19 @@ namespace KognaServer.Server.KinematicEngine
 
         private static int ConvertDwell(double time)
         {
-            Dwell(time);
+            DWELL(time);
             return 0;
         }
 
-        private static int ConvertLengthUnits(int gCode, SetupData s)
+        private static int ConvertLengthUnits(int code, SetupData s)
         {
-            switch (gCode)
+            switch (code)
             {
-                case G20:
-                    s.LengthUnits = LengthUnits.Inches;
+                case G_20:
+                    s.length_units = CANON_UNITS.Inches;
                     break;
-                case G21:
-                    s.LengthUnits = LengthUnits.Millimeters;
+                case G_21:
+                    s.length_units = CANON_UNITS.Mm;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G20_OR_G21");
@@ -1397,23 +1502,23 @@ namespace KognaServer.Server.KinematicEngine
         {
             switch (code)
             {
-                case G10:
+                case G_10:
                     ConvertSetup(b, s);
                     break;
-                case G28:
-                case G30:
+                case G_28:
+                case G_30:
                     ConvertHome(code, b, s);
                     break;
-                case G92:
-                case G92_1:
-                case G92_2:
-                case G92_3:
-                case G52:
+                case G_92:
+                case G_92_1:
+                case G_92_2:
+                case G_92_3:
+                case G_52:
                     ConvertAxisOffsets(code, b, s);
                     break;
                 // G4 and G53 handled elsewhere
-                case G4:
-                case G53:
+                case G_4:
+                case G_53:
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G4_G10_G28_G30_G53_OR_G92_SERIES");
@@ -1427,33 +1532,37 @@ namespace KognaServer.Server.KinematicEngine
         /// G10: Set a program‐origin offset for the selected CS. :contentReference[oaicite:0]{index=0}</summary>
         private static int ConvertSetup(Block b, SetupData s)
         {
+            // G10: set program‐origin offset
             int pInt = (int)(b.p_number + 0.0001);
             double[] pars = s.parameters;
-
-            // X
+            // re-create the locals...
             double x = b.x_flag ? b.x_number : pars[5201 + pInt * 20];
-            if (b.x_flag) pars[PChanged(5201 + pInt * 20)] = x;
-            // Y
             double y = b.y_flag ? b.y_number : pars[5202 + pInt * 20];
-            if (b.y_flag) pars[PChanged(5202 + pInt * 20)] = y;
-            // Z
             double z = b.z_flag ? b.z_number : pars[5203 + pInt * 20];
-            if (b.z_flag) pars[PChanged(5203 + pInt * 20)] = z;
-            // A
             double a = b.a_flag ? b.a_number : pars[5204 + pInt * 20];
-            if (b.a_flag) pars[PChanged(5204 + pInt * 20)] = a;
-            // B
             double bb = b.b_flag ? b.b_number : pars[5205 + pInt * 20];
-            if (b.b_flag) pars[PChanged(5205 + pInt * 20)] = bb;
-            // C
             double c = b.c_flag ? b.c_number : pars[5206 + pInt * 20];
-            if (b.c_flag) pars[PChanged(5206 + pInt * 20)] = c;
-            // U
             double u = b.u_flag ? b.u_number : pars[5207 + pInt * 20];
-            if (b.u_flag) pars[PChanged(5207 + pInt * 20)] = u;
-            // V
             double v = b.v_flag ? b.v_number : pars[5208 + pInt * 20];
-            if (b.v_flag) pars[PChanged(5208 + pInt * 20)] = v;
+            // Helper to apply one axis
+            void ApplyAxis(bool flag, double value, int baseCode)
+            {
+                if (!flag) return;
+                int idx = baseCode + pInt * 20;
+                // Notify that parameter [idx] changed:
+                PChanged(idx.ToString());
+                // Store the new offset
+                pars[idx] = value;
+            }
+
+            ApplyAxis(b.x_flag, b.x_number, 5201);
+            ApplyAxis(b.y_flag, b.y_number, 5202);
+            ApplyAxis(b.z_flag, b.z_number, 5203);
+            ApplyAxis(b.a_flag, b.a_number, 5204);
+            ApplyAxis(b.b_flag, b.b_number, 5205);
+            ApplyAxis(b.c_flag, b.c_number, 5206);
+            ApplyAxis(b.u_flag, b.u_number, 5207);
+            ApplyAxis(b.v_flag, b.v_number, 5208);
 
             // If this is the active CS, adjust current_* and origin_offset_*
             if (pInt == s.origin_index)
@@ -1487,7 +1596,7 @@ namespace KognaServer.Server.KinematicEngine
                 s.VV_current -= v;
 
                 // Emit the canonical “SET_ORIGIN_OFFSETS”
-                SetOriginOffsets(
+                Canon.SET_ORIGIN_OFFSETS(
                     x + s.axis_offset_x,
                     y + s.axis_offset_y,
                     z + s.axis_offset_z,
@@ -1506,41 +1615,36 @@ namespace KognaServer.Server.KinematicEngine
         private static int ConvertHome(int move, Block b, SetupData s)
         {
             // compute ends of first segment
-            find_ends(b, s,
-                out double endX, out double endY, out double endZ,
-                out double AA_end, out double BB_end, out double CC_end,
-                out double UU_end, out double VV_end);
+            FindEnds(b, s, out double endX, out double endY, out double endZ, out double AA_end, out double BB_end, out double CC_end, out double UU_end, out double VV_end);
 
-            if (s.cutter_comp_side != CutterCompensation.Off)
+            if (s.cutter_comp_side != (int)cutter_comp.OFF)
                 throw new InvalidOperationException("NCE_CANNOT_USE_G28_OR_G30_WITH_CUTTER_RADIUS_COMP");
 
             // rapid‐traverse to block point
-            StraightTraverse(endX, endY, endZ, AA_end, BB_end, CC_end, UU_end, VV_end);
+            Canon.STRAIGHT_TRAVERSE(endX, endY, endZ, AA_end, BB_end, CC_end, UU_end, VV_end);
 
-            // then to reference 1 (G28) or ref 2 (G30)
-            if (move == G_28)
-                find_relative(
-                    s.parameters[5161], s.parameters[5162], s.parameters[5163],
-                    s.parameters[5164], /*AA*/s.parameters[5165], /*BB*/s.parameters[5166],
-                    s.parameters[5167], /*UU*/s.parameters[5168], /*VV*/s.parameters[5169],
+            if (move == G_28 || move == G_30)
+            {
+                // choose the right parameter block based on G-code
+                int baseIdx = (move == G_28) ? 5161 : 5181;
+
+                FindRelative(
+                    s.parameters[baseIdx], s.parameters[baseIdx + 1], s.parameters[baseIdx + 2],
+                    s.parameters[baseIdx + 3], s.parameters[baseIdx + 4], s.parameters[baseIdx + 5],
+                    s.parameters[baseIdx + 6], s.parameters[baseIdx + 7],
                     out endX, out endY, out endZ,
-                    out AA_end, out BB_end, out CC_end, out UU_end, out VV_end,
+                    out AA_end, out BB_end, out CC_end,
+                    out UU_end, out VV_end,
                     s
                 );
-            else if (move == G_30)
-                find_relative(
-                    s.parameters[5181], s.parameters[5182], s.parameters[5183],
-                    s.parameters[5184], /*AA*/s.parameters[5185], /*BB*/s.parameters[5186],
-                    s.parameters[5187], /*UU*/s.parameters[5188], /*VV*/s.parameters[5189],
-                    out endX, out endY, out endZ,
-                    out AA_end, out BB_end, out CC_end, out UU_end, out VV_end,
-                    s
-                );
+            }
             else
+            {
                 throw new InvalidOperationException("NCE_BUG_CODE_NOT_G28_OR_G30");
+            }
 
             // rapid‐traverse to home and update current_*
-            StraightTraverse(endX, endY, endZ, AA_end, BB_end, CC_end, UU_end, VV_end);
+            Canon.STRAIGHT_TRAVERSE(endX, endY, endZ, AA_end, BB_end, CC_end, UU_end, VV_end);
             s.current_x = endX; s.current_y = endY; s.current_z = endZ;
             s.AA_current = AA_end; s.BB_current = BB_end; s.CC_current = CC_end;
             s.UU_current = UU_end; s.VV_current = VV_end;
@@ -1550,18 +1654,18 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// G40/G41/G42: Tool‐radius compensation. :contentReference[oaicite:2]{index=2}</summary>
-        private static int ConvertCutterCompensation(int gCode, Block b, SetupData s)
+        private static int ConvertCutterCompensation(int code, Block b, SetupData s)
         {
-            switch (gCode)
+            switch (code)
             {
                 case G_40:
                     ConvertCutterCompensationOff(s);
                     break;
                 case G_41:
-                    ConvertCutterCompensationOn(CutterComp.Left, b, s);
+                    ConvertCutterCompensationOn(cutter_comp.LEFT, b, s);
                     break;
                 case G_42:
-                    ConvertCutterCompensationOn(CutterComp.Right, b, s);
+                    ConvertCutterCompensationOn(cutter_comp.RIGHT, b, s);
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G40_G41_OR_G42");
@@ -1572,7 +1676,7 @@ namespace KognaServer.Server.KinematicEngine
         private static int ConvertCutterCompensationOff(SetupData s)
         {
             // interpreter comment omitted in release
-            s.cutter_comp_side = CutterComp.Off;
+            s.cutter_comp_side = (int)cutter_comp.OFF;
             if (s.program_x != double.NaN)
             {
                 s.current_x = s.program_x;
@@ -1583,17 +1687,17 @@ namespace KognaServer.Server.KinematicEngine
             return RS274NGC_OK;
         }
 
-        private static int ConvertCutterCompensationOn(CutterComp side, Block b, SetupData s)
+        private static int ConvertCutterCompensationOn(cutter_comp side, Block b, SetupData s)
         {
-            if (s.plane != CanonPlane.XY)
+            if (s.plane != (int)CANON_PLANE.XY)
                 throw new InvalidOperationException("NCE_CANNOT_TURN_CUTTER_RADIUS_COMP_ON_OUT_OF_XY_PLANE");
-            if (s.cutter_comp_side != CutterComp.Off)
+            if (s.cutter_comp_side != (int)cutter_comp.OFF)
                 throw new InvalidOperationException("NCE_CANNOT_TURN_CUTTER_RADIUS_COMP_ON_WHEN_ON");
 
             // set up compensation using the current tool table diameter
-            double radius = s.tool_table[s.selected_tool_slot].Diameter / 2.0;
+            double radius = s.tool_table![s.selected_tool_slot].Diameter / 2.0;
             s.cutter_comp_radius = radius;
-            s.cutter_comp_side = side;
+            s.cutter_comp_side = (int)side;
             s.program_x = s.current_x;  // remember un‐compensated
             s.program_y = s.current_y;
             s.pending_comp_x = double.NaN;
@@ -1602,36 +1706,36 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// G98/G99: Retract mode for canned cycles. :contentReference[oaicite:3]{index=3}</summary>
-        private static int ConvertRetractMode(int gCode, SetupData s)
+        private static int ConvertRetractMode(int code, SetupData s)
         {
-            if (gCode == G_98) s.retract_mode = RetractMode.OldZ;
-            else if (gCode == G_99) s.retract_mode = RetractMode.RPlane;
+            if (code == G_98) s.retract_mode = (int)RetractMode.OldZ;
+            else if (code == G_99) s.retract_mode = (int)RetractMode.RPlane;
             else throw new InvalidOperationException("NCE_BUG_CODE_NOT_G98_OR_G99");
             return RS274NGC_OK;
         }
 
         /// <summary>
         /// G17/G18/G19: Plane select. :contentReference[oaicite:4]{index=4}</summary>
-        private static int ConvertSetPlane(int gCode, SetupData s)
+        private static int ConvertSetPlane(int code, SetupData s)
         {
-            if (gCode == G_17)
+            if (code == G_17)
             {
-                SelectPlane(CANON_PLANE.XY);
-                s.plane = CANON_PLANE.XY;
+                Canon.SELECT_PLANE(CANON_PLANE.XY);
+                s.plane = (int)CANON_PLANE.XY;
             }
-            else if (gCode == G_18)
+            else if (code == G_18)
             {
-                if (s.cutter_comp_side != CutterComp.Off)
+                if (s.cutter_comp_side != (int)cutter_comp.OFF)
                     throw new InvalidOperationException("NCE_CANNOT_USE_XZ_PLANE_WITH_CUTTER_RADIUS_COMP");
-                SelectPlane(CANON_PLANE.XZ);
-                s.plane = CANON_PLANE.XZ;
+                Canon.SELECT_PLANE(CANON_PLANE.XZ);
+                s.plane = (int)CANON_PLANE.XZ;
             }
-            else if (gCode == G_19)
+            else if (code == G_19)
             {
-                if (s.cutter_comp_side != CutterComp.Off)
+                if (s.cutter_comp_side != (int)cutter_comp.OFF)
                     throw new InvalidOperationException("NCE_CANNOT_USE_YZ_PLANE_WITH_CUTTER_RADIUS_COMP");
-                SelectPlane(CANON_PLANE.YZ);
-                s.plane = CANON_PLANE.YZ;
+                Canon.SELECT_PLANE(CANON_PLANE.YZ);
+                s.plane = (int)CANON_PLANE.YZ;
             }
             else
                 throw new InvalidOperationException("NCE_BUG_CODE_NOT_G17_G18_OR_G19");
@@ -1640,9 +1744,9 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// G54 – G59.3: Coordinate-system select. :contentReference[oaicite:5]{index=5}</summary>
-        private static int ConvertCoordinateSystem(int gCode, SetupData s)
+        private static int ConvertCoordinateSystem(int code, SetupData s)
         {
-            int origin = gCode switch
+            int origin = code switch
             {
                 G_54 => 1,
                 G_55 => 2,
@@ -1657,12 +1761,14 @@ namespace KognaServer.Server.KinematicEngine
             };
 
             // if already in that CS with same units, no-op
-            if (s.origin_index == origin && s.length_units_of_origin == s.length_units)
+            if (s.origin_index == origin && (int)s.length_units_of_origin == (int)s.length_units)
                 return RS274NGC_OK;
 
             s.origin_index = origin;
             s.length_units_of_origin = s.length_units;
-            s.parameters[PChanged(5220)] = origin;
+            int idx = 5220;
+            PChanged(idx.ToString());
+            s.parameters[idx] = origin;
 
             // shift current_* by old origin, then subtract new origin
             s.current_x += s.origin_offset_x;
@@ -1696,7 +1802,7 @@ namespace KognaServer.Server.KinematicEngine
             s.VV_current -= s.VV_origin_offset;
 
             // canonical “SET_ORIGIN_OFFSETS”
-            SetOriginOffsets(
+            Canon.SET_ORIGIN_OFFSETS(
                 s.origin_offset_x + s.axis_offset_x,
                 s.origin_offset_y + s.axis_offset_y,
                 s.origin_offset_z + s.axis_offset_z,
@@ -1723,6 +1829,9 @@ namespace KognaServer.Server.KinematicEngine
                 case G_3:
                     ConvertArc(motion, b, s);
                     return RS274NGC_OK;
+                case G_32:
+                    ConvertThread(motion, b, s);
+                    return RS274NGC_OK;
                 case G_38_2:
                     ConvertProbe(b, s);
                     return RS274NGC_OK;
@@ -1743,32 +1852,28 @@ namespace KognaServer.Server.KinematicEngine
         /// G38.2: Single‐point probe with straight‐feed. :contentReference[oaicite:8]{index=8}</summary>
         private static int ConvertProbe(Block b, SetupData s)
         {
-            if (s.feed_mode == FeedMode.InverseTime)
+            if (s.feed_mode == (int)RS274NGC_FEED_MODE.INVERSE_TIME)
                 throw new InvalidOperationException("NCE_CANNOT_PROBE_IN_INVERSE_TIME_FEED_MODE");
-            if (s.cutter_comp_side != CutterComp.Off)
+            if (s.cutter_comp_side != (int)cutter_comp.OFF)
                 throw new InvalidOperationException("NCE_CANNOT_PROBE_WITH_CUTTER_RADIUS_COMP_ON");
             if (s.feed_rate == 0.0)
                 throw new InvalidOperationException("NCE_CANNOT_PROBE_WITH_ZERO_FEED_RATE");
 
             // Ensure no rotary movement
-            find_ends(b, s,
-                out double ex, out double ey, out double ez,
-                out double eA, out double eB, out double eC,
-                out double eU, out double eV
-            );
+            FindEnds(b, s, out double ex, out double ey, out double ez, out double eA, out double eB, out double eC, out double eU, out double eV);
             double dist = Math.Sqrt(
                 Math.Pow(s.current_x - ex, 2) +
                 Math.Pow(s.current_y - ey, 2) +
                 Math.Pow(s.current_z - ez, 2)
             );
-            if (dist < ((s.length_units == Units.Millimeters) ? 0.254 : 0.01))
+            if (dist < ((s.length_units == CANON_UNITS.Mm) ? 0.254 : 0.01))
                 throw new InvalidOperationException("NCE_START_POINT_TOO_CLOSE_TO_PROBE_POINT");
 
             TurnProbeOn();
             StraightProbe(ex, ey, ez, eA, eB, eC, eU, eV);
             TurnProbeOff();
             s.motion_mode = G_38_2;
-            s.probe_flag = true;
+            _setup.probe_flag = probe_flag.ON;
             return RS274NGC_OK;
         }
 
@@ -1776,10 +1881,29 @@ namespace KognaServer.Server.KinematicEngine
         /// G81–G89: Canned‐cycle dispatch. :contentReference[oaicite:9]{index=9}</summary>
         private static int ConvertCycle(int motion, Block b, SetupData s)
         {
+            var plane = (CANON_PLANE)s.plane;
+            double x       =  b.x_number;
+            double y       =  b.y_number;
+            double clearZ  =  b.clear_z;
+            double bottomZ =  b.bottom_z;
+            double P       =  b.p_number;
+            double delta   =  b.r_number;
+            double offsetX =  s.axis_offset_x;
+            double offsetY =  s.axis_offset_y;
+            double middleZ =  s.mid_offset_Z;
+            var direction = (CANON_DIRECTION)b.direction;      // or b.direction if you stored it there 
+            var feedMode  = (CANON_SPEED_FEED_MODE)s.feed_mode;
             // you would dispatch into G81, G82…G89 here, e.g.:
-            if (motion == G_81) ConvertCycleG81(s.plane, b.x_number, b.y_number, b.clear_z, b.bottom_z);
-            else if (motion == G_82) ConvertCycleG82(s.plane, b.x_number, b.y_number, b.clear_z, b.bottom_z, b.p_number);
-            // … etc. through G_89 …
+            if (motion == G_81) ConvertCycleG81(plane, x, y, clearZ, bottomZ);
+            else if (motion == G_82) ConvertCycleG82(plane, x, y, clearZ, bottomZ, P);
+            else if (motion == G_83) ConvertCycleG83(plane, x, y, clearZ, bottomZ, P, delta, direction, feedMode);
+            else if (motion == G_84) ConvertCycleG84(plane, x, y, delta, clearZ, bottomZ, direction, feedMode);
+            else if (motion == G_85) ConvertCycleG85(plane, x, y, clearZ, bottomZ, P);
+            else if (motion == G_86) ConvertCycleG86(plane, x, y, clearZ, bottomZ, P, direction);
+            else if (motion == G_87) ConvertCycleG87(plane, x, offsetX, y, offsetY, delta, clearZ, middleZ, bottomZ, direction);
+            else if (motion == G_88) ConvertCycleG88(plane, x, y, bottomZ, P, direction);
+            else if (motion == G_89) ConvertCycleG89(plane, x, y, clearZ, bottomZ, P);
+
             else throw new InvalidOperationException("NCE_BUG_UNKNOWN_CANNED_CYCLE");
             return RS274NGC_OK;
         }
@@ -1788,89 +1912,58 @@ namespace KognaServer.Server.KinematicEngine
         /// G76/G32: Threading or custom cycles. :contentReference[oaicite:10]{index=10}</summary>
         private static int ConvertThread(int motion, Block b, SetupData s)
         {
+            motion = (int)s.plane;  
             // G32—single‐point threading:
             if (motion == G_32)
-                ConvertCycleG32(s.plane, b.x_number, b.z_number, b.clear_z);
+                return ConvertCycle(motion, b, s);
             // G76—multi‐pass threading (example):
             else if (motion == G_76)
-                ConvertCycleG76(s.plane, b.x_number, b.z_number, b.r_number, b.p_number, b.q_number);
+                return ConvertCycleG76(motion, b.x_number, b.z_number, b.r_number, b.p_number, b.q_number);
             else
-                throw new InvalidOperationException("NCE_BUG_UNKNOWN_THREAD_CYCLE");
-            return RS274NGC_OK;
+                throw new InvalidOperationException("NCE_BUG_UNKNOWN_THREAD_CYCLE");    
+            //return RS274NGC_OK;
         }
-        private static int FindEnds(
-            Block b, SetupData s,
-            out double px, out double py, out double pz,
-            out double aa, out double bb, out double cc,
-            out double uu, out double vv)
+        private static int FindEnds(Block b, SetupData s, out double px, out double py, out double pz, out double aa, out double bb, out double cc, out double uu, out double vv)
         {
-            int mode = (int)s.DistanceMode;
-            bool middle = !double.IsNaN(s.ProgramX);
-            bool comp = s.CutterCompSide != CutterComp.Off;
+            int mode = (int)s.distance_mode;
+            bool middle = !double.IsNaN(s.program_x);
+            bool comp = s.cutter_comp_side != (int)cutter_comp.OFF;
 
             // G53: machine coordinates
-            if (b.GModes[0] == G_53)
+            if (b.g_modes[0] == G_53)
             {
-                px = b.XFlag
-                    ? b.XNumber - (s.ToolXOffset + s.OriginOffsetX + s.AxisOffsetX)
-                    : s.CurrentX;
-                py = b.YFlag
-                    ? b.YNumber - (s.ToolYOffset + s.OriginOffsetY + s.AxisOffsetY)
-                    : s.CurrentY;
-                pz = b.ZFlag
-                    ? b.ZNumber - (s.ToolLengthOffset + s.OriginOffsetZ + s.AxisOffsetZ)
-                    : s.CurrentZ;
-                aa = b.AFlag
-                    ? b.ANumber - (s.AAOriginOffset + s.AAAxisOffset)
-                    : s.AACurrent;
-                bb = b.BFlag
-                    ? b.BNumber - (s.BBOriginOffset + s.BBAxisOffset)
-                    : s.BBCurrent;
-                cc = b.CFlag
-                    ? b.CNumber - (s.CCOriginOffset + s.CCAxisOffset)
-                    : s.CCCurrent;
-                uu = b.UFlag
-                    ? b.UNumber - (s.UUOriginOffset + s.UUAxisOffset)
-                    : s.UUCurrent;
-                vv = b.VFlag
-                    ? b.VNumber - (s.VVOriginOffset + s.VVAxisOffset)
-                    : s.VVCurrent;
+                px = b.x_flag ? b.x_number - (s.tool_xoffset + s.origin_offset_x + s.axis_offset_x) : s.current_x;
+                py = b.y_flag ? b.y_number - (s.tool_yoffset + s.origin_offset_y + s.axis_offset_y) : s.current_y;
+                pz = b.z_flag ? b.z_number - (s.tool_length_offset + s.origin_offset_z + s.axis_offset_z) : s.current_z;
+                aa = b.a_flag ? b.a_number - (s.AA_origin_offset + s.AA_axis_offset) : s.AA_current;
+                bb = b.b_flag ? b.b_number - (s.BB_origin_offset + s.BB_axis_offset) : s.BB_current;
+                cc = b.c_flag ? b.c_number - (s.CC_origin_offset + s.CC_axis_offset) : s.CC_current;
+                uu = b.u_flag ? b.u_number - (s.UU_origin_offset + s.UU_axis_offset) : s.UU_current;
+                vv = b.v_flag ? b.v_number - (s.VV_origin_offset + s.VV_axis_offset) : s.VV_current;
             }
             // Absolute mode
-            else if (mode == (int)DistanceMode.Absolute)
+            else if (mode == (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE)
             {
-                px = b.XFlag
-                    ? b.XNumber
-                    : (comp && middle ? s.ProgramX : s.CurrentX);
-                py = b.YFlag
-                    ? b.YNumber
-                    : (comp && middle ? s.ProgramY : s.CurrentY);
-                pz = b.ZFlag
-                    ? b.ZNumber
-                    : (comp && middle ? s.ProgramZ : s.CurrentZ);
-                aa = b.AFlag ? b.ANumber : s.AACurrent;
-                bb = b.BFlag ? b.BNumber : s.BBCurrent;
-                cc = b.CFlag ? b.CNumber : s.CCCurrent;
-                uu = b.UFlag ? b.UNumber : s.UUCurrent;
-                vv = b.VFlag ? b.VNumber : s.VVCurrent;
+                px = b.x_flag ? b.x_number : (comp && middle ? s.program_x : s.current_x);
+                py = b.y_flag ? b.y_number : (comp && middle ? s.program_y : s.current_y);
+                pz = b.z_flag ? b.z_number : (comp && middle ? s.program_z : s.current_z);
+                aa = b.a_flag ? b.a_number : s.AA_current;
+                bb = b.b_flag ? b.b_number : s.BB_current;
+                cc = b.c_flag ? b.c_number : s.CC_current;
+                uu = b.u_flag ? b.u_number : s.UU_current;
+                vv = b.v_flag ? b.v_number : s.VV_current;
             }
             // Incremental mode
             else
             {
-                px = b.XFlag
-                    ? (comp && middle ? b.XNumber + s.ProgramX : b.XNumber + s.CurrentX)
-                    : (comp && middle ? s.ProgramX : s.CurrentX);
-                py = b.YFlag
-                    ? (comp && middle ? b.YNumber + s.ProgramY : b.YNumber + s.CurrentY)
-                    : (comp && middle ? s.ProgramY : s.CurrentY);
-                pz = b.ZFlag
-                    ? (s.CurrentZ + b.ZNumber)
-                    : s.CurrentZ;
-                aa = b.AFlag ? (s.AACurrent + b.ANumber) : s.AACurrent;
-                bb = b.BFlag ? (s.BBCurrent + b.BNumber) : s.BBCurrent;
-                cc = b.CFlag ? (s.CCCurrent + b.CNumber) : s.CCCurrent;
-                uu = b.UFlag ? (s.UUCurrent + b.UNumber) : s.UUCurrent;
-                vv = b.VFlag ? (s.VVCurrent + b.VNumber) : s.VVCurrent;
+                px = b.x_flag ? (comp && middle ? b.x_number + s.program_x : b.x_number + s.current_x) : (comp && middle ? s.program_x : s.current_x);
+                py = b.y_flag ? (comp && middle ? b.y_number + s.program_y : b.y_number + s.current_y) : (comp && middle ? s.program_y : s.current_y);
+                pz = b.z_flag ? (s.current_z + b.z_number) : s.current_z;
+                aa = b.a_flag ? (s.AA_current + b.a_number) : s.AA_current;
+                bb = b.b_flag ? (s.BB_current + b.b_number) : s.BB_current;
+                cc = b.c_flag ? (s.CC_current + b.c_number) : s.CC_current;
+                uu = b.u_flag ? (s.UU_current + b.u_number) : s.UU_current;
+                vv = b.v_flag ? (s.VV_current + b.v_number) : s.VV_current;
             }
 
             return RS274NGC_OK;
@@ -1878,33 +1971,27 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// Convert an absolute point (x1…vv1) into a relative point under current tool offsets. :contentReference[oaicite:1]{index=1}</summary>
-        private static int FindRelative(
-            double x1, double y1, double z1,
-            double aa1, double bb1, double cc1,
-            double uu1, double vv1,
-            out double x2, out double y2, out double z2,
-            out double aa2, out double bb2, out double cc2,
-            out double uu2, out double vv2,
-            SetupData s)
+        private static int FindRelative(double x1, double y1, double z1, double aa1, double bb1, double cc1, double uu1, double vv1, out double x2, out double y2, out double z2, out double aa2, out double bb2, out double cc2, out double uu2, out double vv2, SetupData s)
         {
-            x2 = x1 - (s.ToolXOffset + s.OriginOffsetX + s.AxisOffsetX);
-            y2 = y1 - (s.ToolYOffset + s.OriginOffsetY + s.AxisOffsetY);
-            z2 = z1 - (s.ToolLengthOffset + s.OriginOffsetZ + s.AxisOffsetZ);
+            x2 = x1 - (s.tool_xoffset + s.origin_offset_x + s.axis_offset_x);
+            y2 = y1 - (s.tool_yoffset + s.origin_offset_y + s.axis_offset_y);
+            z2 = z1 - (s.tool_length_offset + s.origin_offset_z + s.axis_offset_z);
 
-            aa2 = aa1 - (s.AAOriginOffset + s.AAAxisOffset);
-            bb2 = bb1 - (s.BBOriginOffset + s.BBAxisOffset);
-            cc2 = cc1 - (s.CCOriginOffset + s.CCAxisOffset);
-            uu2 = uu1 - (s.UUOriginOffset + s.UUAxisOffset);
-            vv2 = vv1 - (s.VVOriginOffset + s.VVAxisOffset);
+            aa2 = aa1 - (s.AA_origin_offset + s.AA_axis_offset);
+            bb2 = bb1 - (s.BB_origin_offset + s.BB_axis_offset);
+            cc2 = cc1 - (s.CC_origin_offset + s.CC_axis_offset);
+            uu2 = uu1 - (s.UU_origin_offset + s.UU_axis_offset);
+            vv2 = vv1 - (s.VV_origin_offset + s.VV_axis_offset);
 
             return RS274NGC_OK;
         }
+
 
         /// <summary>
         /// Implements G52/G92 axis‐offset logic exactly as in the C++ reference. :contentReference[oaicite:2]{index=2}</summary>
         private static int ConvertAxisOffsets(int gCode, Block b, SetupData s)
         {
-            if (s.CutterCompSide != CutterComp.Off)
+            if (s.cutter_comp_side != (int)cutter_comp.OFF)
                 throw new InvalidOperationException("NCE_CANNOT_CHANGE_AXIS_OFFSETS_WITH_CUTTER_RADIUS_COMP");
 
             // Helper to mark a parameter dirty
@@ -1917,74 +2004,74 @@ namespace KognaServer.Server.KinematicEngine
             if (gCode == G_92)
             {
                 // Incremental origin shift
-                if (b.XFlag)
+                if (b.x_flag)
                 {
-                    s.AxisOffsetX = s.CurrentX + s.AxisOffsetX - b.XNumber;
-                    s.CurrentX = b.XNumber;
-                    s.parameters[PChanged(5211)] = s.AxisOffsetX;
+                    s.axis_offset_x = s.current_x + s.axis_offset_x - b.x_number;
+                    s.current_x = b.x_number;
+                    s.parameters[PChanged(5211)] = s.axis_offset_x;
                 }
-                if (b.YFlag)
+                if (b.y_flag)
                 {
-                    s.AxisOffsetY = s.CurrentY + s.AxisOffsetY - b.YNumber;
-                    s.CurrentY = b.YNumber;
-                    s.parameters[PChanged(5212)] = s.AxisOffsetY;
+                    s.axis_offset_y = s.current_y + s.axis_offset_y - b.y_number;
+                    s.current_y = b.y_number;
+                    s.parameters[PChanged(5212)] = s.axis_offset_y;
                 }
-                if (b.ZFlag)
+                if (b.z_flag)
                 {
-                    s.AxisOffsetZ = s.CurrentZ + s.AxisOffsetZ - b.ZNumber;
-                    s.CurrentZ = b.ZNumber;
-                    s.parameters[PChanged(5213)] = s.AxisOffsetZ;
+                    s.axis_offset_z = s.current_z + s.axis_offset_z - b.z_number;
+                    s.current_z = b.z_number;
+                    s.parameters[PChanged(5213)] = s.axis_offset_z;
                 }
-                if (b.AFlag)
+                if (b.a_flag)
                 {
-                    s.AAAxisOffset = s.AACurrent + s.AAAxisOffset - b.ANumber;
-                    s.AACurrent = b.ANumber;
-                    s.parameters[PChanged(5214)] = s.AAAxisOffset;
+                    s.AA_axis_offset = s.AA_current + s.AA_axis_offset - b.a_number;
+                    s.AA_current = b.a_number;
+                    s.parameters[PChanged(5214)] = s.AA_axis_offset;
                 }
-                if (b.BFlag)
+                if (b.b_flag)
                 {
-                    s.BBAxisOffset = s.BBCurrent + s.BBAxisOffset - b.BNumber;
-                    s.BBCurrent = b.BNumber;
-                    s.parameters[PChanged(5215)] = s.BBAxisOffset;
+                    s.BB_axis_offset = s.BB_current + s.BB_axis_offset - b.b_number;
+                    s.BB_current = b.b_number;
+                    s.parameters[PChanged(5215)] = s.BB_axis_offset;
                 }
-                if (b.CFlag)
+                if (b.c_flag)
                 {
-                    s.CCAxisOffset = s.CCCurrent + s.CCAxisOffset - b.CNumber;
-                    s.CCCurrent = b.CNumber;
-                    s.parameters[PChanged(5216)] = s.CCAxisOffset;
+                    s.CC_axis_offset = s.CC_current + s.CC_axis_offset - b.c_number;
+                    s.CC_current = b.c_number;
+                    s.parameters[PChanged(5216)] = s.CC_axis_offset;
                 }
 
                 // propagate origin offsets and emit
-                SetOriginOffsets(
-                    s.OriginOffsetX + s.AxisOffsetX,
-                    s.OriginOffsetY + s.AxisOffsetY,
-                    s.OriginOffsetZ + s.AxisOffsetZ,
-                    s.AAOriginOffset + s.AAAxisOffset,
-                    s.BBOriginOffset + s.BBAxisOffset,
-                    s.CCOriginOffset + s.CCAxisOffset,
-                    s.UUOriginOffset + s.UUAxisOffset,
-                    s.VVOriginOffset + s.VVAxisOffset
+                Canon.SET_ORIGIN_OFFSETS(
+                    s.origin_offset_x + s.axis_offset_x,
+                    s.origin_offset_y + s.axis_offset_y,
+                    s.origin_offset_z + s.axis_offset_z,
+                    s.AA_origin_offset + s.AA_axis_offset,
+                    s.BB_origin_offset + s.BB_origin_offset,
+                    s.CC_origin_offset + s.CC_axis_offset,
+                    s.UU_origin_offset + s.UU_axis_offset,
+                    s.VV_origin_offset + s.VV_axis_offset
                 );
             }
             else if (gCode == G_52)
             {
                 // Absolute axis‐offset set
-                if (b.XFlag) { s.AxisOffsetX = b.XNumber; s.CurrentX = s.CurrentX; }
-                if (b.YFlag) { s.AxisOffsetY = b.YNumber; s.CurrentY = s.CurrentY; }
-                if (b.ZFlag) { s.AxisOffsetZ = b.ZNumber; s.CurrentZ = s.CurrentZ; }
-                if (b.AFlag) { s.AAAxisOffset = b.ANumber; s.AACurrent = s.AACurrent; }
-                if (b.BFlag) { s.BBAxisOffset = b.BNumber; s.BBCurrent = s.BBCurrent; }
-                if (b.CFlag) { s.CCAxisOffset = b.CNumber; s.CCCurrent = s.CCCurrent; }
+                if (b.x_flag) { s.axis_offset_x = b.x_number; s.current_x = s.current_x; }
+                if (b.y_flag) { s.axis_offset_y = b.y_number; s.current_y = s.current_y; }
+                if (b.z_flag) { s.axis_offset_z = b.z_number; s.current_z = s.current_z; }
+                if (b.a_flag) { s.AA_axis_offset = b.a_number; s.AA_current = s.AA_current; }
+                if (b.b_flag) { s.BB_axis_offset = b.b_number; s.BB_current = s.BB_current; }
+                if (b.c_flag) { s.CC_axis_offset = b.c_number; s.CC_current = s.CC_current; }
 
-                SetOriginOffsets(
-                    s.OriginOffsetX + s.AxisOffsetX,
-                    s.OriginOffsetY + s.AxisOffsetY,
-                    s.OriginOffsetZ + s.AxisOffsetZ,
-                    s.AAOriginOffset + s.AAAxisOffset,
-                    s.BBOriginOffset + s.BBAxisOffset,
-                    s.CCOriginOffset + s.CCAxisOffset,
-                    s.UUOriginOffset + s.UUAxisOffset,
-                    s.VVOriginOffset + s.VVAxisOffset
+                Canon.SET_ORIGIN_OFFSETS(
+                    s.origin_offset_x + s.axis_offset_x,
+                    s.origin_offset_y + s.axis_offset_y,
+                    s.origin_offset_z + s.axis_offset_z,
+                    s.AA_origin_offset + s.AA_axis_offset,
+                    s.BB_origin_offset + s.BB_origin_offset,
+                    s.CC_origin_offset + s.CC_axis_offset,
+                    s.UU_origin_offset + s.UU_axis_offset,
+                    s.VV_origin_offset + s.VV_axis_offset
                 );
             }
             else
@@ -1998,42 +2085,23 @@ namespace KognaServer.Server.KinematicEngine
         // --- Canned‐cycle primitives (G81–G89) ---
 
         /// <summary>G81: simple drill. :contentReference[oaicite:3]{index=3}</summary>
-        private static int ConvertCycleG81(CANON_PLANE plane, double x, double y, double clearZ, double bottomZ)
+        public static int ConvertCycleG81(CANON_PLANE plane, double X, double Y, double clearZ, double bottomZ)
         {
-            CycleFeed(plane, x, y, bottomZ);
-            CycleTraverse(plane, x, y, clearZ);
+            CycleFeed(plane, X, Y, bottomZ);
+            CycleTraverse(plane, X, Y, clearZ);
             return RS274NGC_OK;
         }
 
         /// <summary>G82: drill + dwell. :contentReference[oaicite:4]{index=4}</summary>
-        private static int ConvertCycleG82(CANON_PLANE plane, double x, double y, double clearZ, double bottomZ, double dwell)
+        private static int ConvertCycleG82(CANON_PLANE plane, double X, double Y, double clearZ, double bottomZ, double p)
         {
-            CycleFeed(plane, x, y, bottomZ);
-            Dwell(dwell);
-            CycleTraverse(plane, x, y, clearZ);
+            CycleFeed(plane, X, Y, bottomZ);
+            DWELL(p);
+            CycleTraverse(plane, X, Y, clearZ);
             return RS274NGC_OK;
         }
 
-        /// <summary>G83: peck drilling. :contentReference[oaicite:5]{index=5}</summary>
-        private static int ConvertCycleG83(CANON_PLANE plane, double x, double y, double r, double clearZ, double bottomZ, double delta)
-        {
-            double rapidDelta = Math.Max(0.0, delta);
-            double currentDepth = r - delta;
-            while (currentDepth > bottomZ)
-            {
-                CycleFeed(plane, x, y, currentDepth);
-                Dwell(s => s.CycleP);  // uses last P
-                CycleTraverse(plane, x, y, r);
-                CycleTraverse(plane, x, y, currentDepth + rapidDelta);
-                if (GetAbort()) return RS274NGC_EXIT;
-                currentDepth -= delta;
-            }
-            CycleFeed(plane, x, y, bottomZ);
-            CycleTraverse(plane, x, y, clearZ);
-            return RS274NGC_OK;
-        }
 
-        /// <summary>G84–G89:</summary>
 
         // -------------------------------------------------------------------------------------------------
         // ENHANCE_BLOCK  (C++: static int enhance_block) :contentReference[oaicite:7]{index=7}
@@ -2041,28 +2109,28 @@ namespace KognaServer.Server.KinematicEngine
         private static int EnhanceBlock(Block block, SetupData settings)
         {
             bool axisFlag =
-                block.XFlag || block.YFlag ||
-                block.ZFlag || block.AFlag ||
-                block.BFlag || block.CFlag ||
-                block.UFlag || block.VFlag;
+                block.x_flag || block.y_flag ||
+                block.z_flag || block.a_flag ||
+                block.b_flag || block.c_flag ||
+                block.u_flag || block.v_flag;
 
-            int mode0 = block.GModes[0];
-            int mode1 = block.GModes[1];
+            int mode0 = block.g_modes[0];
+            int mode1 = block.g_modes[1];
             bool modeZeroCovetsAxes =
-                mode0 == G10 ||
-                mode0 == G28 ||
-                mode0 == G30 ||
-                mode0 == G92 ||
-                mode0 == G92_3 ||
-                mode0 == G52;
+                mode0 == G_10 ||
+                mode0 == G_28 ||
+                mode0 == G_30 ||
+                mode0 == G_92 ||
+                mode0 == G_92_3 ||
+                mode0 == G_52;
 
             if (mode1 != -1)
             {
-                if (mode1 == G80)
+                if (mode1 == G_80)
                 {
                     if (axisFlag && !modeZeroCovetsAxes)
                         return NCE_CANNOT_USE_AXIS_VALUES_WITH_G80;
-                    if (!axisFlag && (mode0 == G92 || mode0 == G52))
+                    if (!axisFlag && (mode0 == G_92 || mode0 == G_52))
                         return NCE_ALL_AXES_MISSING_WITH_G52_G92;
                 }
                 else
@@ -2071,22 +2139,22 @@ namespace KognaServer.Server.KinematicEngine
                         return NCE_CANNOT_USE_TWO_G_CODES_THAT_BOTH_USE_AXIS_VALUES;
                     // note: original C++ commented-out the “all axes missing” for motion codes here :contentReference[oaicite:8]{index=8}
                 }
-                block.MotionToBe = mode1;
+                block.motion_to_be = mode1;
             }
             else if (modeZeroCovetsAxes)
             {
-                if (!axisFlag && (mode0 == G92 || mode0 == G52))
+                if (!axisFlag && (mode0 == G_92 || mode0 == G_52))
                     return NCE_ALL_AXES_MISSING_WITH_G52_G92;
             }
             else if (
                 axisFlag ||
-                ((settings.MotionMode == G2 || settings.MotionMode == G3) &&
-                 (block.IFlag || block.JFlag || block.KFlag))
+                ((settings.motion_mode == G_2 || settings.motion_mode == G_3) &&
+                 (block.i_flag || block.j_flag || block.k_flag))
             )
             {
-                if (settings.MotionMode == -1 || settings.MotionMode == G80)
+                if (settings.motion_mode == -1 || settings.motion_mode == G_80)
                     return NCE_CANNOT_USE_AXIS_VALUES_WITHOUT_A_G_CODE_THAT_USES_THEM;
-                block.MotionToBe = settings.MotionMode;
+                block.motion_to_be = settings.motion_mode;
             }
 
             return RS274NGC_OK;
@@ -2100,7 +2168,7 @@ namespace KognaServer.Server.KinematicEngine
             int status;
             if ((status = CheckGCodes(block, settings)) != RS274NGC_OK) return status;
             if ((status = CheckMCodes(block)) != RS274NGC_OK) return status;
-            if ((status = CheckOtherCodes(block)) != RS274NGC_OK) return status;
+            if ((status = CheckOtherCodes(block, settings)) != RS274NGC_OK) return status;
             return RS274NGC_OK;
         }
 
@@ -2110,31 +2178,31 @@ namespace KognaServer.Server.KinematicEngine
         private static int CheckMCodes(Block block)
         {
             // 1. Too many M codes on one line
-            if (block.MCount > MAX_EMS)
+            if (block.m_count > MAX_EMS) 
                 return NCE_TOO_MANY_M_CODES_ON_LINE;
 
             // 2. M98 loop parameters
-            if (block.MModes[4] == 98)  // mode 4 == M98
+            if (block.m_modes[4] == 98)  // mode 4 == M98
             {
-                int pInt = (int)(block.PNumber + 0.0001);
-                if (block.PNumber < 0.0)
+                int pInt = (int)(block.p_number + 0.0001);
+                if (block.p_number < 0.0)
                     return NCE_NEGATIVE_P_WORD_USED;
-                if ((block.PNumber + 0.0001 - pInt) > 0.0002)
+                if ((block.p_number + 0.0001 - pInt) > 0.0002)
                     return NCE_P_VALUE_NOT_AN_INTEGER_WITH_G10_L2_M98;
 
                 // default Q=1 if neither Q nor L given
-                if (!block.QFlag && !block.LFlag)
+                if (!block.q_flag && !block.l_flag)
                 {
-                    block.QNumber = 1.0;
-                    block.QFlag = true;
+                    block.q_number = 1.0;
+                    block.q_flag = true;
                 }
 
-                int qInt = (int)(block.QNumber + 0.0001);
-                if ((block.QNumber + 0.0001 - qInt) > 0.0002)
+                int qInt = (int)(block.q_number + 0.0001);
+                if ((block.q_number + 0.0001 - qInt) > 0.0002)
                     return NCE_Q_VALUE_NOT_AN_INTEGER_WITH_M98;
 
-                int lInt = (int)(block.LNumber + 0.0001);
-                if ((block.LNumber + 0.0001 - lInt) > 0.0002)
+                int lInt = (int)(block.l_number + 0.0001);
+                if ((block.l_number + 0.0001 - lInt) > 0.0002)
                     return NCE_L_VALUE_NOT_AN_INTEGER_WITH_M98;
             }
 
@@ -2144,54 +2212,54 @@ namespace KognaServer.Server.KinematicEngine
         // -------------------------------------------------------------------------------------------------
         // CHECK_OTHER_CODES  (C++: static int check_other_codes) :contentReference[oaicite:11]{index=11}
         // -------------------------------------------------------------------------------------------------
-        private static int CheckOtherCodes(Block block)
+        private static int CheckOtherCodes(Block block, SetupData _setup)
         {
-            int motion = block.MotionToBe;
+            int motion = block.motion_to_be;
 
             // A, B, C, U, V not allowed in canned cycles (G81–G89)
-            if (block.AFlag)
-                if (block.GModes[1] > G80 && block.GModes[1] < G90)
+            if (block.a_flag)
+                if (block.g_modes[1] > G_80 && block.g_modes[1] < G_90)
                     return NCE_CANNOT_PUT_AN_A_IN_CANNED_CYCLE;
-            if (block.BFlag)
-                if (block.GModes[1] > G80 && block.GModes[1] < G90)
+            if (block.b_flag)
+                if (block.g_modes[1] > G_80 && block.g_modes[1] < G_90)
                     return NCE_CANNOT_PUT_A_B_IN_CANNED_CYCLE;
-            if (block.CFlag)
-                if (block.GModes[1] > G80 && block.GModes[1] < G90)
+            if (block.c_flag)
+                if (block.g_modes[1] > G_80 && block.g_modes[1] < G_90)
                     return NCE_CANNOT_PUT_A_C_IN_CANNED_CYCLE;
-            if (block.UFlag)
-                if (block.GModes[1] > G80 && block.GModes[1] < G90)
+            if (block.u_flag)
+                if (block.g_modes[1] > G_80 && block.g_modes[1] < G_90)
                     return NCE_CANNOT_PUT_A_U_IN_CANNED_CYCLE;
-            if (block.VFlag)
-                if (block.GModes[1] > G80 && block.GModes[1] < G90)
+            if (block.v_flag)
+                if (block.g_modes[1] > G_80 && block.g_modes[1] < G_90)
                     return NCE_CANNOT_PUT_A_V_IN_CANNED_CYCLE;
 
             // I, J, K only with arcs or G87
-            if (block.IFlag && motion != G2 && motion != G3 && motion != G87)
-                return NCE_I_SPECIFIED_IN_G_CODE_THAT_DOES_NOT_USE_IT;
-            if (block.JFlag && motion != G2 && motion != G3 && motion != G87)
-                return NCE_J_SPECIFIED_IN_G_CODE_THAT_DOES_NOT_USE_IT;
-            if (block.KFlag && motion != G2 && motion != G3 && motion != G87)
-                return NCE_K_SPECIFIED_IN_G_CODE_THAT_DOES_NOT_USE_IT;
+            if (block.i_flag && motion != G_2 && motion != G_3 && motion != G_87)
+                return NCE_I_WORD_WITH_NO_G2_OR_G3_OR_G87_TO_USE_IT;
+            if (block.j_flag && motion != G_2 && motion != G_3 && motion != G_87)
+                return NCE_J_WORD_WITH_NO_G2_OR_G3_OR_G87_TO_USE_IT;
+            if (block.k_flag && motion != G_2 && motion != G_3 && motion != G_87)
+                return NCE_K_WORD_WITH_NO_G2_OR_G3_OR_G87_TO_USE_IT;
 
             // P only with G4, G10, G82, G83, G86, G88, G89, M98
-            if (block.PFlag && !(
-                block.GModes[0] == G4 || block.GModes[0] == G10 ||
-                block.GModes[1] == G82 || block.GModes[1] == G83 ||
-                block.GModes[1] == G86 || block.GModes[1] == G88 ||
-                block.GModes[1] == G89 ||
-                block.MModes[4] == 98))
-                return NCE_P_WORD_WITH_NO_G4_G10_G82_G86_G88_G89_M98_M100_119;
+            if (block.p_flag && !(
+                block.g_modes[0] == G_4 || block.g_modes[0] == G_10 ||
+                block.g_modes[1] == G_82 || block.g_modes[1] == G_83 ||
+                block.g_modes[1] == G_86 || block.g_modes[1] == G_88 ||
+                block.g_modes[1] == G_89 ||
+                block.m_modes[4] == 98))
+                return NCE_P_WORD_WITH_NO_G4_G10_G82_G86_G88_G89_M49_M98;
 
             // Q only with G83
-            if (block.QFlag && block.GModes[1] != G83)
-                return NCE_Q_WORD_WITH_NO_G83;
+            if (block.q_flag && block.g_modes[1] != G_83)
+                return NCE_Q_WORD_MISSING_WITH_G83;
 
             // R only with G codes or M98/M100-119
-            if (block.RFlag && !(
-                block.GModes[0] == G10 || block.GModes[1] == G2 ||
-                block.GModes[1] == G3 ||
-                (block.GModes[1] > G80 && block.GModes[1] < G90) ||
-                block.MModes[4] == 98))
+            if (block.r_flag && !(
+                block.g_modes[0] == G_10 || block.g_modes[1] == G_2 ||
+                block.g_modes[1] == G_3 ||
+                (block.g_modes[1] > G_80 && block.g_modes[1] < G_90) ||
+                block.m_modes[4] == 98))
                 return NCE_R_WORD_WITH_NO_G_CODE_THAT_USES_IT;
 
             return RS274NGC_OK;
@@ -2204,20 +2272,14 @@ namespace KognaServer.Server.KinematicEngine
         {
             switch (plane)
             {
-                case CanonPlane.XY:
-                    STRAIGHT_FEED(e1, e2, e3,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                case CANON_PLANE.XY:
+                    Canon.STRAIGHT_FEED(e1, e2, e3, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
-                case CanonPlane.YZ:
-                    STRAIGHT_FEED(e3, e1, e2,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                case CANON_PLANE.YZ:
+                    Canon.STRAIGHT_FEED(e3, e1, e2, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
                 default: // XZ
-                    STRAIGHT_FEED(e2, e3, e1,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                    Canon.STRAIGHT_FEED(e2, e3, e1, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
             }
             return RS274NGC_OK;
@@ -2227,100 +2289,67 @@ namespace KognaServer.Server.KinematicEngine
         {
             switch (plane)
             {
-                case CanonPlane.XY:
-                    STRAIGHT_TRAVERSE(e1, e2, e3,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                case CANON_PLANE.XY:
+                    Canon.STRAIGHT_TRAVERSE(e1, e2, e3, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
-                case CanonPlane.YZ:
-                    STRAIGHT_TRAVERSE(e3, e1, e2,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                case CANON_PLANE.YZ:
+                    Canon.STRAIGHT_TRAVERSE(e3, e1, e2, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
                 default: // XZ
-                    STRAIGHT_TRAVERSE(e2, e3, e1,
-                        _setup.AACurrent, _setup.BBCurrent, _setup.CCCurrent,
-                        _setup.UUCurrent, _setup.VVCurrent);
+                    Canon.STRAIGHT_TRAVERSE(e2, e3, e1, _setup.AA_current, _setup.BB_current, _setup.CC_current, _setup.UU_current, _setup.VV_current);
                     break;
             }
             return RS274NGC_OK;
         }
         /// <summary>
         /// Top‐level G₂/G₃ converter. Computes arc parameters then emits the arc feed. :contentReference[oaicite:1]{index=1}</summary>
-        private static int ConvertArc(Block b, SetupData s)
+        private static int ConvertArc(int motion, Block b, SetupData s)
         {
             // compute arc: fe/final-end coords, se/start coords, fa/final-center coords, sa/start-center coords
-            int status = ArcData(b.MotionToBe, b, s,
-                                 out double fe, out double se,
-                                 out double fa, out double sa,
-                                 out int dir, out double ae);
+            int status = ArcData(b.motion_to_be, b, s, out double fe, out double se, out double fa, out double sa, out int dir, out double ae);
             if (status != RS274NGC_OK) return status;
-
             // emit the feed‐arc command
             // ARC_FEED(x_start, y_start, z_start, a_start, b_start, c_start, u_start, v_start,
             //          x_end,   y_end,   z_end,   a_end,   b_end,   c_end,   u_end,   v_end,
             //          center_x_offset, center_y_offset, direction, angle);
-            ARC_FEED(
-                s.CurrentX, s.CurrentY, s.CurrentZ,
-                s.AA_current, s.BB_current, s.CC_current,
-                s.UU_current, s.VV_current,
-                fe, se, /*z unchanged*/ s.CurrentZ,
-                fa - s.CurrentX, sa - s.CurrentY,
-                /*a/b/c/u/v unchanged*/ 0, 0, 0, 0, 0, 0,
-                dir, ae
-            );
-
+       Canon.ARC_FEED((CANON_FEED_REFERENCE) s.feed_mode, fe, se, fa, sa, dir, s.current_z, s.AA_current, s.BB_current, s.CC_current, s.UU_current, s.VV_current);
             // update current position to arc end
-            s.CurrentX = fe;
-            s.CurrentY = se;
+            s.current_x = fe;
+            s.current_y = se;
             // (leave Z,A,B,C,U,V unchanged for pure planar arcs)
             return RS274NGC_OK;
         }
 
         /// <summary>
         /// Compute the 2D arc parameters for G₂/G₃ in the active plane. :contentReference[oaicite:2]{index=2}</summary>
-        private static int ArcData(
-            int motion, Block b, SetupData s,
-            out double fe, out double se,
-            out double fa, out double sa,
-            out int dir, out double ae)
+        private static int ArcData(int motion, Block b, SetupData s, out double fe, out double se, out double fa, out double sa, out int dir, out double ae)
         {
             // fe/se = end‐point in XY (or permuted)  
-            // fa/sa = center‐point in XY (or permuted)  
-            // dir   = CW/CCW flag  
+            fe = 0;
+            se = 0;
+            // fa/sa = center‐point in XY (or permuted)
+            fa = 0;
+            sa = 0;
+            // dir   = CW/CCW flag
+            dir = 0;
             // ae    = sweep angle (0…2π)
+            ae = 0;
+
             int status;
             switch (s.plane)
             {
-                case CanonPlane.XY:
-                    status = ArcDataCenter(
-                        s.CurrentX, s.CurrentY,
-                        b.XNumber, b.YNumber,
-                        b.IFlag ? b.INumber : 0,
-                        b.JFlag ? b.JNumber : 0,
-                        out fe, out se, out fa, out sa,
-                        out dir, out ae);
+                case (int)CANON_PLANE.XY:
+                    status = ArcDataCenter(s.current_x, s.current_y, b.x_number, b.y_number, b.i_flag ? b.i_number : 0, b.j_flag ? b.j_number : 0, out fe, out se, out fa, out sa, out dir, out ae);
                     break;
-                case CanonPlane.XZ:
+                case (int)CANON_PLANE.XZ:
                     status = ArcDataCenter(
-                        s.CurrentX, s.CurrentZ,
-                        b.XNumber, b.ZNumber,
-                        b.IFlag ? b.INumber : 0,
-                        b.KFlag ? b.KNumber : 0,
-                        out fe, out se, out fa, out sa,
-                        out dir, out ae);
+                        s.current_x, s.current_z, b.x_number, b.z_number, b.i_flag ? b.i_number : 0, b.k_flag ? b.k_number : 0, out fe, out se, out fa, out sa, out dir, out ae);
                     break;
-                case CanonPlane.YZ:
-                    status = ArcDataCenter(
-                        s.CurrentY, s.CurrentZ,
-                        b.YNumber, b.ZNumber,
-                        b.JFlag ? b.JNumber : 0,
-                        b.KFlag ? b.KNumber : 0,
-                        out fe, out se, out fa, out sa,
-                        out dir, out ae);
+                case (int)CANON_PLANE.YZ:
+                    status = ArcDataCenter(s.current_y, s.current_z, b.y_number, b.z_number, b.j_flag ? b.j_number : 0, b.k_flag ? b.k_number : 0, out fe, out se, out fa, out sa, out dir, out ae);
                     break;
                 default:
-                    return NCE_PLANE_IS_NOT_XY_YZ_OR_XZ;
+                    return NCE_BUG_PLANE_NOT_XY_YZ_OR_XZ;
             }
             if (status != RS274NGC_OK) return status;
 
@@ -2334,22 +2363,13 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Center‐based arc geometry: given start (x0,y0), end (x1,y1), and I/J or K offset,
         /// compute end‐point fe/se, center fa/sa, direction bit, and sweep angle ae. :contentReference[oaicite:3]{index=3}</summary>
-        private static int ArcDataCenter(
-            double x0, double y0,
-            double x1, double y1,
-            double iOffset, double jOffset,
-            out double fe, out double se,
-            out double fa, out double sa,
-            out int dir, out double ae)
+        private static int ArcDataCenter(double x0, double y0, double x1, double y1, double iOffset, double jOffset, out double fe, out double se, out double fa, out double sa, out int dir, out double ae)
         {
             // center is start + offset
             fa = x0 + iOffset;
             sa = y0 + jOffset;
-
-            // radius = distance center→start
             double r = Math.Sqrt((x0 - fa) * (x0 - fa) + (y0 - sa) * (y0 - sa));
-            if (r < SIGMA) return NCE_ARC_RADIUS_TOO_SMALL;
-
+            
             // compute start/end angles
             double theta0 = Math.Atan2(y0 - sa, x0 - fa);
             double theta1 = Math.Atan2(y1 - sa, x1 - fa);
@@ -2365,283 +2385,542 @@ namespace KognaServer.Server.KinematicEngine
             // fe/se are simply the end‐point coordinates
             fe = x1;
             se = y1;
+            // radius = distance center→start
+
+            if (r < SIGMA) return NCE_ARC_RADIUS_TOO_SMALL_TO_REACH_END_POINT;
+
             return RS274NGC_OK;
         }
-        public class ErrorCode
+        /// <summary>G83: peck drilling. :contentReference[oaicite:5]{index=5}</summary>
+        public static int ConvertCycleG83(CANON_PLANE plane, double X, double Y, double clearZ, double bottomZ, double P, double delta, CANON_DIRECTION direction, CANON_SPEED_FEED_MODE feedMode)
         {
-            private static ErrorCode ConvertCycleG84(
-                   CANON_PLANE plane,
-                   double x, double y,
-                   double r,           // retract plane
-                   double clearZ,      // clearance plane
-                   double bottomZ,     // bottom of hole
-                   CANON_DIRECTION direction,
-                   CANON_SPEED_FEED_MODE mode)
+            
+            double r = clearZ;
+            double rapidDelta = Math.Max(0.0, delta);
+            double currentDepth = r - delta;
+            while (currentDepth > bottomZ)
             {
-                // spindle must be turning
-                if (direction != CanonDirection.Clockwise &&
-                    direction != CanonDirection.CounterClockwise)
-                    return ErrorCode.SpindleNotTurningInG84;
-
-                // start synchronized speed/​feed if requested
-                if (mode != CanonSpeedFeedMode.Synched)
-                    StartSpeedFeedSynch();
-
-                CycleFeed(plane, x, y, bottomZ);
-                StopSpindleTurning();
-                CycleTraverse(plane, x, y, clearZ);
-
-                if (direction == CanonDirection.Clockwise)
-                    StartSpindleClockwise();
-                else
-                    StartSpindleCounterclockwise();
-
-                if (mode != CanonSpeedFeedMode.Synched)
-                    StopSpeedFeedSynch();
-
-                StopSpindleTurning();
-                StartSpindleClockwise();
-
-                return ErrorCode.Ok;
+                CycleFeed(plane, X, Y, currentDepth);
+                DWELL(P);  // uses last P
+                CycleTraverse(plane, X, Y, r);
+                CycleTraverse(plane, X, Y, currentDepth + rapidDelta);
+                if (_setup.CM.GetAbort()) return RS274NGC_EXIT;
+                currentDepth -= delta;
             }
-
-            // convert_cycle_g85  — G85 (boring/​reaming) :contentReference[oaicite:11]{index=11}
-            private static ErrorCode ConvertCycleG85(
-                CANON_PLANE plane,
-                double x, double y,
-                double r,           // retract plane
-                double clearZ,      // clearance plane
-                double bottomZ)     // bottom of hole
-            {
-                CycleFeed(plane, x, y, bottomZ);
-                CycleFeed(plane, x, y, r);
-                CycleTraverse(plane, x, y, clearZ);
-                return ErrorCode.Ok;
-            }
-
-            // convert_cycle_g86  — G86 (boring with dwell then retract and restart) :contentReference[oaicite:12]{index=12}
-            private static ErrorCode ConvertCycleG86(
-                CANON_PLANE plane,
-                double x, double y,
-                double clearZ,      // clearance plane
-                double bottomZ,     // bottom of hole
-                double dwell,       // dwell time
-                CANON_DIRECTION direction)
-            {
-                if (direction != CanonDirection.Clockwise &&
-                    direction != CanonDirection.CounterClockwise)
-                    return ErrorCode.SpindleNotTurningInG86;
-
-                CycleFeed(plane, x, y, bottomZ);
-                Dwell(dwell);
-                StopSpindleTurning();
-                CycleTraverse(plane, x, y, clearZ);
-
-                if (direction == CanonDirection.Clockwise)
-                    StartSpindleClockwise();
-                else
-                    StartSpindleCounterclockwise();
-
-                return ErrorCode.Ok;
-            }
-
-            // convert_cycle_g87  — G87 (back-boring) :contentReference[oaicite:13]{index=13}
-            private static ErrorCode ConvertCycleG87(
-                CANON_PLANE plane,
-                double x, double offsetX,
-                double y, double offsetY,
-                double r,           // retract plane
-                double clearZ,      // clearance plane
-                double middleZ,
-                double bottomZ,
-                CANON_DIRECTION direction)
-            {
-                CycleTraverse(plane, offsetX, offsetY, r);
-                StopSpindleTurning();
-                OrientSpindle(0.0, direction);
-                CycleTraverse(plane, offsetX, offsetY, bottomZ);
-                CycleTraverse(plane, offsetX, offsetY, clearZ);
-                CycleTraverse(plane, x, y, clearZ);
-
-                if (direction == CanonDirection.Clockwise)
-                    StartSpindleClockwise();
-                else
-                    StartSpindleCounterclockwise();
-
-                return ErrorCode.Ok;
-            }
-
-            // convert_cycle_g88  — G88 (boring with program stop) :contentReference[oaicite:14]{index=14}
-            private static ErrorCode ConvertCycleG88(
-                CANON_PLANE plane,
-                double x, double y,
-                double bottomZ,     // bottom of hole
-                double dwell,       // dwell time
-                CANON_DIRECTION direction)
-            {
-                if (direction != CanonDirection.Clockwise &&
-                    direction != CanonDirection.CounterClockwise)
-                    return ErrorCode.SpindleNotTurningInG88;
-
-                CycleFeed(plane, x, y, bottomZ);
-                Dwell(dwell);
-                StopSpindleTurning();
-                ProgramStop();
-
-                if (direction == CanonDirection.Clockwise)
-                    StartSpindleClockwise();
-                else
-                    StartSpindleCounterclockwise();
-
-                return ErrorCode.Ok;
-            }
-
-            // convert_cycle_g89  — G89 (boring with dwell then feed-retract) :contentReference[oaicite:15]{index=15}
-            private static ErrorCode ConvertCycleG89(
-                CANON_PLANE plane,
-                double x, double y,
-                double clearZ,      // clearance plane
-                double bottomZ,     // bottom of hole
-                double dwell)       // dwell time
-            {
-                CycleFeed(plane, x, y, bottomZ);
-                Dwell(dwell);
-                CycleFeed(plane, x, y, clearZ);
-                return ErrorCode.Ok;
-            }
-
-            // === Plane‐specific wrappers ===
-
-            // convert_cycle_yz  — dispatch G81–G89 in YZ plane :contentReference[oaicite:16]{index=16}
-            private static ErrorCode ConvertCycleYZ(int motion, Block block, Setup settings)
-            {
-                // Resolve endpoints & depths exactly as in XY, but permuted for YZ...
-                // (Identify old_cc, r, cc, clear_cc, aa, bb same as C++.)
-
-                // Ensure exact-path for the cycle
-                var saveMode = GetExternalMotionControlMode();
-                if (saveMode != MotionControlMode.ExactPath)
-                    SetMotionControlMode(MotionControlMode.ExactPath);
-
-                ErrorCode status;
-                switch (motion)
-                {
-                    case GCode.G81:
-                        status = ConvertCycleG81(CanonPlane.YZ, aa, bb, clear_cc, cc);
-                        break;
-                    case GCode.G82:
-                        status = ConvertCycleG82(CanonPlane.YZ, aa, bb, clear_cc, cc, block.P);
-                        break;
-                    case GCode.G83:
-                        status = ConvertCycleG83(CanonPlane.YZ, aa, bb, r, clear_cc, cc, block.Q);
-                        break;
-                    case GCode.G84:
-                        status = ConvertCycleG84(CanonPlane.YZ, aa, bb, r, clear_cc, cc, settings.SpindleTurning, settings.SpeedFeedMode);
-                        break;
-                    case GCode.G85:
-                        status = ConvertCycleG85(CanonPlane.YZ, aa, bb, r, clear_cc, cc);
-                        break;
-                    case GCode.G86:
-                        status = ConvertCycleG86(CanonPlane.YZ, aa, bb, clear_cc, cc, block.P, settings.SpindleTurning);
-                        break;
-                    case GCode.G87:
-                        status = ConvertCycleG87(CanonPlane.YZ, aa, aa + block.J, bb, bb + block.K, r, clear_cc, block.I, cc, settings.SpindleTurning);
-                        break;
-                    case GCode.G88:
-                        status = ConvertCycleG88(CanonPlane.YZ, aa, bb, cc, block.P, settings.SpindleTurning);
-                        break;
-                    case GCode.G89:
-                        status = ConvertCycleG89(CanonPlane.YZ, aa, bb, clear_cc, cc, block.P);
-                        break;
-                    default:
-                        return ErrorCode.FunctionShouldNotHaveBeenCalled;
-                }
-
-                // Restore motion-control mode
-                if (saveMode != MotionControlMode.ExactPath)
-                    SetMotionControlMode(saveMode);
-
-                return status;
-            }
-
-
-            // convert_cycle_zx  — dispatch G81–G89 in XZ plane :contentReference[oaicite:17]{index=17}
-            private static ErrorCode ConvertCycleZX(int motion, Block block, Setup settings)
-            {
-                // Resolve endpoints & depths permuted for XZ...
-
-                var saveMode = GetExternalMotionControlMode();
-                if (saveMode != MotionControlMode.ExactPath)
-                    SetMotionControlMode(MotionControlMode.ExactPath);
-
-                ErrorCode status;
-                switch (motion)
-                {
-                    case GCode.G81:
-                        status = ConvertCycleG81(CanonPlane.XZ, aa, bb, clear_cc, cc);
-                        break;
-                    case GCode.G82:
-                        status = ConvertCycleG82(CanonPlane.XZ, aa, bb, clear_cc, cc, block.P);
-                        break;
-                    case GCode.G83:
-                        status = ConvertCycleG83(CanonPlane.XZ, aa, bb, r, clear_cc, cc, block.Q);
-                        break;
-                    case GCode.G84:
-                        status = ConvertCycleG84(CanonPlane.XZ, aa, bb, r, clear_cc, cc, settings.SpindleTurning, settings.SpeedFeedMode);
-                        break;
-                    case GCode.G85:
-                        status = ConvertCycleG85(CanonPlane.XZ, aa, bb, r, clear_cc, cc);
-                        break;
-                    case GCode.G86:
-                        status = ConvertCycleG86(CanonPlane.XZ, aa, bb, clear_cc, cc, block.P, settings.SpindleTurning);
-                        break;
-                    case GCode.G87:
-                        status = ConvertCycleG87(CanonPlane.XZ, aa, aa + block.K, bb, bb + block.I, r, clear_cc, block.J, cc, settings.SpindleTurning);
-                        break;
-                    case GCode.G88:
-                        status = ConvertCycleG88(CanonPlane.XZ, aa, bb, cc, block.P, settings.SpindleTurning);
-                        break;
-                    case GCode.G89:
-                        status = ConvertCycleG89(CanonPlane.XZ, aa, bb, clear_cc, cc, block.P);
-                        break;
-                    default:
-                        return ErrorCode.FunctionShouldNotHaveBeenCalled;
-                }
-
-                if (saveMode != MotionControlMode.ExactPath)
-                    SetMotionControlMode(saveMode);
-
-                return status;
-            }
-            private static ErrorCode ConvertThread(int move, Block block, Setup settings)
-            {
-                if (settings.FeedRate == 0.0)
-                    return ErrorCode.CannotDoG32WithZeroFeedRate;
-                if (settings.CutterCompSide != CutterCompSide.Off)
-                    return ErrorCode.CannotUseG32WithCutterRadiusComp;
-
-                settings.MotionMode = move;
-
-                // Compute absolute end-point (x,y,z,AA,BB,CC,UU,VV)
-                FindEnds(block, settings,
-                        out double endX, out double endY, out double endZ,
-                        out double aaEnd, out double bbEnd, out double ccEnd,
-                        out double uuEnd, out double vvEnd);
-
-                StraightFeed(endX, endY, endZ, aaEnd, bbEnd, ccEnd, uuEnd, vvEnd);
-
-                settings.CurrentX = endX;
-                settings.CurrentY = endY;
-                settings.CurrentZ = endZ;
-                settings.AACurrent = aaEnd;
-                settings.BBCurrent = bbEnd;
-                settings.CCCurrent = ccEnd;
-                settings.UUCurrent = uuEnd;
-                settings.VVCurrent = vvEnd;
-
-                return ErrorCode.Ok;
-            }
+            CycleFeed(plane, X, Y, bottomZ);
+            CycleTraverse(plane, X, Y, clearZ);
+            return RS274NGC_OK;
         }
+
+        /// <summary>G84–G89:</summary>
+        private static int ConvertCycleG84(CANON_PLANE plane, double x, double y, double r, double clearZ, double bottomZ, CANON_DIRECTION direction, CANON_SPEED_FEED_MODE mode)
+        {
+            // spindle must be turning
+            if (direction != CANON_DIRECTION.CANON_CLOCKWISE && direction != CANON_DIRECTION.CANON_COUNTERCLOCKWISE)
+                return NCE_SPINDLE_NOT_TURNING_CLOCKWISE_IN_G84;
+
+            // start synchronized speed/​feed if requested
+            if (mode != CANON_SPEED_FEED_MODE.CANON_SYNCHED)
+                Canon.START_SPEED_FEED_SYNCH();
+
+            CycleFeed(plane, x, y, bottomZ);
+            Canon.STOP_SPINDLE_TURNING();
+            CycleTraverse(plane, x, y, clearZ);
+
+            if (direction == CANON_DIRECTION.CANON_CLOCKWISE)
+                Canon.START_SPINDLE_CLOCKWISE();
+            else
+                Canon.START_SPINDLE_COUNTERCLOCKWISE();
+
+            if (mode != CANON_SPEED_FEED_MODE.CANON_SYNCHED)
+                Canon.STOP_SPEED_FEED_SYNCH();
+
+            Canon.STOP_SPINDLE_TURNING();
+            Canon.START_SPINDLE_CLOCKWISE();
+
+            return RS274NGC_OK;
+        }
+
+        // convert_cycle_g85  — G85 (boring/​reaming) :contentReference[oaicite:11]{index=11}
+        private static int ConvertCycleG85(CANON_PLANE plane, double x, double y, double r, double clearZ, double bottomZ)     // bottom of hole
+        {
+            CycleFeed(plane, x, y, bottomZ);
+            CycleFeed(plane, x, y, r);
+            CycleTraverse(plane, x, y, clearZ);
+            return RS274NGC_OK;
+        }
+
+        // convert_cycle_g86  — G86 (boring with dwell then retract and restart) :contentReference[oaicite:12]{index=12}
+        private static int ConvertCycleG86(
+            CANON_PLANE plane,
+            double x, double y,
+            double clearZ,      // clearance plane
+            double bottomZ,     // bottom of hole
+            double dwell,       // dwell time
+            CANON_DIRECTION direction)
+        {
+            if (direction != CANON_DIRECTION.CANON_CLOCKWISE &&
+                direction != CANON_DIRECTION.CANON_COUNTERCLOCKWISE)
+                return NCE_SPINDLE_NOT_TURNING_IN_G86;
+
+            CycleFeed(plane, x, y, bottomZ);
+            DWELL(dwell);
+            Canon.STOP_SPINDLE_TURNING();
+            CycleTraverse(plane, x, y, clearZ);
+
+            if (direction == CANON_DIRECTION.CANON_CLOCKWISE)
+                Canon.START_SPINDLE_CLOCKWISE();
+            else
+                Canon.START_SPINDLE_COUNTERCLOCKWISE();
+
+            return RS274NGC_OK;
+        }
+
+        // convert_cycle_g87  — G87 (back-boring) :contentReference[oaicite:13]{index=13}
+        private static int ConvertCycleG87(CANON_PLANE plane, double x, double offsetX, double y, double offsetY, double r, double clearZ, double middleZ, double bottomZ, CANON_DIRECTION direction)
+        {
+            CycleTraverse(plane, offsetX, offsetY, r);
+            Canon.STOP_SPINDLE_TURNING();
+            Canon.ORIENT_SPINDLE(0.0, direction);
+            CycleTraverse(plane, offsetX, offsetY, bottomZ);
+            CycleTraverse(plane, offsetX, offsetY, clearZ);
+            CycleTraverse(plane, x, y, clearZ);
+
+            if (direction == CANON_DIRECTION.CANON_CLOCKWISE)
+                Canon.START_SPINDLE_CLOCKWISE();
+            else
+                Canon.START_SPINDLE_COUNTERCLOCKWISE();
+
+            return RS274NGC_OK;
+        }
+
+        // convert_cycle_g88  — G88 (boring with program stop) :contentReference[oaicite:14]{index=14}
+        private static int ConvertCycleG88(CANON_PLANE plane, double x, double y, double bottomZ, double dwell, CANON_DIRECTION direction)
+        {
+            if (direction != CANON_DIRECTION.CANON_CLOCKWISE && direction != CANON_DIRECTION.CANON_COUNTERCLOCKWISE)
+                return NCE_SPINDLE_NOT_TURNING_IN_G88;
+
+            CycleFeed(plane, x, y, bottomZ);
+            DWELL(dwell);
+            Canon.STOP_SPINDLE_TURNING();
+            ProgramStop();
+
+            if (direction == CANON_DIRECTION.CANON_CLOCKWISE)
+                Canon.START_SPINDLE_CLOCKWISE();
+            else
+                Canon.START_SPINDLE_COUNTERCLOCKWISE();
+
+            return RS274NGC_OK;
+        }
+
+        // convert_cycle_g89  — G89 (boring with dwell then feed-retract) :contentReference[oaicite:15]{index=15}
+        private static int ConvertCycleG89(
+            CANON_PLANE plane,
+            double x, double y,
+            double clearZ,      // clearance plane
+            double bottomZ,     // bottom of hole
+            double dwell)       // dwell time
+        {
+            CycleFeed(plane, x, y, bottomZ);
+            DWELL(dwell);
+            CycleFeed(plane, x, y, clearZ);
+            return RS274NGC_OK;
+        }
+
+        // === Plane‐specific wrappers ===
+
+        // convert_cycle_yz  — dispatch G81–G89 in YZ plane :contentReference[oaicite:16]{index=16}
+        private static int ConvertCycleYZ(int motion, Block block, SetupData settings)
+        {
+            // Resolve endpoints & depths exactly as in XY, but permuted for YZ...
+            // (Identify old_cc, r, cc, clear_cc, aa, bb same as C++.)
+            double aa       = block.a_number;
+            double bb       = block.b_number;
+            double clear_cc = block.clear_z;      // “clear plane” in the YZ-cycle
+            double cc       = block.bottom_z;     // “bottom” in the YZ-cycle
+            double r        = block.r_number;     // for peck-drilling if you need it
+            var direction = (CANON_DIRECTION)settings.spindle_turning;
+            var feedMode  = (CANON_SPEED_FEED_MODE)settings.speed_feed_mode;
+            // Ensure exact-path for the cycle
+            var saveMode = GET_EXTERNAL_MOTION_MODE();
+            if (saveMode != (int)CANON_MOTION_MODE.CANON_EXACT_PATH)
+                SetMotionControlMode((int)CANON_MOTION_MODE.CANON_EXACT_PATH);
+
+            int status;
+            switch (motion)
+            {
+                case G_81:
+                    status = ConvertCycleG81(CANON_PLANE.YZ, aa, bb, clear_cc, cc);
+                    break;
+                case G_82:
+                    status = ConvertCycleG82(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number);
+                    break;
+                case G_83:
+                    status = ConvertCycleG83(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.q_number, r, direction, feedMode);
+                    break;
+                case G_84:
+                    status = ConvertCycleG84(CANON_PLANE.YZ, aa, bb, r, clear_cc, cc, direction, feedMode);
+                    break;
+                case G_85:
+                    status = ConvertCycleG85(CANON_PLANE.YZ, aa, bb, r, clear_cc, cc);
+                    break;
+                case G_86:
+                    status = ConvertCycleG86(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number, direction);
+                    break;
+                case G_87:
+                    status = ConvertCycleG87(CANON_PLANE.YZ, aa, aa + block.j_number, bb, bb + block.k_number, r, clear_cc, block.i_number, cc, direction);
+                    break;
+                case G_88:
+                    status = ConvertCycleG88(CANON_PLANE.YZ, aa, bb, cc, block.p_number, direction);
+                    break;
+                case G_89:
+                    status = ConvertCycleG89(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number);
+                    break;
+                default:
+                    return NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED;
+            }
+
+            // Restore motion-control mode
+            if (saveMode != (int)CANON_MOTION_MODE.CANON_EXACT_PATH)
+                SetMotionControlMode(saveMode);
+
+            return status;
+        }
+
+
+        // convert_cycle_zx  — dispatch G81–G89 in XZ plane :contentReference[oaicite:17]{index=17}
+        private static int ConvertCycleZX(int motion, Block block, SetupData settings)
+        {
+            // Resolve endpoints & depths permuted for XZ...
+            double aa       = block.a_number;
+            double bb       = block.b_number;
+            double clear_cc = block.clear_z;      // “clear plane” in the YZ-cycle
+            double cc       = block.bottom_z;     // “bottom” in the YZ-cycle
+            double r        = block.r_number;     // for peck-drilling if you need it
+            var direction = (CANON_DIRECTION)settings.spindle_turning;
+            var feedMode  = (CANON_SPEED_FEED_MODE)settings.speed_feed_mode;
+            var saveMode = GET_EXTERNAL_MOTION_MODE();
+            if (saveMode != (int)CANON_MOTION_MODE.CANON_EXACT_PATH) SetMotionControlMode((int)CANON_MOTION_MODE.CANON_EXACT_PATH);
+
+            int status;
+            switch (motion)
+            {
+                case G_81:
+                    status = ConvertCycleG81(CANON_PLANE.YZ, aa, bb, clear_cc, cc);
+                    break;
+                case G_82:
+                    status = ConvertCycleG82(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number);
+                    break;
+                case G_83:
+                    status = ConvertCycleG83(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.q_number, r, direction, feedMode);
+                    break;
+                case G_84:
+                    status = ConvertCycleG84(CANON_PLANE.YZ, aa, bb, r, clear_cc, cc, direction, feedMode);
+                    break;
+                case G_85:
+                    status = ConvertCycleG85(CANON_PLANE.YZ, aa, bb, r, clear_cc, cc);
+                    break;
+                case G_86:
+                    status = ConvertCycleG86(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number, direction);
+                    break;
+                case G_87:
+                    status = ConvertCycleG87(CANON_PLANE.YZ, aa, aa + block.j_number, bb, bb + block.k_number, r, clear_cc, block.i_number, cc, direction);
+                    break;
+                case G_88:
+                    status = ConvertCycleG88(CANON_PLANE.YZ, aa, bb, cc, block.p_number, direction);
+                    break;
+                case G_89:
+                    status = ConvertCycleG89(CANON_PLANE.YZ, aa, bb, clear_cc, cc, block.p_number);
+                    break;
+                default:
+                    return NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED;
+            }
+
+            if (saveMode != (int)CANON_MOTION_MODE.CANON_EXACT_PATH)
+                SetMotionControlMode(saveMode);
+
+            return status;
+        }
+
+
+
+
+        /// <summary>
+        /// C# port of:
+        /// static int read_comment(char *line, int *counter, block_pointer block, double *parameters)
+        /// </summary>
+        public static int ReadComment(string line, ref int counter, Block block, double[] parameters)
+        {
+            const string name = "read_comment";
+            int n;
+            int status;
+
+            // CHK((line[*counter] != '('), NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED);
+            if ((status = CHK(line[counter] != '(', NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED, name)) != 0)
+            {
+                return status;
+            }
+            // (*counter)++;
+            counter++;
+
+            // find end of any previous data
+            for (n = 0; n < MaxGComment - 4 && block.comment[n] != '\0'; n++)
+            { }
+
+            // CHK((n == MAX_G_COMMENT-4), NCE_UNCLOSED_COMMENT_FOUND);
+            if ((status = RS274NGC.CHK(n == MaxGComment - 4, NCE_UNCLOSED_COMMENT_FOUND, name)) != 0)
+            {
+                return status;
+            }
+
+            // block->comment[n++] = '(';
+            block.comment[n++] = '(';
+
+            // for (; line[*counter] != ')' && n<MAX_G_COMMENT-4; (*counter)++, n++)
+            for (; line[counter] != ')' && n < MaxGComment - 4; counter++, n++)
+            {
+                block.comment[n] = line[counter];
+            }
+
+            // CHK((n == MAX_G_COMMENT-4), NCE_UNCLOSED_COMMENT_FOUND);
+            if ((status = CHK(n == MaxGComment - 4, NCE_UNCLOSED_COMMENT_FOUND, name)) != 0)
+            {
+                return status;
+            }
+
+            // block->comment[n++] = ')';
+            // block->comment[n]   = 0;
+            block.comment[n++] = ')';
+            block.comment[n] = '\0';
+
+            // (*counter)++;
+            counter++;
+
+            // return RS274NGC_OK;
+            return RS274NGC_OK;
+        }
+
+        public static int ReadParameter(string line, ref int counter, out double value, double[] parameters)
+        {
+            const string name = "read_parameter";
+            int index = 0;
+            int status;
+            value = 0;
+            // CHK((line[*counter] != '#'), NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED);
+            if ((status = CHK(line[counter] != '#', NCE_BUG_FUNCTION_SHOULD_NOT_HAVE_BEEN_CALLED, name)) != 0)
+            {
+                value = default;
+                return status;
+            }
+
+            // *counter = (*counter + 1);
+            counter++;
+
+            // CHP(read_integer_value(line, counter, &index, parameters));
+            // read the integer value straight into index
+            status = ReadIntegerValue(line, ref counter, out index, parameters);
+            if (status != RS274NGC_OK) return ERM(status, name);
+
+
+            // CHK((index < 1) || (index >= RS274NGC_MAX_PARAMETERS), NCE_PARAMETER_NUMBER_OUT_OF_RANGE);
+            if ((status = CHK(index < 1 || index >= RS274NGC_MAX_PARAMETERS, NCE_PARAMETER_NUMBER_OUT_OF_RANGE, name)) != 0)
+            {
+                value = default;
+                return status;
+            }
+
+            // *double_ptr = parameters[index];
+            value = parameters[index];
+
+            // return RS274NGC_OK;
+            return RS274NGC_OK;
+        }
+
+        public static int CheckGCodes(Block block, SetupData settings)
+        {
+            const string name = "check_g_codes";
+
+            int mode0 = block.g_modes[0];
+            int status, pInt;
+
+            // MODE = none
+            if (mode0 == -1)
+            {
+                return RS274NGC_OK;
+            }
+            // G4: must have P word ≥0 and dwell‐flag on
+            else if (mode0 == G_4)
+            {
+                if ((status = CHK(!block.p_flag,
+                                            NCE_DWELL_TIME_MISSING_WITH_G4,
+                                            name)) != 0)
+                    return status;
+
+                if ((status = CHK(block.p_number < 0,
+                                            NCE_NEGATIVE_P_WORD_USED,
+                                            name)) != 0)
+                    return status;
+
+                return RS274NGC_OK;
+            }
+            // G10: must have L2, integer P in [1..9]
+            else if (mode0 == G_10)
+            {
+                // round‐toward‐zero test
+                pInt = (int)(block.p_number + 0.0001);
+
+                if ((status = CHK(block.l_number != 2,
+                                            NCE_LINE_WITH_G10_DOES_NOT_HAVE_L2,
+                                            name)) != 0)
+                    return status;
+
+                if ((status = CHK(
+                        (block.p_number + 0.0001 - pInt) > 0.0002,
+                        NCE_P_VALUE_NOT_AN_INTEGER_WITH_G10_L2_M98,
+                        name)) != 0)
+                    return status;
+
+                if ((status = CHK(pInt < 1 || pInt > 9,
+                                            NCE_P_VALUE_OUT_OF_RANGE_WITH_G10_L2,
+                                            name)) != 0)
+                    return status;
+
+                return RS274NGC_OK;
+            }
+            // G28, G30, G53, G52, G92, G92.1, G92.2, G92.3 all fall through their own checks:
+            else if (mode0 == G_28 ||
+                    mode0 == G_30)
+            {
+                return RS274NGC_OK;
+            }
+            else if (mode0 == G_53)
+            {
+                if ((status = CHK(
+                        block.motion_to_be != G_0 && block.motion_to_be != G_1,
+                        NCE_MUST_USE_G0_OR_G1_WITH_G53,
+                        name)) != 0)
+                    return status;
+
+                if ((status = CHK(
+                        (block.g_modes[3] == G_91) ||
+                        (block.g_modes[3] != G_90 && settings.distance_mode == (int)RS274NGC_DISTANCE_MODE.MODE_INCREMENTAL),
+                        NCE_CANNOT_USE_G53_INCREMENTAL,
+                        name)) != 0)
+                    return status;
+
+                return RS274NGC_OK;
+            }
+            else if (mode0 == G_52 ||
+                    mode0 == G_92 ||
+                    mode0 == G_92_1 ||
+                    mode0 == G_92_2 ||
+                    mode0 == G_92_3)
+            {
+                return RS274NGC_OK;
+            }
+
+            // anything else = modal‐group‐0 error
+            return ERM(NCE_BUG_BAD_G_CODE_MODAL_GROUP_0, name);
+        }
+        public static int convert_dwell(double time)
+        {				/* time in seconds to dwell */
+            DWELL(time);
+            return RS274NGC_OK;
+        }
+        // <summary>
+        /// Handles any parenthetical comment that isn’t an “MSG …” directive.
+        /// </summary>
+        public static void Comment(string text)
+        {
+            // TODO: wire this into your UI or log system
+            Console.WriteLine($"COMMENT: {text}");
+        }
+
+        /// <summary>
+        /// Handles an “MSG …” directive inside parentheses.
+        /// </summary>
+        public static void Message(string text)
+        {
+            // TODO: wire this into your UI or log system
+            Console.WriteLine($"MESSAGE: {text}");
+        }
+
+
+        public static int ConvertCycleG76(int a, double b, double c, double d, double e, double f) => throw new NotImplementedException();
+        public static int CheckDoneBuf() => throw new NotImplementedException();
+        public static int GetAxisDone(int i, out int r) => throw new NotImplementedException();
+        public static int GetAbsPositionRelative(ref double x, ref double y) => throw new NotImplementedException();
+        public static int MeasurePointAppendToFile(string filename) => throw new NotImplementedException();
+        public static int DoSpecialInitialCommands() => throw new NotImplementedException();
+        public static int DoSpecialCommands() => throw new NotImplementedException();
+        public static int LaunchCoordMotion() => throw new NotImplementedException();
+        public static int SetRapidSettings(int axis, double val) => throw new NotImplementedException();
+        public static int GetRapidSettings() => throw new NotImplementedException();
+        public static int DWELL(double time) => throw new NotImplementedException();
+        public static int SetSpindleMode() => throw new NotImplementedException();
+        public static int SetMotionControlMode(int a) => throw new NotImplementedException();
+        public static int DoSpecialCommand(int seg) => throw new NotImplementedException();
+        public static int GetRapidSettingsAxis(double axis, out double vel, out double accel, out double decel, out double jerk, out double softPos, out double softNeg, out double countsPerInch, out string axisName) => throw new NotImplementedException();
+        public static int ReadCurAbsPositionFull(out double x, out double y, out double z, out double u, out double v, bool snap, bool noGeo) => throw new NotImplementedException();
+        public static int ReadCurAbsPosition(out double x, out double y, out double z, bool snap, bool noGeo) => throw new NotImplementedException();
+        public static void GET_EXTERNAL_PARAMETER_FILE_NAME(char[] buf, int max) => throw new NotImplementedException();
+        public static void USE_LENGTH_UNITS(int u) => throw new NotImplementedException();
+        public static int CHECK_INIT_ON_EXEC() => throw new NotImplementedException();
+        public static int EnableFeedOverride() => throw new NotImplementedException();
+        public static int DisableFeedOverride() => throw new NotImplementedException();
+        public static int EnableSpeedOverride() => throw new NotImplementedException();
+        public static int DisableSpeedOverride() => throw new NotImplementedException();
+        public static int StraightTraverse() => throw new NotImplementedException();
+        public static int GET_EXTERNAL_MOTION_MODE() => throw new NotImplementedException();
+        public static int ProgramStop() => throw new NotImplementedException();
+        public static int ConvertToolLengthOffset(int a, Block b, SetupData s) => throw new NotImplementedException();
+        public static int Convertdistance_mode(int a, SetupData s) => throw new NotImplementedException();
+        public static void MistOn() { /* TODO: GPIO or UI hook */ }
+        public static void MistOff() { /* TODO */ }
+        public static void FloodOn() { /* TODO */ }
+        public static void FloodOff() { /* TODO */ }
+        public static void TurnProbeOn() { /* TODO */ }
+        public static void TurnProbeOff() { /* TODO */ }
+        public static void CoolantState(bool on)
+        {
+            if (on) FloodOn();
+            else FloodOff();
+        }
+        public static void M100(int code)
+        {
+            // TODO: hook this up to your actual coolant/mist hardware or UI.
+            // For now, just turn everything off:
+            MistOff();
+            FloodOff();
+        }
+        /// <summary>Perform a straight‐line probe toward the part.</summary>
+        public static int StraightProbe(double x, double y, double z, double a, double b, double c, double u, double v)
+        {
+            // TODO: drive the axes toward the part until the probe trips.
+            return RS274NGC_OK;
+        }
+
+        public static void PChanged(string parmName)
+        {
+            // TODO: wire this into your UI or logger.
+            // For now it just writes to the console:
+            Console.WriteLine($"[RS274NGC] Parameter changed: {parmName}");
+        }
+
+        public static int LookupToolIndex(SetupData s, int t)
+        {
+            // For now just return t unchanged;
+            // you can replace this with real lookup logic later.
+            return t;
+        }
+       
+        /// <summary>
+        /// Stub for the plane‐selection helper (G17/G18/G19).
+        /// In the real interpreter this would swap the axis ordering,
+        /// set flags, etc.  Here it’s a no-op or you can raise an event.
+        /// </summary>
+
     }
     
 }
+

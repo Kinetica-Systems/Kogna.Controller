@@ -2,19 +2,33 @@ using System;
 using System.Linq;           
 using System.Collections.Generic;
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
     public struct TP_COEFF { public double t, a, b, c, d; }
 
     public static class TrajectoryPlanner
     {
+
+        
+    public static int InsertStraight(double x,double y,double z,double a,double b, double c,double u,double v,int seq,int id) => throw new NotImplementedException();
+    public static bool DoRateAdjustments(int i0, int i1) => throw new NotImplementedException();
+
+    public static bool DoRateAdjustmentsArc(int i, double rad, double th0, double dth, double dc) => throw new NotImplementedException();
+
+    public static RS274NGC.SEGMENT GetSegment(int idx) => throw new NotImplementedException();
+
+    public static int SegCount() => throw new NotImplementedException();
+
+    public static int OutputSegment(int idx) => throw new NotImplementedException();
+
+    public static void SetParams(MotionParams p) { /* … */ }
         // --- Segment types ---
         public const int SEG_UNDEFINED = 0;
         public const int SEG_LINEAR = 1;
         public const int SEG_ARC = 2;
         public const int SEG_RAPID = 3;
         public const int SEG_DWELL = 4;
-        private static readonly Queue<SEGMENT> _pending = new Queue<SEGMENT>();
+        private static readonly Queue<RS274NGC.SEGMENT> _pending = new Queue<RS274NGC.SEGMENT>();
 
         // --- Constants ---
         private const double SIGMA = 1e-9;
@@ -94,7 +108,7 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// “Pure‐angle” if no linear motion but non-zero rotation.
         /// </summary>
-        public static bool PureAngle(SEGMENT seg)
+        public static bool PureAngle(RS274NGC.SEGMENT seg)
         {
             // linear part
             double dx = seg.x1 - seg.x0;
@@ -395,7 +409,7 @@ namespace KognaServer.Server.KinematicEngine
 
         /// <summary>
         /// Test three points for near‐collinearity. :contentReference[oaicite:11]{index=11}</summary>
-        public static bool CheckCollinear(SEGMENT s0, SEGMENT s1, SEGMENT s2, double tol)
+        public static bool CheckCollinear(RS274NGC.SEGMENT s0, RS274NGC.SEGMENT s1, RS274NGC.SEGMENT s2, double tol)
         {
             // side lengths
             double a = FeedRateDistance(s0.x1 - s0.x0, s0.y1 - s0.y0, s0.z1 - s0.z0, s0.a1 - s0.a0, s0.b1 - s0.b0, s0.c1 - s0.c0, s0.u1 - s0.u0, s0.v1 - s0.v0, out bool p0),
@@ -496,7 +510,7 @@ namespace KognaServer.Server.KinematicEngine
         /// <summary>
         /// Get the iᵗʰ segment (wrapping via TPMOD) from the queue.
         /// </summary>
-        public static SEGMENT GetSegPtr(int i)
+        public static RS274NGC.SEGMENT GetSegPtr(int i)
         {
             // snapshot the queue into an array so indexing is O(1)
             var arr = _pending.ToArray();
@@ -660,6 +674,8 @@ namespace KognaServer.Server.KinematicEngine
                 firstPass = false;
             }
             while (somethingChanged || firstPass);
+
+            
         }
 
         /// <summary>
@@ -740,7 +756,7 @@ namespace KognaServer.Server.KinematicEngine
             return Math.Acos(cosA);
         }
 
-        public static double SegmentXYZLength(SEGMENT p)
+        public static double SegmentXYZLength(RS274NGC.SEGMENT p)
         {
             double dx = p.x1 - p.x0;
             double dy = p.y1 - p.y0;
@@ -848,7 +864,7 @@ namespace KognaServer.Server.KinematicEngine
         /// Enqueue a segment for later dispatch.
         /// Call this wherever you used to write directly into your segment‐buffers.
         /// </summary>
-        public static void EnqueueSegment(in SEGMENT seg)
+        public static void EnqueueSegment(in RS274NGC.SEGMENT seg)
         {
             lock (_pending)
                 _pending.Enqueue(seg);
@@ -866,7 +882,7 @@ namespace KognaServer.Server.KinematicEngine
                     var seg = _pending.Dequeue();
                     // TODO: replace this with however you actually push a
                     // feed‐rate segment into your interpreter or hardware:
-                    GCodeInterpreter.OnFeedSegment(seg);
+                    RS274NGC.GCodeInterpreter.OnFeedSegment(seg);
                 }
             }
         }
@@ -882,56 +898,62 @@ namespace KognaServer.Server.KinematicEngine
                 {
                     var seg = _pending.Dequeue();
                     // TODO: replace this with your rapid‐traverse handler:
-                    GCodeInterpreter.OnRapidSegment(seg);
+                    RS274NGC.GCodeInterpreter.OnRapidSegment(seg);
                 }
             }
         }
     }
- public struct SEGMENT
+    public partial class RS274NGC
     {
+        public struct SEGMENT
+        {
             public double a, b, c, d;
-        // G‐code segment header
+            // G‐code segment header
             public int type;             // SEG_LINEAR, SEG_ARC, etc.
-        public int sequence_number;
-        public int ID;
+            public int sequence_number;
+            public int ID;
+            public double x, y, z;
+            public double u, v;
+            // start and end coordinates
+            public double x0, y0, z0, a0, b0, c0, u0, v0;
+            public double x1, y1, z1, a1, b1, c1, u1, v1;
+            public int    SpecialCmdsFirst      { get; set; } 
+            public int    SpecialCmdsLast       { get; set; }
+            public bool   StopRequiredNextSeg   { get; set; }
+            // arc‐specific
+            public double xc, yc;
+            public bool DirIsCCW;
+            public int plane;
 
-        // start and end coordinates
-        public double x0, y0, z0, a0, b0, c0, u0, v0;
-        public double x1, y1, z1, a1, b1, c1, u1, v1;
+            // motion profiling
+            public double dx;            // “distance” for feed/accel
+            public double MaxVel, OrigVel;
+            public double MaxAccel, OrigAccel;
+            public double MaxDecel;
+            public double MaxJerk;
 
-        // arc‐specific
-        public double xc, yc;
-        public bool   DirIsCCW;
-        public int    plane;
+            public double vel;           // the planned end‐velocity
+            public double ChangeInDirection;
 
-        // motion profiling
-        public double dx;            // “distance” for feed/accel
-        public double MaxVel, OrigVel;
-        public double MaxAccel, OrigAccel;
-        public double MaxDecel;
-        public double MaxJerk;
+            // stops & combination flags
+            public bool StopRequired;
+            public bool Done;
 
-        public double vel;           // the planned end‐velocity
-        public double ChangeInDirection;
+            // dwell
+            public double dwell_time;
 
-        // stops & combination flags
-        public bool StopRequired;
-        public bool StopRequiredNextSeg;
-        public bool Done;
+            // special commands
+            public int special_cmds_first, special_cmds_last;
 
-        // dwell
-        public double dwell_time;
+            // per‐segment trip table
+            public TP_COEFF[] C;
+            public int nTrips;
+        }
+    public static int PendingSegments { get; private set; }
+    public static int SegCount { get; private set; }
 
-        // special commands
-        public int special_cmds_first, special_cmds_last;
 
-        // per‐segment trip table
-        public TP_COEFF[] C;
-        public int nTrips;
     }
 
-
-    }
-
-
+}
 

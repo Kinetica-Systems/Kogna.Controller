@@ -3,7 +3,7 @@ using System.IO;
 using System.Text;
 using System.Collections.Generic;
 
-namespace KognaServer.Server.KinematicEngine
+namespace KinematicEngine
 {
 
     public partial class RS274NGC

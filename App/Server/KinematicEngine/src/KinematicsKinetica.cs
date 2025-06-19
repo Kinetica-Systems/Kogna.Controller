@@ -5,11 +5,11 @@ using KinematicEngine;
 public class Kinematics6AxisFanuc : CKinematics
 {
     // Link length constants
-    private const double L1_X = 0.180;
-    private const double L1_Z = 1.000;
-    private const double L2 = 0.950;
-    private static readonly double L3 = Math.Sqrt(1.150 * 1.150 + 0.240 * 0.240);
-    private const double L6 = 0.200;
+private const double L1_X = 180.0;    // mm
+private const double L1_Z = 1000.0;   // mm
+private const double L2   = 950.0;    // mm
+private static readonly double L3 = Math.Sqrt(1150*1150 +  240*240);
+private const double L6   = 200.0;    // mm    private const double L6 = 0.200;
 
     // Pivot offset
     public double PivotToChuckLength { get; set; }
@@ -25,10 +25,10 @@ public class Kinematics6AxisFanuc : CKinematics
         m_MotionParams.DoRapidsAsFeeds = true;
         
     }
-    public virtual int TransformCADtoActuators(double x, double y, double z, double a, double b, double c, double u, double v, double[] Acts, bool NoGeo = false)
+    public virtual int TransformCADtoActuators(double x, double y, double z, double a, double b, double c, double u, double v, double[] Acts)
     {
         // 1) call the existing 6-axis version
-        int rc = TransformCADtoActuators(x, y, z, a, b, c, Acts, NoGeo);
+        int rc = TransformCADtoActuators(x, y, z, a, b, c, Acts);
 
         // 2) shove U/V straight into slots 6/7
         if (Acts.Length > 6) Acts[6] = u;
@@ -38,87 +38,89 @@ public class Kinematics6AxisFanuc : CKinematics
     }
 
     // Transform CAD coordinates (X,Y,Z,A,B,C) to actuator angles
-    public int TransformCADtoActuators(double x, double y, double z, double a, double b, double c, double[] Acts, bool NoGeo = false)
+    public int TransformCADtoActuators(double x, double y, double z, double a, double b, double c, double[] Acts)
     {
         if (!SolveInverseKinematicsFanuc(x, y, z, a, b, c, Acts))
         {
-            return InvertTransformCADtoActuators(
-                Acts,
-                out x, out y, out z,
-                out a, out b, out c,
-                NoGeo);
+            return InvertTransformCADtoActuators(Acts, out x, out y, out z, out a, out b, out c);
         }
         return 0;
     }
-    public int TransformActuatorstoCAD(double[] Acts, out double xr, out double yr, out double zr, out double ar, out double br, out double cr, out double ur, out double vr, bool NoGeo = false)
-    {
-        // first do the existing 6-axis solve
-        TransformActuatorstoCAD(Acts, out xr, out yr, out zr, out ar, out br, out cr, NoGeo);
 
-        // then pass-through (or table-map) the last two actuators:
-        ur = (Acts.Length > 6) ? Acts[6] : 0.0;
-        vr = (Acts.Length > 7) ? Acts[7] : 0.0;
-
-        return 0;
-    }
     // Transform actuator angles back to CAD coordinates
-    public  int TransformActuatorstoCAD(double[] Acts, out double xr, out double yr, out double zr, out double ar, out double br, out double cr, bool NoGeo = false)
-    {
-        return InvertTransformCADtoActuators(Acts, out xr, out yr, out zr, out ar, out br, out cr, NoGeo);
-    }
+        public int TransformActuatorstoCAD(double[] Acts, out double xr, out double yr, out double zr, out double ar, out double br, out double cr)
+        {
+            // 1) forward kinematics for the first 3 joints:
+            //    (this uses your existing static ForwardKinematicsFanuc)
+            double[] pos = ForwardKinematicsFanuc(
+                Acts[0],  // theta1
+                Acts[1],  // theta2
+                Acts[2]   // theta3
+            );
+            xr = pos[0];
+            yr = pos[1];
+            zr = pos[2];
+
+            // 2) pass-through the wrist angles
+            ar = Acts.Length > 3 ? Acts[3] : 0.0;
+            br = Acts.Length > 4 ? Acts[4] : 0.0;
+            cr = Acts.Length > 5 ? Acts[5] : 0.0;
+
+            return 0;
+        }
 
     // Numerical inverse transform if direct IK fails
-    public int InvertTransformCADtoActuators(double[] Acts, out double xr, out double yr, out double zr, out double ar, out double br, out double cr, bool NoGeo = false)
+    public int InvertTransformCADtoActuators(double[] Acts, out double xr, out double yr, out double zr, out double ar, out double br, out double cr)
     {
         const double Tol = 1e-6;
         const double d = 0.1;
         double x = 0, y = 0, z = 5;
         double aRot = 0, bRot = 0, cRot = 0;
-        int n = Acts.Length;
-
+        const int NVAR = 6;
         // Arrays for finite differences
-        double[] Acts0 = new double[n];
-        double[] ActsX = new double[n];
-        double[] ActsY = new double[n];
-        double[] ActsZ = new double[n];
-        double[] ActsA = new double[n];
-        double[] ActsB = new double[n];
-        double[] ActsC = new double[n];
-        double[] A = new double[n * 7];
+        double[] Acts0 = new double[Acts.Length];
+        double[] ActsX = new double[Acts.Length];
+        double[] ActsY = new double[Acts.Length];
+        double[] ActsZ = new double[Acts.Length];
+        double[] ActsA = new double[Acts.Length];
+        double[] ActsB = new double[Acts.Length];
+        double[] ActsC = new double[Acts.Length];
+        double[] A = new double[NVAR * (NVAR + 1)];
 
         for (int iter = 0; iter < 100; iter++)
         {
-            TransformCADtoActuators(x, y, z, aRot, bRot, cRot, Acts0, NoGeo);
-            TransformCADtoActuators(x + d, y, z, aRot, bRot, cRot, ActsX, NoGeo);
-            TransformCADtoActuators(x, y + d, z, aRot, bRot, cRot, ActsY, NoGeo);
-            TransformCADtoActuators(x, y, z + d, aRot, bRot, cRot, ActsZ, NoGeo);
-            TransformCADtoActuators(x, y, z, aRot + d, bRot, cRot, ActsA, NoGeo);
-            TransformCADtoActuators(x, y, z, aRot, bRot + d, cRot, ActsB, NoGeo);
-            TransformCADtoActuators(x, y, z, aRot, bRot, cRot + d, ActsC, NoGeo);
+    SolveInverseKinematicsFanuc(x,      y,      z,      aRot, bRot, cRot, Acts0);
+    SolveInverseKinematicsFanuc(x + d,  y,      z,      aRot, bRot, cRot, ActsX);
+    SolveInverseKinematicsFanuc(x,      y + d,  z,      aRot, bRot, cRot, ActsY);
+    SolveInverseKinematicsFanuc(x,      y,      z + d,  aRot, bRot, cRot, ActsZ);
+    SolveInverseKinematicsFanuc(x,      y,      z,      aRot + d, bRot, cRot, ActsA);
+    SolveInverseKinematicsFanuc(x,      y,      z,      aRot, bRot + d, cRot, ActsB);
+    SolveInverseKinematicsFanuc(x,      y,      z,      aRot, bRot, cRot + d, ActsC);
+        
+
 
             // Build Jacobian matrix + error vector
-            for (int j = 0; j < n; j++)
-            {
-                int idx = j * 7;
+        for (int j = 0; j < NVAR; j++)            {
+            int idx = j * (NVAR + 1);
                 A[idx + 0] = (ActsX[j] - Acts0[j]) / d;
                 A[idx + 1] = (ActsY[j] - Acts0[j]) / d;
                 A[idx + 2] = (ActsZ[j] - Acts0[j]) / d;
                 A[idx + 3] = (ActsA[j] - Acts0[j]) / d;
                 A[idx + 4] = (ActsB[j] - Acts0[j]) / d;
                 A[idx + 5] = (ActsC[j] - Acts0[j]) / d;
-                A[idx + 6] = Acts[j]    - Acts0[j];
+                A[idx + 6] = Acts[j] - Acts0[j];
             }
 
             // Solve linear system A for [dx,dy,dz,da,db,dc] (implemented in base class)
-            Solve(A, n);
+            Solve(A, NVAR);
 
             // Extract deltas
-            double ex = A[0 * 7 + 6];
-            double ey = A[1 * 7 + 6];
-            double ez = A[2 * 7 + 6];
-            double ea = A[3 * 7 + 6];
-            double eb = A[4 * 7 + 6];
-            double ec = A[5 * 7 + 6];
+            double ex = A[0 * (NVAR + 1) + NVAR];            
+            double ey = A[1 * (NVAR + 1) + NVAR];
+            double ez = A[2 * (NVAR + 1) + NVAR];
+            double ea = A[3 * (NVAR + 1) + NVAR];
+            double eb = A[4 * (NVAR + 1) + NVAR];
+            double ec = A[5 * (NVAR + 1) + NVAR];
 
             // Check convergence
             if (Math.Abs(ex) < Tol && Math.Abs(ey) < Tol && Math.Abs(ez) < Tol &&

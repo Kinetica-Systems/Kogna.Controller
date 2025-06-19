@@ -25,6 +25,7 @@ namespace KinematicEngine
         public const int MAX_PARAM_CHANGES = 100;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_PARAM_CHANGES)]
         public int[] ParamChanges;
+        
 
         // ctor to allocate the fixed‐size arrays
         public SetupSnapshot(
@@ -32,13 +33,13 @@ namespace KinematicEngine
             double[] parameters,
             int n_ParamChanges,
             int[] ParamChanges
-            /* TODO: other fields */
+        /* TODO: other fields */
         )
         {
             this.sequence_number = sequence_number;
-            this.parameters      = parameters;
-            this.n_ParamChanges  = n_ParamChanges;
-            this.ParamChanges    = ParamChanges;
+            this.parameters = parameters;
+            this.n_ParamChanges = n_ParamChanges;
+            this.ParamChanges = ParamChanges;
             // TODO: init other fields
         }
     }

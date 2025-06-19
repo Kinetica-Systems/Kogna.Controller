@@ -24,7 +24,6 @@ namespace KinematicEngine
         public static int ReadTool(string filename)  => RS274NGC_OK;
         public static string GetLastMessage()          => string.Empty;
 
-        public static int ExecutePC(string program, string args) => RS274NGC_OK;
         public static int DownloadInit()                           => RS274NGC_OK;
         public static int DownloadFinish()                         => RS274NGC_OK;
         public static int AbortFlag()                              => RS274NGC_OK;
@@ -143,65 +142,8 @@ namespace KinematicEngine
 
             }
 
-        public void BeginStreaming(int startLine = 1, GStatusCallback ?statusFn = null, GCompleteCallback ?completeFn = null)
-        {
-            CoordMotion.ClearAbort();
-            CoordMotion.AxisDisabled = false;
-            CoordMotion.RapidParamsDirty = true;
-            CoordMotion.DownloadInit();
+ 
 
-            m_CurrentLine = startLine;
-            _statusFn = statusFn!;
-            _completeFn = completeFn!;
-            m_Halt = false;
-            _streaming = true;
-        }
-            /// <summary>
-            /// Stream a single G-code line into the interpreter synchronously.
-            /// </summary>
-            public int StreamLine(string line)
-            {
-                if (!_streaming)
-                    throw new InvalidOperationException("Call BeginStreaming before Streaming lines.");
-
-                if (m_Halt)
-                    return RS274NGC.AbortFlag();
-
-                // Optionally translate legacy script
-                string cmd = Translator.Translate(line);
-
-                // Execute the line
-                int status = Execute(cmd);
-                if (status != RS274NGC_OK)
-                    return ExitWithError(status);
-
-                // Report status to UI
-                _statusFn?.Invoke(m_CurrentLine, RS274NGC.GetLastMessage());
-                m_CurrentLine++;
-                return status;
-            }
-            /// <summary>
-            /// Finalize streaming session, invoking completion callback.
-            /// </summary>
-            public void EndStreaming()
-            {
-                if (!_streaming)
-                    return;
-
-                _streaming = false;
-                CoordMotion.DownloadFinish();
-                _completeFn?.Invoke(m_exitcode, m_CurrentLine, m_InvokeExitcode, /*errorMessage*/ string.Empty);
-            }
-
-            /// <summary>
-            /// Synchronous execution of a single G-code line.
-            /// Kept for backward compatibility with file-based Interpret.
-            /// </summary>
-            public int Execute(string line)
-            {
-                // TODO: hook into RS274NGC or Direct P/Invoke to process the G-code line
-                return RS274NGC.ExecutePC(line, /*args*/ string.Empty);
-            }
 
             /// <summary>
             /// Starts asynchronous interpretation of the specified G-code file.
@@ -292,8 +234,8 @@ namespace KinematicEngine
                     
                 }
 
-            var tracker = new SetupTracker();
-            tracker.InsertState(_setup);   
+           // var tracker = new SetupTracker();
+            //tracker.InsertState(_setup);   
             return programStatus;
             }
 
@@ -321,7 +263,6 @@ namespace KinematicEngine
             public bool GetHalt() => m_Halt;
             public bool GetHaltNextLine() => m_HaltNextLine;
             public int InitializeInterp() => Init();
-            public int ExecutePC(string name, bool noWait = false) => RS274NGC.ExecutePC(name, noWait);
             public void SetFeedRate(double feedRate) => RS274NGC.SetFeedRate(feedRate);
             public int SetCSS(int mode) => RS274NGC.SetCSS(mode);
             public SetupData GetRealTimeState() => RS274NGC.GetRealTimeState();
@@ -459,8 +400,7 @@ namespace KinematicEngine
 
          // core interpreter entrypoints (P/Invoke or real C# wrappers go here)
 
-    public static int ExecutePC(string name, bool noWait = false)
-                                                                => throw new NotImplementedException();
+
 
 
     // parameter & state save

@@ -29,7 +29,7 @@ namespace KognaServer.Server.KinematicEngine
         public KinematicEngineServer(KognaServerMain serverMain, int port = 5001)
         {
             _listener = new TcpListener(IPAddress.Loopback, port);
-
+            
             
         }
 
@@ -40,6 +40,7 @@ namespace KognaServer.Server.KinematicEngine
         {
             _listener.Start();
             _running = true;
+
             Console.WriteLine($"KinematicEngineServer listening on {_listener.LocalEndpoint}");
 
             while (_running)
@@ -102,7 +103,7 @@ namespace KognaServer.Server.KinematicEngine
                     await writer.WriteLineAsync(json).ConfigureAwait(false);
 
                     // ← AND THIS
-                    Console.WriteLine($"[SERVER SENT] {json}");
+                 //   Console.WriteLine($"[SERVER SENT] {json}");
                 }
             }
         }
@@ -111,7 +112,6 @@ namespace KognaServer.Server.KinematicEngine
         public async Task<IpcResponse> ProcessCommandAsync(string commandLine)
         {
             
-            TrajectoryPlanner.Init();
             var match = Regex.Match(commandLine, @"\bF([\d\.]+)", RegexOptions.IgnoreCase);
             if (match.Success && 
                 double.TryParse(match.Groups[1].Value, out double fVal))
@@ -134,10 +134,7 @@ namespace KognaServer.Server.KinematicEngine
                         return new IpcResponse { Status = "Error", Error = "Invalid CS index" };
 
                     bool ok = await Task.Run(() =>
-                        _engine.SetAxisDefinitions(
-                            csIndex, csIndex, csIndex,
-                            csIndex, csIndex, csIndex
-                        ) == 0
+                    _engine.SetAxisDefinitions(csIndex, csIndex, csIndex, csIndex, csIndex, csIndex) == 0
                     ).ConfigureAwait(false);
 
                     return ok
@@ -179,12 +176,14 @@ namespace KognaServer.Server.KinematicEngine
 
                 // 4) fallback → G-code interpreter
                 Console.WriteLine("[ENGINE] About to _interp.Execute()");
-                var status = _interp.Execute(commandLine);
+                var status = 0;
+                
                 Console.WriteLine($"[ENGINE] interpreter returned status={status}");
                 var message = RS274NGC.GetLastMessage();
                 bool success = status == RS274NGC.RS274NGC_OK
                             || status == RS274NGC.RS274NGC_EXECUTE_FINISH;
-                
+
+
                 double x, y, z, a, b, c, u, v;
 
                 // axis 1–6 are X,Y,Z,A,B,C
@@ -194,35 +193,36 @@ namespace KognaServer.Server.KinematicEngine
                 _engine.GetPosition(4, out a);
                 _engine.GetPosition(5, out b);
                 _engine.GetPosition(6, out c);
-
-                // if you have U/V as axes 7/8:
                 _engine.GetPosition(7, out u);
                 _engine.GetPosition(8, out v);
+
+                Console.WriteLine($"{x} {y} {z} {a} {b} {c} {u} {v}");
                 int seqNo = _engine.GetNextSequenceNumber();
-                // grab feed-rate however you’re storing it in CCoordMotion
-                // (or you can default to the last F-word from your parser):
-               
+                                Console.WriteLine($"{seqNo}");
+                    x = ParseAxis('X', x);
+                    y = ParseAxis('Y', y);
+                    z = ParseAxis('Z', z);
+                    a = ParseAxis('A', a);
+                    b = ParseAxis('B', b);
+                    c = ParseAxis('C', c);
+                    u = ParseAxis('U', u);
+                    v = ParseAxis('V', v);
+                    Console.WriteLine($"{x} {y} {z} {a} {b} {c} {u} {v}");
 
-                if (success && IsMotionCommand(cmd))
-                {
-                    Console.WriteLine($"[ENGINE] dispatching motion '{cmd}' → Straight{(cmd == "g0" ? "Traverse" : "Feed")}");
-                    cmd = commandLine.Split(' ', 2)[0].ToLowerInvariant();
-                    if (cmd == "g0")            // Rapid/traverse (G0)
-                        _engine.StraightTraverse(x, y, z, a, b, c, u, v, false, seqNo, 0, _lastFeedRate);
+
+                        Console.WriteLine($"[ENGINE] dispatching motion '{cmd}' → Straight{(cmd == "G0" ? "Traverse" : "Feed")}");
+
+                        _engine.StraightTraverse(x, y, z, a, b, c, u, v, seqNo, 0, _lastFeedRate);
                         
-                    else if (cmd == "g1")       // Linear feed (G1)
-                        _engine.StraightFeed(_lastFeedRate, x, y, z, a, b, c, u, v, seqNo, 0);
-
-                    //else if (cmd == "g2")
-                        // Clockwise arc (G2)
-                      //  _engine.ArcFeedAccel(plane, state.block1.i_number, state.block1.j_number, state.block1.x_number, state.block1.y_number, rot, state.block1.z_number, x, (int)y, z, a, b, c, (int)u, v, feedRate, double.PositiveInfinity, state.sequence_number, 0);
+                    _engine.GetPosition(1, out var newX);
+                    _engine.GetPosition(2, out var newY);
+                    _engine.GetPosition(3, out var newZ);
+                    Console.WriteLine($"[POST-MOTION] now at X={newX},Y={newY},Z={newZ}");
 
 
+                // non-motion commands generate no segments
 
-
-                    // non-motion commands generate no segments
-
-                }
+            
                 Console.WriteLine($"[ENGINE] TrajectoryPlanner.SegCount() = {TrajectoryPlanner.SegCount()}");
                 // 3) pull the buffered segments out of your TrajectoryPlanner
                 int segmentCount = TrajectoryPlanner.SegCount();
@@ -245,11 +245,7 @@ namespace KognaServer.Server.KinematicEngine
                             raw.angle[5]
                         },
                         DurationMs = raw.Duration
-
                     };
-
-
-
                 }
 
                 return new IpcResponse
@@ -273,9 +269,16 @@ namespace KognaServer.Server.KinematicEngine
                 Segments = Array.Empty<Segment>()           // avoid null
             };
             }
-
+                double ParseAxis(char letter, double current)
+                {
+                    var m = Regex.Match(payload, $@"\b{letter}([-+]?\d*\.?\d+)", RegexOptions.IgnoreCase);
+                    return m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+                        ? v
+                        : current;
+                }
         }
-        private bool IsMotionCommand(string cmd) => cmd == "g0" || cmd == "g1" || cmd == "g2" || cmd == "g3";
+    
+        private bool IsMotionCommand(string cmd) => cmd == "G0" || cmd == "G1" || cmd == "G2" || cmd == "G3";
 
 
         /// <summary>
@@ -290,16 +293,6 @@ namespace KognaServer.Server.KinematicEngine
                     csIndex, csIndex, csIndex
                 );
                 return result == 0;
-            });
-
-        /// <summary>
-        /// Gets the current position of the specified axis (1 = X, 2 = Y, 3 = Z, etc.).
-        /// </summary>
-        public static Task<double> GetPositionAsync(int axis)
-            => Task.Run(() =>
-            {
-                _engine.GetPosition(axis, out double value);
-                return value;
             });
 
         /// <summary>

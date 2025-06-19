@@ -198,7 +198,7 @@ namespace KinematicEngine
                                 GC.UserUnitsToInchesOrDegC(c + _setup.CC_axis_offset + _setup.CC_origin_offset),
                                 GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
                                 GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
-                false, _setup.sequence_number, 0);
+                 _setup.sequence_number, 0, _setup.feed_rate);
 
         }
  
@@ -218,7 +218,7 @@ namespace KinematicEngine
                                 GC.UserUnitsToInchesOrDegC(c + _setup.CC_axis_offset + _setup.CC_origin_offset),
                                 GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
                                 GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
-                false, _setup.sequence_number, 0);
+                 _setup.sequence_number, 0, _setup.feed_rate);
 
         }
         //public void STRAIGHT_TRAVERSE(double x, double y, double z, int sequence_number, bool noCallback = false)

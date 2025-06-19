@@ -46,7 +46,7 @@ namespace KognaServer.Views
 
                 // Read one response line (up to the newline)
                 var json = await _reader.ReadLineAsync();
-                Console.WriteLine($"[RAW JSON]  {json}");
+                //Console.WriteLine($"[RAW JSON]  {json}");
 
                 // if the connection closed or no data, return null
                 if (string.IsNullOrEmpty(json))

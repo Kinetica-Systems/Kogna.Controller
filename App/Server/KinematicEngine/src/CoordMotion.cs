@@ -15,10 +15,13 @@ namespace KinematicEngine
     /// </summary>
     public class CCoordMotion : IDisposable
     {
-        
+        private double current_x = 50;
+        private double current_y = 100;   // a reachable home‐offset
+        private double current_z = 200;
+        private double current_a = 0;
+        private double current_b = 0;
+        private double current_c = 0;
         // Motion state
-        public double current_x, current_y, current_z;
-        public double current_a, current_b, current_c;
         public double current_u, current_v;
 
         // Lookahead / download state
@@ -115,9 +118,13 @@ namespace KinematicEngine
         private int ispecialCmdDownloaded;
         private const int SEG_LINEAR = 1; //ned to check
         private RS274NGC.SEGMENT GetSegPtr(int idx) { /* … */ throw new NotImplementedException(); }
-        private RS274NGC.SetupData _setup;
+        private RS274NGC.SetupData _setup = new RS274NGC.SetupData();
         private readonly Kinematics6AxisFanuc _kinematics;
-        public  CKinematics Kinematics { get; private set; }
+        private readonly TrajectoryPlanner  _planner;
+        private double[] _lastActs = new double[8];    
+
+
+        public CKinematics Kinematics { get; private set; }
         public event Action<Segment[]> OnSegmentReady;
         // give yourself a public setter (so server can update it):
         private double _lastFeedRate;
@@ -133,13 +140,15 @@ namespace KinematicEngine
         /// </summary>
         public CCoordMotion()
         {
-            _setup = new RS274NGC.SetupData();
+          //  _setup = new RS274NGC.SetupData();
             var path = Path.GetDirectoryName(typeof(CCoordMotion).Assembly.Location)!;
+            _setup = new RS274NGC.SetupData();
             _kinematics = new Kinematics6AxisFanuc();
+            _planner = new TrajectoryPlanner();
             Kinematics = _kinematics;
             _kinematics.MainPath = path;
+            _planner.Init();
             DownloadInit();
-            TrajectoryPlanner.Init();
             ResetMotionState();
 
             specialCmds = new SpecialCmd[MAX_SPECIAL_CMDS];
@@ -190,27 +199,37 @@ namespace KinematicEngine
         /// <summary>
         /// Compute one rapid‐move segment for any combination of axes.
         /// </summary>
-       public int StraightTraverse(double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback, int seq, int id, double feedRate = 0)
+       public int StraightTraverse(double x, double y, double z, double a, double b, double c, double u, double v, int seq, int id, double feedRate)
         {
+            
+            if (_planner == null) throw new InvalidOperationException("TrajectoryPlanner is null!");
+            if (_setup           == null)    throw new InvalidOperationException("_setup is null!");
+            Console.WriteLine($"[CMD] target Cartesian: X={x}, Y={y}, Z={z}, A={a}, B={b}, C={c} F={feedRate}");
             // 1) Compute your real actuator solution
-            var acts = new double[8];
-            _kinematics.TransformCADtoActuators(x,y,z,a,b,c,u,v,acts);
-
-
-            TrajectoryPlanner.InsertRapidLinearSeg(current_x, current_y, current_z, current_a, current_b, current_c, current_u, current_v, x, y, z, a, b, c, u, v, seq, id);
+            var startActs = (double[])_lastActs.Clone();
+            
+            var endActs = new double[8];
+            int rc2 = _kinematics.TransformCADtoActuators(x,y,z,a,b,c,u,v,endActs);
+            if (rc2 != 0)
+                {
+                Console.WriteLine($"[IK ERROR] could not solve IK for X={x},Y={y},Z={z} (rc={rc2})");
+                return -1;    // or otherwise abort
+                }
+            Console.WriteLine($"[IK OK] startActs=[{string.Join(",", startActs)}]");
+            Console.WriteLine($"[IK OK] endActs = [{string.Join(", ", endActs)}]");
+            Console.WriteLine($"[IK] rc2={rc2}");            
+            double vMax = feedRate / 60.0;
+            _planner.RapidSCurve6Axis(startActs, endActs, vMax, _setup.RapidAccelMax,  _setup.RapidJerkMax, _setup.SliceDt, seq, id);
     
-            // 3) Grab back the last‐inserted segment and overwrite its angle+duration
-            int idx = TrajectoryPlanner.SegCount() - 1;
-            var seg = TrajectoryPlanner.GetSegment(idx);
-            seg.angle    = (double[])acts.Clone();      // fill in the real joint angles
-            seg.Duration = 0;                           // or compute travelTime from feedRate/distance
-            // if your SEGMENT is a struct in a List, you may need to write it back:
-            TrajectoryPlanner.ReplaceSegment(idx, seg);
 
-            // 4) update your “current_*” state for the next call
-            current_x = x; current_y = y; current_z = z;
-            current_a = a; current_b = b; current_c = c;
-            current_u = u; current_v = v;
+            _lastActs = endActs;
+            current_x = x;
+            current_y = y;
+            current_z = z;
+            current_a = a;
+            current_b = b;
+            current_c = c;
+
 
             return 0;
         }
@@ -237,10 +256,7 @@ namespace KinematicEngine
             seg.Duration = (int)(dist / feedRate * 60000);
             TrajectoryPlanner.ReplaceSegment(idx, seg);
 
-            // 4) Update your current_… state
-            current_x = x; current_y = y; current_z = z;
-            current_a = a; current_b = b; current_c = c;
-            current_u = u; current_v = v;
+           
 
             return 0;
         }
@@ -403,6 +419,7 @@ namespace KinematicEngine
             case 7: pos = current_u; break;
             case 8: pos = current_v; break;
             default: pos = 0; break;
+
         }
     }
 
@@ -640,7 +657,7 @@ namespace KinematicEngine
 
             // 3) Convert to CAD coords
             double tx, ty, tz, ta, tb, tc, tu2, tv2;
-            _kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc, out tu2, out tv2, NoGeo);
+            _kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc);
 
             // 4) Compute tolerances
             const double FLOAT_TOL = 1e-6;       // or whatever your C++ uses
@@ -655,8 +672,6 @@ namespace KinematicEngine
             a = (a_axis < 0 || (snap && Math.Abs(ta - current_a) < Math.Abs(FLOAT_TOL * ta))) ? current_a : ta;
             b = (b_axis < 0 || (snap && Math.Abs(tb - current_b) < Math.Abs(FLOAT_TOL * tb))) ? current_b : tb;
             c = (c_axis < 0 || (snap && Math.Abs(tc - current_c) < Math.Abs(FLOAT_TOL * tc))) ? current_c : tc;
-            u = (u_axis < 0 || (snap && Math.Abs(tu2 - current_u) < Math.Abs(FLOAT_TOL * tu2))) ? current_u : tu2;
-            v = (v_axis < 0 || (snap && Math.Abs(tv2 - current_v) < Math.Abs(FLOAT_TOL * tv2))) ? current_v : tv2;
 
             return 0;
         }

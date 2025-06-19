@@ -6,21 +6,21 @@ namespace KinematicEngine
 {
     public struct TP_COEFF { public double t, a, b, c, d; }
 
-    public static class TrajectoryPlanner
+    public class TrajectoryPlanner
     {
 
-    private static readonly List<RS274NGC.SEGMENT> _segments = new List<RS274NGC.SEGMENT>();
-   
-    public static bool DoRateAdjustments(int i0, int i1) => throw new NotImplementedException();
+        private static readonly List<RS274NGC.SEGMENT> _segments = new List<RS274NGC.SEGMENT>();
 
-    public static bool DoRateAdjustmentsArc(int i, double rad, double th0, double dth, double dc) => throw new NotImplementedException();
+        public static bool DoRateAdjustments(int i0, int i1) => throw new NotImplementedException();
+
+        public static bool DoRateAdjustmentsArc(int i, double rad, double th0, double dth, double dc) => throw new NotImplementedException();
 
 
-    public static int SegCount() => _segments.Count;
-    public static int OutputSegment(int idx) => throw new NotImplementedException();
+        public static int SegCount() => _segments.Count;
+        public static int OutputSegment(int idx) => throw new NotImplementedException();
 
-    public static void Finish() => _segments.Clear();
-    public static void SetParams(MotionParams p) { /* … */ }
+        public static void Finish() => _segments.Clear();
+        public static void SetParams(MotionParams p) { /* … */ }
         // --- Segment types ---
         public const int SEG_UNDEFINED = 0;
         public const int SEG_LINEAR = 1;
@@ -89,21 +89,21 @@ namespace KinematicEngine
         /// <summary>
         /// Initialize for a new list of segments (ping-pong buffer flip). :contentReference[oaicite:0]{index=0}
         /// </summary>
-        public static void Init()
+        public void Init()
         {
             _segments.Clear();
-                Console.WriteLine("[PLANNER] Cleared all segments");
-        /*    lock (_segments)
-                    {
-                        _segments.Clear();
-                    }
-                    nsegs = 0;
-                    nCombined = 0;
-                    SegsDoneTime[SegBufToggle] = 0.0;
-                    SegsDone[SegBufToggle] = -1;
-                    ispecial_cmd_downloaded = nspecial_cmds = nsegs = nCombined = 0;
-                    special_cmds_initial_first = special_cmds_initial_last = -1;
-                    special_cmds_initial_sequence_no[SegBufToggle] = -1;*/
+            Console.WriteLine("[PLANNER] Cleared all segments");
+            /*    lock (_segments)
+                        {
+                            _segments.Clear();
+                        }
+                        nsegs = 0;
+                        nCombined = 0;
+                        SegsDoneTime[SegBufToggle] = 0.0;
+                        SegsDone[SegBufToggle] = -1;
+                        ispecial_cmd_downloaded = nspecial_cmds = nsegs = nCombined = 0;
+                        special_cmds_initial_first = special_cmds_initial_last = -1;
+                        special_cmds_initial_sequence_no[SegBufToggle] = -1;*/
         }
 
         /// <summary>
@@ -157,33 +157,44 @@ namespace KinematicEngine
         /// <summary>
         /// Insert a linear segment (2ⁿᵈ-order) and attempt combination. :contentReference[oaicite:2]{index=2}
         /// </summary>
-        public static int InsertLinearSeg(
+        public int InsertLinearSeg(
             double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0,
             double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1, int sequence_number, int ID,
             double MaxVel = 0, double MaxAccel = 0, double MaxCombineLength = 0, int NumLinearNotDrawn = 0)
         {
             Console.WriteLine($"[PLANNER] InsertRapid: Count={_segments.Count}, seq={sequence_number}, to=({x1},{y1},{z1})");
             // compute deltas
-            var seg = new RS274NGC.SEGMENT {
-                        type            = SEG_RAPID,
-                        sequence_number = sequence_number,
-                        ID              = ID,
+            var seg = new RS274NGC.SEGMENT
+            {
+                type = SEG_RAPID,
+                sequence_number = sequence_number,
+                ID = ID,
 
-                        x0 = x0, y0 = y0, z0 = z0,
-                        a0 = a0, b0 = b0, c0 = c0,
-                        u0 = u0, v0 = v0,
+                x0 = x0,
+                y0 = y0,
+                z0 = z0,
+                a0 = a0,
+                b0 = b0,
+                c0 = c0,
+                u0 = u0,
+                v0 = v0,
 
-                        x1 = x1, y1 = y1, z1 = z1,
-                        a1 = a1, b1 = b1, c1 = c1,
-                        u1 = u1, v1 = v1,
+                x1 = x1,
+                y1 = y1,
+                z1 = z1,
+                a1 = a1,
+                b1 = b1,
+                c1 = c1,
+                u1 = u1,
+                v1 = v1,
 
-                        angle    = null,  // you’ll overwrite this in CCoordMotion
-                        Duration = 0
-                    };
-        _segments.Add(seg);     // <-- this line was missing
+                angle = null,  // you’ll overwrite this in CCoordMotion
+                Duration = 0
+            };
+            _segments.Add(seg);     // <-- this line was missing
             return 0;
         }
-        
+
 
 
         /// <summary>
@@ -194,24 +205,35 @@ namespace KinematicEngine
             double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1,
             int sequence_number, int ID)
         {
-            var seg = new RS274NGC.SEGMENT {
-                        type            = SEG_RAPID,
-                        sequence_number = sequence_number,
-                        ID              = ID,
+            var seg = new RS274NGC.SEGMENT
+            {
+                type = SEG_RAPID,
+                sequence_number = sequence_number,
+                ID = ID,
 
-                        x0 = x0, y0 = y0, z0 = z0,
-                        a0 = a0, b0 = b0, c0 = c0,
-                        u0 = u0, v0 = v0,
+                x0 = x0,
+                y0 = y0,
+                z0 = z0,
+                a0 = a0,
+                b0 = b0,
+                c0 = c0,
+                u0 = u0,
+                v0 = v0,
 
-                        x1 = x1, y1 = y1, z1 = z1,
-                        a1 = a1, b1 = b1, c1 = c1,
-                        u1 = u1, v1 = v1,
+                x1 = x1,
+                y1 = y1,
+                z1 = z1,
+                a1 = a1,
+                b1 = b1,
+                c1 = c1,
+                u1 = u1,
+                v1 = v1,
 
-                        angle    = null,  // you’ll overwrite this in CCoordMotion
-                        Duration = 0
-                    };
-        _segments.Add(seg);     // <-- this line was missing
-            Console.WriteLine($"[PLANNER] Rapid added, count now {_segments.Count}");
+                angle = null,  // you’ll overwrite this in CCoordMotion
+                Duration = 0
+            };
+            _segments.Add(seg);     // <-- this line was missing
+           // Console.WriteLine($"[PLANNER] (inside inserter) count is now {_segments.Count}");
             return 0;
         }
 
@@ -660,7 +682,7 @@ namespace KinematicEngine
             }
             while (somethingChanged || firstPass);
 
-            
+
         }
 
         /// <summary>
@@ -844,13 +866,112 @@ namespace KinematicEngine
                     return _pending.Count;
             }
         }
+
+        
+
+        /// <summary>
+        /// Emits a jerk-limited S-curve rapid traverse in actuator space.
+        /// </summary>
+        public  void RapidSCurve6Axis(
+            double[] startActs,    // length=6, actuator angles at start
+            double[]   endActs,    // length=6, actuator angles at end
+            double     vMax,       // max speed in deg/s or mm/s per actuator (units/sec)
+            double     aMax,       // max accel (units/sec²)
+            double     jMax,       // max jerk (units/sec³)
+            double     dt,         // slice time in seconds (e.g. 0.005)
+            int        seq,
+            int        id
+        ) {
+            // 1) Precompute delta for each axis and total “distance” in actuator-space
+            int axes = startActs.Length;
+            var delta = new double[axes];
+            
+            double norm = 0;
+            for (int i = 0; i < axes; i++){
+                delta[i] = endActs[i] - startActs[i];
+                norm += delta[i] * delta[i];
+            }
+            double totalDist = Math.Sqrt(norm);
+            Console.WriteLine(  $"[SCurve] start=[{string.Join(",",startActs)}] " + $"end=[{string.Join(",",endActs)}] dist={totalDist}");
+            if (totalDist < 1e-8) return;  // no move
+
+            // 2) Compute S-curve time segments (7-phase symmetric)
+            double tJ = aMax / jMax;
+            double tA = (vMax / aMax) - tJ;
+            if (tA < 0) { tJ = Math.Sqrt(vMax/jMax); tA = 0; }
+            // distance during accel+decel
+            double dAccPhase = jMax*tJ*tJ*tJ/6 + aMax*tJ*tA + jMax*tJ*tA*tA/2 + jMax*tJ*tJ*tJ/6;
+            double dTotalAcc = 2*dAccPhase;
+            double dCruise   = Math.Max(0.0, totalDist - dTotalAcc);
+            double tCruise   = dCruise / vMax;
+            // phase boundaries
+            double t1 =   tJ;
+            double t2 =   tJ + tA;
+            double t3 =   t2 + tJ;
+            double t4 =   t3 + tCruise;
+            double t5 =   t4 + tJ;
+            double t6 =   t5 + tA;
+            double t7 =   t6 + tJ;
+            double T  =   t7;
+
+            // 3) Number of slices
+            int steps = (int)Math.Ceiling(T / dt);
+
+            // 4) Emit each micro-segment
+            for(int i = 1; i <= steps; i++){
+            double t = Math.Min(T, i*dt);
+
+            // compute scalar s = distance along the curve at time t
+            double s;
+            if      (t <  t1) s =  jMax*Math.Pow(t,3)/6;
+            else if (t <  t2) s = dAccPhase1(t, jMax, tJ);
+            else if (t <  t3) s = dAccPhase2(t, jMax, aMax, t1, t2, t3);
+            else if (t <  t4) s = dTotalAcc/2 + vMax*(t - t3);
+            else if (t <  t5) s = totalDist - (jMax*Math.Pow(T-t,3)/6);
+            else if (t <  t6) s = totalDist - dAccPhase2(T-t, jMax, aMax, t1, t2, t3);
+            else               s = totalDist - dAccPhase1(T-t, jMax, tJ);
+
+            // clamp fraction
+            double frac = s / totalDist;
+
+            // interpolate each actuator
+            var acts = new double[axes];
+            for(int j = 0; j < axes; j++){
+                acts[j] = startActs[j] + delta[j]*frac;
+            }
+
+            // enqueue as a rapid segment
+            InsertRapidLinearSeg(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,seq, id);
+          //  Console.WriteLine($"[PLANNER] Rapid added, total segments = {_segments.Count}");
+            // patch in our actuator vector and duration
+            int idx = SegCount()-1;
+            var seg = GetSegment(idx);
+            seg.angle    = acts;
+            seg.Duration = (int)(dt * 1000);
+            ReplaceSegment(idx, seg);
+            }
+
+            // 5) Advance your current_ states externally if needed
+        }
+
+        // helper for phase1 distance
+        private static double dAccPhase1(double t, double j, double tJ) =>  j*tJ*tJ*tJ/6 + j*tJ*tJ*(t-tJ)/2 + (j*tJ)*(t-tJ)*(t-tJ)/2;
+
+        // helper for phase2 distance
+        private static double dAccPhase2(double t, double j, double a, double t1,double t2,double t3)
+        {
+            double dt2 = t - t2;
+            return j*t1*t1*t1/6 + a*(t2-t1) + j*(t2-t1)*(t2-t1)/2
+                + a*dt2 - j*dt2*dt2*(t3-t)/(2*(t3-t2));
+        }
+
         public static RS274NGC.SEGMENT GetSegment(int idx)
         {
-        if (idx < 0 || idx >= _segments.Count)
-            throw new ArgumentOutOfRangeException(nameof(idx));
-        Console.WriteLine($"[PLANNER] GetSegment({idx}) with Count={_segments.Count}");
-        return _segments[idx];
-        }   
+            if (idx < 0 || idx >= _segments.Count)
+                throw new ArgumentOutOfRangeException(nameof(idx));
+            //Console.WriteLine($"[PLANNER] GetSegment({idx}) with Count={_segments.Count}");
+            return _segments[idx];
+        }
 
         // 4) Replace for patching in angle/Duration
         public static void ReplaceSegment(int idx, RS274NGC.SEGMENT seg)
@@ -902,6 +1023,7 @@ namespace KinematicEngine
                 }
             }
         }
+
     }
     public partial class RS274NGC
     {
@@ -940,7 +1062,9 @@ namespace KinematicEngine
             // stops & combination flags
             public bool StopRequired;
             public bool Done;
-
+            public Block? block0;
+            public Block? block1;
+            public Block? block2;
             // dwell
             public double dwell_time;
 

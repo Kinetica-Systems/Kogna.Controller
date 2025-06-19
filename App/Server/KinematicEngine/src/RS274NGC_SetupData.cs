@@ -66,6 +66,14 @@ namespace KinematicEngine
             // ---- C++: #define RS274NGC_MAX_PARAMETERS 5400 ----
             public const int RS274NGC_MAX_PARAMETERS = 5400;
             public const int MAX_SUB_STACK = 10;
+            /// <summary>Max rapid accel (mm/s²)</summary>
+            public double RapidAccelMax { get; set; } = 500.0;
+
+            /// <summary>Max rapid jerk (mm/s³)</summary>
+            public double RapidJerkMax  { get; set; } = 5000.0;
+
+            /// <summary>Micro‐segment time step (s)</summary>
+            public double SliceDt       { get; set; } = 0.01;
 
             // ---- persistent parameters (double parameters[RS274NGC_MAX_PARAMETERS]) ----
             public double[] parameters = null!;
@@ -73,6 +81,7 @@ namespace KinematicEngine
             // ---- one-line state ----
             public int line_length;
             public int line_number;
+            public Block? block0;
             public Block? block1;
             public Block? block2;
             public int block_delete;

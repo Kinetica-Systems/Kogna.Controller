@@ -9,18 +9,17 @@ namespace KinematicEngine
     public static class TrajectoryPlanner
     {
 
-        
-    public static int InsertStraight(double x,double y,double z,double a,double b, double c,double u,double v,int seq,int id) => throw new NotImplementedException();
+    private static readonly List<RS274NGC.SEGMENT> _segments = new List<RS274NGC.SEGMENT>();
+   
     public static bool DoRateAdjustments(int i0, int i1) => throw new NotImplementedException();
 
     public static bool DoRateAdjustmentsArc(int i, double rad, double th0, double dth, double dc) => throw new NotImplementedException();
 
-    public static RS274NGC.SEGMENT GetSegment(int idx) => throw new NotImplementedException();
 
-    public static int SegCount() => throw new NotImplementedException();
-
+    public static int SegCount() => _segments.Count;
     public static int OutputSegment(int idx) => throw new NotImplementedException();
 
+    public static void Finish() => _segments.Clear();
     public static void SetParams(MotionParams p) { /* … */ }
         // --- Segment types ---
         public const int SEG_UNDEFINED = 0;
@@ -92,17 +91,19 @@ namespace KinematicEngine
         /// </summary>
         public static void Init()
         {
-            lock (_pending)
-            {
-                _pending.Clear();
-            }
-            nsegs = 0;
-            nCombined = 0;
-            SegsDoneTime[SegBufToggle] = 0.0;
-            SegsDone[SegBufToggle] = -1;
-            ispecial_cmd_downloaded = nspecial_cmds = nsegs = nCombined = 0;
-            special_cmds_initial_first = special_cmds_initial_last = -1;
-            special_cmds_initial_sequence_no[SegBufToggle] = -1;
+            _segments.Clear();
+                Console.WriteLine("[PLANNER] Cleared all segments");
+        /*    lock (_segments)
+                    {
+                        _segments.Clear();
+                    }
+                    nsegs = 0;
+                    nCombined = 0;
+                    SegsDoneTime[SegBufToggle] = 0.0;
+                    SegsDone[SegBufToggle] = -1;
+                    ispecial_cmd_downloaded = nspecial_cmds = nsegs = nCombined = 0;
+                    special_cmds_initial_first = special_cmds_initial_last = -1;
+                    special_cmds_initial_sequence_no[SegBufToggle] = -1;*/
         }
 
         /// <summary>
@@ -158,47 +159,32 @@ namespace KinematicEngine
         /// </summary>
         public static int InsertLinearSeg(
             double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0,
-            double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1,
-            double MaxVel, double MaxAccel, double MaxCombineLength,
-            int sequence_number, int ID, int NumLinearNotDrawn)
+            double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1, int sequence_number, int ID,
+            double MaxVel = 0, double MaxAccel = 0, double MaxCombineLength = 0, int NumLinearNotDrawn = 0)
         {
+            Console.WriteLine($"[PLANNER] InsertRapid: Count={_segments.Count}, seq={sequence_number}, to=({x1},{y1},{z1})");
             // compute deltas
-            double dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
-            double da = a1 - a0, db = b1 - b0, dc = c1 - c0;
-            double du = u1 - u0, dv = v1 - v0;
+            var seg = new RS274NGC.SEGMENT {
+                        type            = SEG_RAPID,
+                        sequence_number = sequence_number,
+                        ID              = ID,
 
-            // add into the list
-            var p = GetSegPtr(nsegs);
-            p.type = SEG_LINEAR;
-            p.sequence_number = sequence_number;
-            p.ID = ID;
-            p.x0 = x0; p.y0 = y0; p.z0 = z0; p.a0 = a0; p.b0 = b0; p.c0 = c0; p.u0 = u0; p.v0 = v0;
-            p.x1 = x1; p.y1 = y1; p.z1 = z1; p.a1 = a1; p.b1 = b1; p.c1 = c1; p.u1 = u1; p.v1 = v1;
-            bool pureAngle;
-            p.dx = FeedRateDistance(dx, dy, dz, da, db, dc, du, dv, out pureAngle);
-            p.OrigVel = p.MaxVel = MaxVel;
-            p.OrigAccel = MaxAccel;
-            p.vel = 0.0;
-            p.ChangeInDirection = CalcChangeInDirection(nsegs);
-            p.StopRequired = nsegs > 0 && GetSegPtr(nsegs - 1).StopRequiredNextSeg;
-            p.StopRequiredNextSeg = false;
-            p.special_cmds_first = p.special_cmds_last = -1;
-            p.Done = false;
+                        x0 = x0, y0 = y0, z0 = z0,
+                        a0 = a0, b0 = b0, c0 = c0,
+                        u0 = u0, v0 = v0,
 
-            // try to combine with the previous
-            if (CombineSegments(MaxCombineLength))
+                        x1 = x1, y1 = y1, z1 = z1,
+                        a1 = a1, b1 = b1, c1 = c1,
+                        u1 = u1, v1 = v1,
 
-            {
-                nsegs++;
-                return 0;
-            }
-            else
-            {
-                // Combination failed → keep segment
-                nsegs++;
-                return 0;
-            }
+                        angle    = null,  // you’ll overwrite this in CCoordMotion
+                        Duration = 0
+                    };
+        _segments.Add(seg);     // <-- this line was missing
+            return 0;
         }
+        
+
 
         /// <summary>
         /// Insert a rapid (3ʳᵈ-order) linear segment. :contentReference[oaicite:3]{index=3}
@@ -208,25 +194,24 @@ namespace KinematicEngine
             double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1,
             int sequence_number, int ID)
         {
-            double dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
-            double da = a1 - a0, db = b1 - b0, dc = c1 - c0;
-            double du = u1 - u0, dv = v1 - v0;
+            var seg = new RS274NGC.SEGMENT {
+                        type            = SEG_RAPID,
+                        sequence_number = sequence_number,
+                        ID              = ID,
 
-            var p = GetSegPtr(nsegs);
-            p.type = SEG_RAPID;
-            p.sequence_number = sequence_number;
-            p.ID = ID;
-            p.x0 = x0; p.y0 = y0; p.z0 = z0; p.a0 = a0; p.b0 = b0; p.c0 = c0; p.u0 = u0; p.v0 = v0;
-            p.x1 = x1; p.y1 = y1; p.z1 = z1; p.a1 = a1; p.b1 = b1; p.c1 = c1; p.u1 = u1; p.v1 = v1;
-            bool pureAngle;
-            p.dx = FeedRateDistance(dx, dy, dz, da, db, dc, du, dv, out pureAngle);
-            p.vel = 0.0;
-            p.StopRequired = true;
-            p.StopRequiredNextSeg = false;
-            p.special_cmds_first = p.special_cmds_last = -1;
-            p.Done = false;
+                        x0 = x0, y0 = y0, z0 = z0,
+                        a0 = a0, b0 = b0, c0 = c0,
+                        u0 = u0, v0 = v0,
 
-            nsegs++;
+                        x1 = x1, y1 = y1, z1 = z1,
+                        a1 = a1, b1 = b1, c1 = c1,
+                        u1 = u1, v1 = v1,
+
+                        angle    = null,  // you’ll overwrite this in CCoordMotion
+                        Duration = 0
+                    };
+        _segments.Add(seg);     // <-- this line was missing
+            Console.WriteLine($"[PLANNER] Rapid added, count now {_segments.Count}");
             return 0;
         }
 
@@ -859,6 +844,21 @@ namespace KinematicEngine
                     return _pending.Count;
             }
         }
+        public static RS274NGC.SEGMENT GetSegment(int idx)
+        {
+        if (idx < 0 || idx >= _segments.Count)
+            throw new ArgumentOutOfRangeException(nameof(idx));
+        Console.WriteLine($"[PLANNER] GetSegment({idx}) with Count={_segments.Count}");
+        return _segments[idx];
+        }   
+
+        // 4) Replace for patching in angle/Duration
+        public static void ReplaceSegment(int idx, RS274NGC.SEGMENT seg)
+        {
+            if (idx < 0 || idx >= _segments.Count)
+                throw new ArgumentOutOfRangeException(nameof(idx));
+            _segments[idx] = seg;
+        }
 
         /// <summary>
         /// Enqueue a segment for later dispatch.
@@ -911,6 +911,8 @@ namespace KinematicEngine
             // G‐code segment header
             public int type;             // SEG_LINEAR, SEG_ARC, etc.
             public int sequence_number;
+            public double Duration;
+            public double[] angle;
             public int ID;
             public double x, y, z;
             public double u, v;
@@ -949,6 +951,8 @@ namespace KinematicEngine
             public TP_COEFF[] C;
             public int nTrips;
         }
+
+        
     public static int PendingSegments { get; private set; }
     public static int SegCount { get; private set; }
 

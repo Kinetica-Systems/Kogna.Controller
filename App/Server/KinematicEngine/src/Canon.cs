@@ -74,6 +74,7 @@ namespace KinematicEngine
 
 
 
+
     public class Canon
     {
         private static int lineNumber = 1;
@@ -178,12 +179,12 @@ namespace KinematicEngine
 
         public static void SET_TRAVERSE_RATE(double rate)
         {
-            Print($"SET_TRAVERSE_RATE({rate:F4})");
+            Console.WriteLine($"SET_TRAVERSE_RATE({rate:F4})");
         }
 
         public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback, int seq, int id) //11 args
         {
-            Print($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
+            Console.WriteLine($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
 
             if (CheckIfThreadingInProgress()) return;
 
@@ -200,10 +201,10 @@ namespace KinematicEngine
                 false, _setup.sequence_number, 0);
 
         }
-
+ 
         public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v) //8 args
         {
-            Print($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
+            Console.WriteLine($"STRAIGHT_TRAVERSE({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
 
             if (CheckIfThreadingInProgress()) return;
 
@@ -226,7 +227,7 @@ namespace KinematicEngine
 
         public static void SET_FEED_RATE(double rate)
         {
-            Print($"SET_FEED_RATE({rate:F4})");
+            Console.WriteLine($"SET_FEED_RATE({rate:F4})");
         }
 
         public static void SET_FEED_REFERENCE(CANON_FEED_REFERENCE r)
@@ -234,31 +235,31 @@ namespace KinematicEngine
 
             r = CANON_FEED_REFERENCE.CANON_WORKPIECE;
 
-            Print($"SET_FEED_REFERENCE({r})");
+            Console.WriteLine($"SET_FEED_REFERENCE({r})");
 
         }
 
         public static void SET_MOTION_CONTROL_MODE(CANON_MOTION_MODE m)
         {
 
-            Print($"SET_MOTION_CONTROL_MODE({m})");
+            Console.WriteLine($"SET_MOTION_CONTROL_MODE({m})");
 
         }
 
         public static void START_SPEED_FEED_SYNCH()
         {
-            Print("START_SPEED_FEED_SYNCH()");
+            Console.WriteLine("START_SPEED_FEED_SYNCH()");
         }
 
         public static void STOP_SPEED_FEED_SYNCH()
         {
-            Print("STOP_SPEED_FEED_SYNCH()");
+            Console.WriteLine("STOP_SPEED_FEED_SYNCH()");
         }
 
         public static void STRAIGHT_FEED(double x, double y, double z, double a, double b, double c, double u, double v)
         {
             // 1) print line header
-            Print($"STRAIGHT_FEED({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
+            Console.WriteLine($"STRAIGHT_FEED({x:F4}, {y:F4}, {z:F4}, {a:F4}, {b:F4}, {c:F4}, {u:F4}, {v:F4})");
 
             // 2) threading check (returns true if we should bail)
             if (CheckIfThreadingInProgress())
@@ -364,14 +365,6 @@ namespace KinematicEngine
         }
 
 
-        // Dwell & Coolant
-        public static void DWELL(double seconds)
-        {
-            Print($"DWELL({seconds:F4})");
-            if (CheckIfThreadingInProgress()) return;
-            GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
-            CM.Dwell(seconds, _setup.sequence_number, _setup);
-        }
 
         public static void FLOOD_ON()
         {

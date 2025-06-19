@@ -40,36 +40,42 @@ using KognaServer.Server;
 using System.Reactive.Joins;
 using System.Security.Cryptography.X509Certificates;
 using Avalonia.Controls.Documents;
+using KognaServer.Server.KinematicEngine;
+using System.Net;
 
 namespace KognaServer.Views
 {
-    
+
     public partial class GCodeEditorView : UserControl
     {
-        private readonly TextEditor? _editor = null!;
-        public string fileContent { get; set; }
-        public bool IsModified { get; set; }
-        public TextDocument Document { get; set; }
-        private GCodeStreamer bufferCommandFile{ get; set; } = null!;
-        private String[] bufferedLines= [];
 
-
-
+        public string? fileContent { get; set; } = null!;
+        public bool? IsModified { get; set; } = null!;
+        public TextDocument? Document { get; set; } = null!;
+        private readonly ObservableCollection<string> _responses = new();
+        private GCodeStreamer? bufferCommandFile { get; set; } = null!;
+        private String[] bufferedLines = [];
+        private readonly KinematicEngineClient _client;
         public GCodeEditorView()
         {
             InitializeComponent();
-            _editor = this.FindControl<TextEditor>("Editor");
-            _editor.Background = Brushes.Transparent;
-            _editor.Foreground = Brushes.LightGray;
-            _editor.ShowLineNumbers = true;
-
-
+            _client = new KinematicEngineClient("localhost", 5001);
+            ResponseList.ItemsSource = _responses;
+            Editor.Background = Brushes.Transparent;
+            Editor.Foreground = Brushes.LightGray;
+            Editor.ShowLineNumbers = true;
+            Editor.Document = new TextDocument();
+            Editor.Document.Changed += (_, __) =>
+                        {
+                            var hasText = Editor.Document.Lines.Any(l => !string.IsNullOrWhiteSpace(Editor.Document.GetText(l.Offset, l.Length)));
+                            IsEnabled = hasText;
+                        };
         }
 
         private async void OpenFileButton_Clicked(object sender, RoutedEventArgs args)
         {
             // Get top level from the current control. Alternatively, you can use Window reference instead.
-            var topLevel = TopLevel.GetTopLevel(this);
+            var topLevel = TopLevel.GetTopLevel(this)!;
 
             // Start async operation to open the dialog.
             var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions()
@@ -87,8 +93,8 @@ namespace KognaServer.Views
                 using var streamReader = new StreamReader(stream);
                 // Reads all the content of file as a text.
                 fileContent = await streamReader.ReadToEndAsync();
-                _editor.Document = new TextDocument(fileContent);
-           }
+                Editor.Document = new TextDocument(fileContent);
+            }
         }
 
 
@@ -96,70 +102,91 @@ namespace KognaServer.Views
         {
 
 
-               // Get top level from the current control. Alternatively, you can use Window reference instead.
-            var topLevel = TopLevel.GetTopLevel(this);
+            // Get top level from the current control. Alternatively, you can use Window reference instead.
+            var topLevel = TopLevel.GetTopLevel(this)!;
 
-                // Start async operation to open the dialog.
-                var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-                {
-                    Title = "Save Text File",
-                    FileTypeChoices = new FilePickerFileType[] { new("GCode Files") { Patterns = new[] { "*.gcode", "*.txt", "*.nc" }, MimeTypes = new[] { "*/*" } } }
-                });
-
-
-                if (file is not null)
-                {
-                    
-                    var stream = new MemoryStream(Encoding.Default.GetBytes(_editor.Document.Text));
-                    await using var writeStream = await file.OpenWriteAsync();
-                    await stream.CopyToAsync(writeStream);
-
-                }
-
-        }
-
-        private async void OnStream_Click(object sender, RoutedEventArgs args)
-        {
-            // how many lines the editor thinks it has
-            int lineCount = _editor.Document.LineCount;
-
-            // allocate your array
-            var bufferedLines = new string[lineCount];
-            
-           // Console.WriteLine("Checking", lineCount, bufferedLines);
-            // for each DocumentLine, pull out the exact substring
-            for (int i = 0; i < lineCount; i++)
+            // Start async operation to open the dialog.
+            var file = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                var line = _editor.Document.Lines[i];
-                // GetText(offset, length) returns just that one line’s text
-                bufferedLines[i] = _editor.Document.GetText(line.Offset, line.Length);
+                Title = "Save Text File",
+                FileTypeChoices = new FilePickerFileType[] { new("GCode Files") { Patterns = new[] { "*.gcode", "*.txt", "*.nc" }, MimeTypes = new[] { "*/*" } } }
+            })!;
+
+
+            if (file is not null)
+            {
+
+                var stream = new MemoryStream(Encoding.Default.GetBytes(Editor.Document.Text));
+                await using var writeStream = await file.OpenWriteAsync();
+                await stream.CopyToAsync(writeStream);
+
             }
-            TerminalPrint();
-
-
-
-            // await stream.CopyToAsync(writeStream);
 
         }
 
-                    private async Task TerminalPrint()
-                    {
-                        // 1) Turn each DocumentLine into its exact text
-                        var lines = _editor.Document.Lines
-                                    .Select(line => 
-                                            _editor.Document.GetText(line.Offset, line.Length))
-                                    .ToArray();
+        // Streams each non-empty line to your engine
+        public async void StreamButton_Click(object sender, RoutedEventArgs e)
+        {
+            _responses.Clear();
+            foreach (var line in Editor.Document.Lines
+                        .Select(l => Editor.Document.GetText(l.Offset, l.Length))
+                        .Where(l => !string.IsNullOrWhiteSpace(l)))
+            {
+                // send each line and await the engine’s reply
+                var response = await _client.SendCommandAsync(line);
 
-                        // 2) (Optional) log how many you got, so you can debug “is it empty?”
-                        Console.WriteLine($"[Debug] Found {lines.Length} lines in the document.");
+                if (response is null)
+                {
+                    _responses.Add($"✖ {line} → No Response from engine");
+                    // optionally: break;
+                    continue;
+                }
+                if (!response.Status.Equals("OK", StringComparison.OrdinalIgnoreCase))
+                {
+                    _responses.Add($"✖ {line} → {response.Error ?? response.Result}");
+                    break;
+                }
+                var RespSeg = response.Segments ?? Array.Empty<Segment>();
+                // For each returned segment, display its joint angles & duration
+                foreach (var seg in RespSeg)
+                {
+                    var angles = string.Join(", ", seg.JointAngles.Select(a => a.ToString("F2")));
+                    _responses.Add($"✔ {line} ⇒ [{angles}] @ {seg.DurationMs}ms");
+                }
+            }
 
-                        // 3) Now print (or send) each one
-                        foreach (var line in lines)
-                        {
-                            Console.WriteLine(line);
-                            // await SendToTerminalAsync(line);
-                            // await Task.Delay(...);  // if you need pacing
-                        }
-                    }
+            await TerminalPrint();
+        }
+
+
+
+
+
+        private async Task TerminalPrint()
+        {
+            // 1) Turn each DocumentLine into its exact text
+            var lines = Editor.Document.Lines
+                        .Select(line =>
+                                Editor.Document.GetText(line.Offset, line.Length))
+                        .ToArray();
+
+            // 2) (Optional) log how many you got, so you can debug “is it empty?”
+            Console.WriteLine($"[Debug] Found {lines.Length} lines in the document.");
+
+            // 3) Now print (or send) each one
+            foreach (var line in lines)
+            {
+                Console.WriteLine(line);
+                // await SendToTerminalAsync(line);
+                // await Task.Delay(...);  // if you need pacing
+            }
+            
+        }
+        protected override void OnUnloaded(RoutedEventArgs e)
+            {
+                _client.Dispose();
+                base.OnUnloaded(e);
+            }
+
     }
 }

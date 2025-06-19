@@ -1,9 +1,11 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using AvaloniaEdit.Document;
 using KognaServer.Models;
+using KognaServer.Views;
 
 namespace KinematicEngine
 {
@@ -13,15 +15,14 @@ namespace KinematicEngine
     /// </summary>
     public class CCoordMotion : IDisposable
     {
-        // Kinematics and motion parameters
-        public CKinematics Kinematics { get; private set; }
-
+        
         // Motion state
         public double current_x, current_y, current_z;
         public double current_a, current_b, current_c;
         public double current_u, current_v;
 
         // Lookahead / download state
+        private int _lastSeqNo = 0;
         private int m_nsegs_downloaded;
         private double m_TotalDownloadedTime;
         private double m_TimeAlreadyExecuted;
@@ -36,13 +37,16 @@ namespace KinematicEngine
         private int m_PreviouslyStoppedID = -1;
         private bool m_TCP_affects_actuators = true;  // assume Tool Center Point has effects except for simple cases
 
+
         // Control flags
         private bool m_Abort;
         private bool m_Halt;
         public bool Simulate { get; set; } = false;
         public bool DisableSoftLimits { get; private set; } = false;
+        public bool AxisDisabled { get; set; }
+
         // internal abort flag
-        private bool _abortFlag;
+
 
         /// <summary>Request an abort.</summary>
         public void SetAbort() => m_Abort = true;
@@ -52,15 +56,18 @@ namespace KinematicEngine
         public void ClearHalt() => m_Halt = false;
         public bool GetHalt() => m_Halt;
 
-        public int GetDestination(int axis, out double d) => GetPosition(axis, out d);
-
+        public int GetDestination(int axis, out double d)
+        {
+            GetPosition(axis, out d);
+            return 0;
+        }
         /// <summary>Clear any pending abort.</summary>
 
         // Overrides
         private readonly double m_FeedRateOverride = 1.0;
         private readonly double m_FeedRateRapidOverride = 1.0;
         private readonly double m_HardwareFRORange = 0.0;
-        private readonly double m_SpindleRateOverride = 1.0;        
+        private readonly double m_SpindleRateOverride = 1.0;
         public bool RapidParamsDirty { get; set; } = true;
 
         // Axis definitions
@@ -109,6 +116,16 @@ namespace KinematicEngine
         private const int SEG_LINEAR = 1; //ned to check
         private RS274NGC.SEGMENT GetSegPtr(int idx) { /* … */ throw new NotImplementedException(); }
         private RS274NGC.SetupData _setup;
+        private readonly Kinematics6AxisFanuc _kinematics;
+        public  CKinematics Kinematics { get; private set; }
+        public event Action<Segment[]> OnSegmentReady;
+        // give yourself a public setter (so server can update it):
+        private double _lastFeedRate;
+        public double LastFeedRate
+                {
+                    get => _lastFeedRate;
+                    set => _lastFeedRate = value;
+                }
 
 
         /// <summary>
@@ -117,19 +134,26 @@ namespace KinematicEngine
         public CCoordMotion()
         {
             _setup = new RS274NGC.SetupData();
-
-
             var path = Path.GetDirectoryName(typeof(CCoordMotion).Assembly.Location)!;
-            Kinematics = CKinematics.LoadFromFile(Path.Combine(path, "Data", "Kinematics.txt"));
-            Kinematics.MainPath = path;
+            _kinematics = new Kinematics6AxisFanuc();
+            Kinematics = _kinematics;
+            _kinematics.MainPath = path;
             DownloadInit();
             TrajectoryPlanner.Init();
             ResetMotionState();
+
             specialCmds = new SpecialCmd[MAX_SPECIAL_CMDS];
             specialCmdsInitialSequenceNo = new int[MAX_SPECIAL_CMDS];
 
             for (int i = 0; i < MAX_SPECIAL_CMDS; i++)
+
                 specialCmds[i] = new SpecialCmd();
+
+
+
+            // string[] axisFiles = new[] {"X.table", "Y.table", "Z.table", "A.table", "B.table", "C.table", "U.table", "V.table"} .Select(f => Path.Combine(Kinematics.MainPath, f)) .ToArray();
+
+
         }
         // === Core Motion Routines ===
 
@@ -162,51 +186,65 @@ namespace KinematicEngine
             }
             return false;
         }
-
-        // Overloads
-        public int StraightTraverse(double x, double y, double z, double a, double b, double c, bool noCallback = false, int seq = -1, int id = 0)
-            => StraightTraverse(x, y, z, a, b, c, current_u, current_v, noCallback, seq, id);
-
-        public int StraightTraverse(double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback, int seq, int id)
+       
+        /// <summary>
+        /// Compute one rapid‐move segment for any combination of axes.
+        /// </summary>
+       public int StraightTraverse(double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback, int seq, int id, double feedRate = 0)
         {
-            var errMsg = new StringBuilder();
-            if (m_Abort) return 1;
+            // 1) Compute your real actuator solution
+            var acts = new double[8];
+            _kinematics.TransformCADtoActuators(x,y,z,a,b,c,u,v,acts);
 
-            if (Kinematics.m_MotionParams.DoRapidsAsFeeds)
-            {
-                if (CommitPendingSegments(false)) return 1;
-                if (nsegs > 0) 
-                {var seg = GetSegPtr(nsegs -1 );
-                seg.StopRequiredNextSeg = true; }
-                if (DoKMotionBufCmd("BegRapidBuf", _setup.sequence_number)) return 1;
-                int res = StraightFeedAccel(x, y, z, a, b, c, u, v, double.PositiveInfinity, double.PositiveInfinity, true, noCallback, seq, id);
-                if (CommitPendingSegments(true)) return 1;
-                return res;
-            }
 
-            if (GetRapidSettings() != 0) return 1;
+            TrajectoryPlanner.InsertRapidLinearSeg(current_x, current_y, current_z, current_a, current_b, current_c, current_u, current_v, x, y, z, a, b, c, u, v, seq, id);
+    
+            // 3) Grab back the last‐inserted segment and overwrite its angle+duration
+            int idx = TrajectoryPlanner.SegCount() - 1;
+            var seg = TrajectoryPlanner.GetSegment(idx);
+            seg.angle    = (double[])acts.Clone();      // fill in the real joint angles
+            seg.Duration = 0;                           // or compute travelTime from feedRate/distance
+            // if your SEGMENT is a struct in a List, you may need to write it back:
+            TrajectoryPlanner.ReplaceSegment(idx, seg);
 
-            if (CheckSoftLimits(x, y, z, a, b, c, u, v, errMsg))
-            {
-                if (m_Simulate) { ReportError("Soft limit hit; simulation continues."); DisableSoftLimits = true; }
-                else return ReportErrorAndHalt("Soft limit hit; job halted.");
-            }
-
-            if (CommitPendingSegments(false)) return 1;
-            if (m_StraightTraverseCb != null) m_StraightTraverseCb(x, y, z, seq);
-            if (m_StraightTraverse6Cb != null) m_StraightTraverse6Cb(x, y, z, a, b, c, seq);
-            if (TrajectoryPlanner.InsertStraight(x, y, z, a, b, c, u, v, seq, id) != 0) { m_Abort = true; return 1; }
-
-            TrajectoryPlanner.MaximizeSegments();
-
-            if (DownloadDoneSegments()) { m_Abort = true; return 1; }
+            // 4) update your “current_*” state for the next call
             current_x = x; current_y = y; current_z = z;
             current_a = a; current_b = b; current_c = c;
             current_u = u; current_v = v;
+
             return 0;
-
-
         }
+
+        public int StraightFeed(double feedRate, double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback = false, int seq = -1, int id = 0)
+        {
+            // 1) Compute actuator angles
+            var acts = new double[8];
+            _kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, acts);
+
+            // 2) Enqueue a LINEAR (G1) move
+          // TrajectoryPlanner.InsertLinearSeg(current_x, current_y, current_z, current_a, current_b, current_c, current_u, current_v, x, y, z, a, b, c, u, v, seq, id);
+
+            // 3) Patch in the real joint angles and duration if you want
+            int idx = TrajectoryPlanner.SegCount() - 1;
+            var seg = TrajectoryPlanner.GetSegment(idx);
+            seg.angle    = (double[])acts.Clone();
+            // compute approximate duration (ms) = distance / feedRate * 60,000
+            double dist = Math.Sqrt(
+                Math.Pow(x - current_x, 2) +
+                Math.Pow(y - current_y, 2) +
+                Math.Pow(z - current_z, 2)
+            );
+            seg.Duration = (int)(dist / feedRate * 60000);
+            TrajectoryPlanner.ReplaceSegment(idx, seg);
+
+            // 4) Update your current_… state
+            current_x = x; current_y = y; current_z = z;
+            current_a = a; current_b = b; current_c = c;
+            current_u = u; current_v = v;
+
+            return 0;
+        }
+
 
         // StraightFeedAccel overloads
         public int StraightFeedAccel(double feed, double accel, double x, double y, double z, double a, double b, double c, int seq, int id)
@@ -354,22 +392,20 @@ namespace KinematicEngine
         }
 
 
-        public int GetPosition(int axis, out double d)
-        {
-            switch (axis)
-            {
-                case 0: d = current_x; break;
-                case 1: d = current_y; break;
-                case 2: d = current_z; break;
-                case 3: d = current_a; break;
-                case 4: d = current_b; break;
-                case 5: d = current_c; break;
-                case 6: d = current_u; break;
-                case 7: d = current_v; break;
-                default: d = 0; return 1;
-            }
-            return 0;
+    public void GetPosition(int axis, out double pos) {
+        switch(axis) {
+            case 1: pos = current_x; break;
+            case 2: pos = current_y; break;
+            case 3: pos = current_z; break;
+            case 4: pos = current_a; break;
+            case 5: pos = current_b; break;
+            case 6: pos = current_c; break;
+            case 7: pos = current_u; break;
+            case 8: pos = current_v; break;
+            default: pos = 0; break;
         }
+    }
+
 
         public int GetAxisDone(int axis, out int r)
             => RS274NGC.GetAxisDone(axis, out r);
@@ -525,7 +561,7 @@ namespace KinematicEngine
 
             // Allocate and fill Acts[]
             double[] Acts = new double[8];
-            Kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, Acts);
+            _kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, Acts);
 
             // 1) Call the int-returning function
             int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis, out int u_axis, out int v_axis);
@@ -604,7 +640,7 @@ namespace KinematicEngine
 
             // 3) Convert to CAD coords
             double tx, ty, tz, ta, tb, tc, tu2, tv2;
-            Kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc, out tu2, out tv2, NoGeo);
+            _kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc, out tu2, out tv2, NoGeo);
 
             // 4) Compute tolerances
             const double FLOAT_TOL = 1e-6;       // or whatever your C++ uses
@@ -696,7 +732,7 @@ namespace KinematicEngine
         /// C# port of:
         /// int CCoordMotion::Dwell(double seconds, int sequence_number)
         /// </summary>
-        public int Dwell(double seconds, int sequenceNumber, RS274NGC.SetupData setupData)
+        public int DWELL(double seconds, int sequenceNumber, RS274NGC.SetupData setupData)
         {
             // 1) early exit if we've been asked to abort
             if (m_Abort)
@@ -745,9 +781,8 @@ namespace KinematicEngine
             // your existing tp_insert_dwell(...) logic here
             throw new NotImplementedException();
         }
-        public bool AxisDisabled { get; set; }
         public void DownloadFinish() => throw new NotImplementedException();
-        private int GetRapidSettings() 
+        private int GetRapidSettings()
             => RS274NGC.GetRapidSettings(); //check
 
         private int ReportError(string msg)
@@ -768,7 +803,14 @@ namespace KinematicEngine
             // TODO: your implementation
             return false;
         }
-
+        /// <summary>
+        /// Returns the next sequence number (starts at 1).
+        /// </summary>
+        public int GetNextSequenceNumber()
+        {
+            return ++_lastSeqNo;
+        }
+    
     }
     
 }

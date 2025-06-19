@@ -134,7 +134,7 @@ namespace KinematicEngine
             _setup.VV_origin_offset = pars[k + 8];
             _setup.cutter_comp_side = 0;
             _setup.CompEntryStyle = EMC_COMP_ENTRY_STYLE;
-            _setup.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE;
+            _setup.distance_mode = (int)DISTANCE_MODE.MODE_ABSOLUTE;
             _setup.feed_mode = UNITS_PER_MINUTE;
             _setup.feed_override = true;
             _setup.filename[0] = '\0';
@@ -693,7 +693,7 @@ namespace KinematicEngine
                 _ => G_40
             };
             g[5] = units == CANON_UNITS.Inches ? G_20 : G_21;
-            g[6] = s.distance_mode == (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE ? G_90 : G_91;
+            g[6] = s.distance_mode == (int)DISTANCE_MODE.MODE_ABSOLUTE ? G_90 : G_91;
             g[7] = s.feed_mode == (int)RS274NGC_FEED_MODE.INVERSE_TIME ? G_93 :
                     s.feed_mode == (int)RS274NGC_FEED_MODE.PER_MINUTE ? G_94 : G_95;
             g[8] = s.origin_index < 7 ? 530 + 10 * s.origin_index : 584 + s.origin_index;
@@ -1465,10 +1465,10 @@ namespace KinematicEngine
             switch (code)
             {
                 case G_90:
-                    s.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE;
+                    s.distance_mode = (int)DISTANCE_MODE.MODE_ABSOLUTE;
                     break;
                 case G_91:
-                    s.distance_mode = (int)RS274NGC_DISTANCE_MODE.MODE_INCREMENTAL;
+                    s.distance_mode = (int)DISTANCE_MODE.MODE_INCREMENTAL;
                     break;
                 default:
                     throw new InvalidOperationException("NCE_BUG_CODE_NOT_G90_OR_G91");
@@ -1708,8 +1708,8 @@ namespace KinematicEngine
         /// G98/G99: Retract mode for canned cycles. :contentReference[oaicite:3]{index=3}</summary>
         private static int ConvertRetractMode(int code, SetupData s)
         {
-            if (code == G_98) s.retract_mode = (int)RetractMode.OldZ;
-            else if (code == G_99) s.retract_mode = (int)RetractMode.RPlane;
+            if (code == G_98) s.retract_mode = (int)RETRACT_MODE.OLD_Z;
+            else if (code == G_99) s.retract_mode = (int)RETRACT_MODE.R_PLANE;
             else throw new InvalidOperationException("NCE_BUG_CODE_NOT_G98_OR_G99");
             return RS274NGC_OK;
         }
@@ -1942,7 +1942,7 @@ namespace KinematicEngine
                 vv = b.v_flag ? b.v_number - (s.VV_origin_offset + s.VV_axis_offset) : s.VV_current;
             }
             // Absolute mode
-            else if (mode == (int)RS274NGC_DISTANCE_MODE.MODE_ABSOLUTE)
+            else if (mode == (int)DISTANCE_MODE.MODE_ABSOLUTE)
             {
                 px = b.x_flag ? b.x_number : (comp && middle ? s.program_x : s.current_x);
                 py = b.y_flag ? b.y_number : (comp && middle ? s.program_y : s.current_y);
@@ -2803,7 +2803,7 @@ namespace KinematicEngine
 
                 if ((status = CHK(
                         (block.g_modes[3] == G_91) ||
-                        (block.g_modes[3] != G_90 && settings.distance_mode == (int)RS274NGC_DISTANCE_MODE.MODE_INCREMENTAL),
+                        (block.g_modes[3] != G_90 && settings.distance_mode == (int)DISTANCE_MODE.MODE_INCREMENTAL),
                         NCE_CANNOT_USE_G53_INCREMENTAL,
                         name)) != 0)
                     return status;

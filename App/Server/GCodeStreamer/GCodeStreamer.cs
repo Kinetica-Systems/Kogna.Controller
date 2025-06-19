@@ -113,6 +113,7 @@ namespace KognaServer.Server
 
         }
 
+
         private void TerminalPrint()
         {
             //var _lineCount = Document.LineCount;
@@ -123,7 +124,7 @@ namespace KognaServer.Server
 
             }
 
-          
+
 
         }
 

@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
 using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using Semi.Avalonia.Tokens;
 
 
@@ -54,7 +57,7 @@ namespace KinematicEngine
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public class SetupData
         {
-            public CCoordMotion CM;
+            public CCoordMotion CM = null!;
             public static int StackIndex { get; set; } = 0;
             public static string[] Stack { get; } = new string[50];
             public char[] linetext = new char[RS274NGC_TEXT_SIZE];  //interpreter linetext
@@ -180,12 +183,48 @@ namespace KinematicEngine
             public int[]? parameter_values;
 
         }
-
-        public enum RetractMode
+        public enum KOGNA_TOKEN : int// KMotionLocked Return Codes
         {
-            OldZ = 0,  // G98: return to initial Z level
-            RPlane = 1   // G99: return to R‐plane
+            KMOTION_LOCKED = 0,
+            KMOTION_IN_USE = 1,
+            KMOTION_NOT_CONNECTED = 2
         }
+        public enum KOGNA_CHECK_READY : int// KMotion CheckReady Return Codes
+        {
+            OK=0,
+            TIMEOUT=1,
+            READY=2,
+            ERROR=3,
+        }
+        public enum IO_TYPE : int
+        {
+            UNDEFINED,
+            DIGITAL_IN,
+            DIGITAL_OUT,
+            ANALOG_IN,
+            ANALOG_OUT
+        }
+        public enum MCODE_TYPE : int
+        {
+            M_Action_None = 0,
+            M_Action_Setbit = 1,
+            M_Action_SetTwoBits = 2,
+            M_Action_DAC = 3,
+            M_Action_Program = 4,
+            M_Action_Program_wait = 5,		
+            M_Action_Program_wait_sync = 6,	
+            M_Action_Program_PC = 7,
+            M_Action_Callback = 8,
+            M_Action_Waitbit = 9,
+        }
+
+    public enum PREV_STOP_TYPE : int
+    {
+        Prev_Stopped_None = 0,
+        Prev_Stopped_Indep = 1,
+        Prev_Stopped_Coord = 2,
+        Prev_Stopped_Coord_Finished = 3,
+    }
         public enum cutter_comp
         {
             OFF = 0, LEFT = 1, RIGHT = 2
@@ -194,7 +233,7 @@ namespace KinematicEngine
         {
             OFF = 0, ON = 1
         }
-        public enum RS274NGC_DISTANCE_MODE
+        public enum DISTANCE_MODE
         {
             MODE_ABSOLUTE = 0, MODE_INCREMENTAL = 1
         }
@@ -228,7 +267,11 @@ namespace KinematicEngine
             STOPPED = 0, CW = 1, CCW = 2
         }
 
-
+        public enum RETRACT_MODE 
+        {
+            R_PLANE = 0,
+            OLD_Z = 1
+        }
 
         public const int G_0 = 0;
         public const int G_1 = 10;

@@ -35,7 +35,8 @@ using System.Collections.Generic;
 
 using KognaServer.ViewModels;
 using KognaServer.Server;
-using System.Reactive.Joins;             // for TextDocument
+using System.Reactive.Joins;
+using KognaServer.Server.KinematicEngine;             // for TextDocument
 
 namespace KognaServer.ViewModels
 {

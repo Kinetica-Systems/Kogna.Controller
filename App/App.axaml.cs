@@ -11,11 +11,13 @@ using KognaServer.ViewModels;
 using KognaServer.Views;
 using KognaServer.Server.KognaServer;
 using KognaServer.Server;
+using KognaServer.Server.KinematicEngine;
 
 namespace KognaServer
 {
     public partial class App : Application
     {
+        public static KinematicEngineServer kServer { get; private set; }
         public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
         // Use async void so we can await splash rendering and startup tasks
@@ -46,6 +48,9 @@ namespace KognaServer
                     splash.ReportProgress(60);
                     var ipc = new SocketIpcServer(serverHost, port: 5000);
                     ipc.Start();
+
+                    var kServer = new KinematicEngineServer(serverHost, 5001);
+                    kServer.StartAsync();
 
                     // Create sub-ViewModels
                     splash.ReportProgress(80);

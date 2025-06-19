@@ -16,16 +16,18 @@
                 Margin="0,0,0,4">
       <Button Content="Open…" Click="OpenFileButton_Clicked"/>
       <Button Content="Save…" Click="SaveFileButton_Clicked"/>
-      <Button Content="Stream" Click="OnStream_Click"/>
+      <Button Content="Stream" x:Name="StreamButton" Click="StreamButton_Click" />
     </StackPanel>
-
+    <ListBox DockPanel.Dock="Bottom" x:Name="ResponseList" Height="150" HorizontalAlignment="Stretch" Background="#333" Foreground="White"/>
     <!-- The code editor itself -->
     <avaloniaEdit:TextEditor
         x:Name="Editor"
         ShowLineNumbers="True"
         FontFamily="Consolas,Monospace"
-        FontSize="12">
+        FontSize="12"
+        MinHeight="300">
     </avaloniaEdit:TextEditor>
+
 
   </DockPanel>
 

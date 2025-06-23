@@ -750,6 +750,32 @@
           }
         }
       },
+      "OxyPlot.Avalonia/2.1.0": {
+        "type": "package",
+        "dependencies": {
+          "Avalonia": "0.10.11",
+          "OxyPlot.Core": "2.1.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/OxyPlot.Avalonia.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/OxyPlot.Avalonia.dll": {}
+        }
+      },
+      "OxyPlot.Core/2.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/OxyPlot.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/OxyPlot.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "runtime.native.System.Data.SqlClient.sni/4.7.0": {
         "type": "package",
         "dependencies": {
@@ -1229,6 +1255,45 @@
         },
         "runtime": {
           "lib/net8.0/Tmds.DBus.Protocol.dll": {}
+        }
+      },
+      "KinematicEngine/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3"
+        },
+        "compile": {
+          "bin/placeholder/KinematicEngine.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/KinematicEngine.dll": {}
+        }
+      },
+      "Server/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Avalonia": "11.3.0",
+          "KinematicEngine": "1.0.0",
+          "Newtonsoft.Json": "13.0.3",
+          "TCPServer": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Server.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Server.dll": {}
+        }
+      },
+      "TCPServer/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/TCPServer.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/TCPServer.dll": {}
         }
       }
     }
@@ -2343,6 +2408,38 @@
         "packageIcon.png"
       ]
     },
+    "OxyPlot.Avalonia/2.1.0": {
+      "sha512": "eYIRqGFeIKg2Iv4kdcfxbQvfqmApqBe556WZjlQ0MU3gH+KRVetigYSFFi74yyUEFLI9kbNwAvS41FeTHgZBrQ==",
+      "type": "package",
+      "path": "oxyplot.avalonia/2.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/netstandard2.0/OxyPlot.Avalonia.dll",
+        "oxyplot.avalonia.2.1.0.nupkg.sha512",
+        "oxyplot.avalonia.nuspec"
+      ]
+    },
+    "OxyPlot.Core/2.1.0": {
+      "sha512": "jG+Ct3T59fXDG2LE1hyUaXqH7i+h5Nfway1iB0+0NaY2mvDsz8Row/BKjiBWCt5NHp3+q9JSMiD2wpin2hh3kw==",
+      "type": "package",
+      "path": "oxyplot.core/2.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "OxyPlot_128.png",
+        "lib/net40/OxyPlot.dll",
+        "lib/net40/OxyPlot.xml",
+        "lib/net45/OxyPlot.dll",
+        "lib/net45/OxyPlot.xml",
+        "lib/netstandard1.0/OxyPlot.dll",
+        "lib/netstandard1.0/OxyPlot.xml",
+        "lib/netstandard2.0/OxyPlot.dll",
+        "lib/netstandard2.0/OxyPlot.xml",
+        "oxyplot.core.2.1.0.nupkg.sha512",
+        "oxyplot.core.nuspec"
+      ]
+    },
     "runtime.native.System.Data.SqlClient.sni/4.7.0": {
       "sha512": "9kyFSIdN3T0qjDQ2R0HRXYIhS3l5psBzQi6qqhdLz+SzFyEy4sVxNOke+yyYv8Cu8rPER12c3RDjLT8wF3WBYQ==",
       "type": "package",
@@ -3251,6 +3348,21 @@
         "tmds.dbus.protocol.0.21.2.nupkg.sha512",
         "tmds.dbus.protocol.nuspec"
       ]
+    },
+    "KinematicEngine/1.0.0": {
+      "type": "project",
+      "path": "Server/KinematicEngine/KinematicEngine.csproj",
+      "msbuildProject": "Server/KinematicEngine/KinematicEngine.csproj"
+    },
+    "Server/1.0.0": {
+      "type": "project",
+      "path": "Server/Server.csproj",
+      "msbuildProject": "Server/Server.csproj"
+    },
+    "TCPServer/1.0.0": {
+      "type": "project",
+      "path": "Server/TCPServer/TCPServer.csproj",
+      "msbuildProject": "Server/TCPServer/TCPServer.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -3264,13 +3376,17 @@
       "Avalonia.Xaml.Behaviors >= 11.0.2",
       "Avalonia.Xaml.Interactivity >= 11.3.0.6",
       "CommunityToolkit.Mvvm >= 8.4.0",
+      "KinematicEngine >= 1.0.0",
       "NewtonSoft.Json >= 13.0.3",
+      "OxyPlot.Avalonia >= 2.1.0",
       "Semi.Avalonia >= 11.2.1.8",
       "Semi.Avalonia.ColorPicker >= 11.2.1.8",
       "Semi.Avalonia.DataGrid >= 11.2.1.8",
       "Semi.Avalonia.TreeDataGrid >= 11.0.10.4",
+      "Server >= 1.0.0",
       "System.Data.SQLite >= 1.0.119",
-      "System.Data.SQLite.Core >= 1.0.119"
+      "System.Data.SQLite.Core >= 1.0.119",
+      "TCPServer >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -3304,7 +3420,17 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj"
+            },
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj"
+            },
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
@@ -3362,6 +3488,10 @@
           "NewtonSoft.Json": {
             "target": "Package",
             "version": "[13.0.3, )"
+          },
+          "OxyPlot.Avalonia": {
+            "target": "Package",
+            "version": "[2.1.0, )"
           },
           "Semi.Avalonia": {
             "target": "Package",

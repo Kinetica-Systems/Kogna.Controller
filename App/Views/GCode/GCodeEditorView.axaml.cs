@@ -40,7 +40,6 @@ using KognaServer.Server;
 using System.Reactive.Joins;
 using System.Security.Cryptography.X509Certificates;
 using Avalonia.Controls.Documents;
-using KognaServer.Server.KinematicEngine;
 using System.Net;
 
 namespace KognaServer.Views
@@ -55,11 +54,11 @@ namespace KognaServer.Views
         private readonly ObservableCollection<string> _responses = new();
         private GCodeStreamer? bufferCommandFile { get; set; } = null!;
         private String[] bufferedLines = [];
-        private readonly KinematicEngineClient _client;
+        private readonly KinematicEngineClient _client = null!;
         public GCodeEditorView()
         {
             InitializeComponent();
-            _client = new KinematicEngineClient("localhost", 5001);
+            //_client = new KinematicEngineClient("localhost", 5000);
             ResponseList.ItemsSource = _responses;
             Editor.Background = Brushes.Transparent;
             Editor.Foreground = Brushes.LightGray;
@@ -133,7 +132,8 @@ namespace KognaServer.Views
                         .Where(l => !string.IsNullOrWhiteSpace(l)))
             {
                 // send each line and await the engine’s reply
-                var response = await _client.SendCommandAsync(line);
+                var newline = "r " + line;
+                var response = await _client.SendCommandAsync(newline);
 
                 if (response is null)
                 {
@@ -155,14 +155,14 @@ namespace KognaServer.Views
                 }
             }
 
-            await TerminalPrint();
+            //await TerminalPrint();
         }
 
 
 
 
 
-        private async Task TerminalPrint()
+    /*    private async Task TerminalPrint()
         {
             // 1) Turn each DocumentLine into its exact text
             var lines = Editor.Document.Lines
@@ -182,6 +182,7 @@ namespace KognaServer.Views
             }
             
         }
+        */
         protected override void OnUnloaded(RoutedEventArgs e)
             {
                 _client.Dispose();

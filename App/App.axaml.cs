@@ -9,16 +9,16 @@ using System.Linq;
 using System.Threading.Tasks;
 using KognaServer.ViewModels;
 using KognaServer.Views;
-using KognaServer.Server.KognaServer;
 using KognaServer.Server;
-using KognaServer.Server.KinematicEngine;
+
+using KognaComms;
 
 namespace KognaServer
 {
     public partial class App : Application
     {
-        public static KinematicEngineServer kServer { get; private set; }
         public override void Initialize() => AvaloniaXamlLoader.Load(this);
+
 
         // Use async void so we can await splash rendering and startup tasks
         public override async void OnFrameworkInitializationCompleted()
@@ -34,31 +34,25 @@ namespace KognaServer
                 DisableAvaloniaDataAnnotationValidation();
 
                 // 3) Give the splash time to render
-                await Task.Delay(100);
+                //await Task.Delay(100);
 
                 // 4) Perform startup work off the UI thread
                 var mainVm = await Task.Run(() =>
                 {
-                    // Start Kogna server
-                    splash.ReportProgress(30);
-                    var serverHost = new KognaServerMain("192.168.0.50", 2000);
+       
+                    splash.ReportProgress(20);
+                    var serverHost = new KognaControl("192.168.0.50", 2000);
                     serverHost.Start();
 
-                    // Start IPC server
-                    splash.ReportProgress(60);
-                    var ipc = new SocketIpcServer(serverHost, port: 5000);
-                    ipc.Start();
 
-                    var kServer = new KinematicEngineServer(serverHost, 5001);
-                    kServer.StartAsync();
 
                     // Create sub-ViewModels
-                    splash.ReportProgress(80);
-                    var droVm           = new DroViewModel(serverHost);
-                    var terminalVm      = new TerminalViewModel();
-                    var connectionVm    = new ConnectionViewModel();
-                    var GcodeVm         = new GCodeEditorViewModel();
-                   // var Advanced        = new AdvancedSettingsWindowViewModel();
+                    splash.ReportProgress(60);
+                    var droVm = new DroViewModel(serverHost);
+                    var terminalVm = new TerminalViewModel();
+                    var connectionVm = new ConnectionViewModel();
+                    var GcodeVm = new GCodeEditorViewModel();
+                    // var Advanced        = new AdvancedSettingsWindowViewModel();
 
 
                     // Build MainWindowViewModel
@@ -73,7 +67,7 @@ namespace KognaServer
                 };
                 desktop.MainWindow = mainWindow;
 
-                
+
                 mainWindow.Show();
 
                 // 6) Close the splash

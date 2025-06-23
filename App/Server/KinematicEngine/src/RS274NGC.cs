@@ -6,9 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Threading;
 using System.Collections.Generic;
-using Avalonia.Markup.Xaml.MarkupExtensions;
-using AvaloniaEdit.Editing;
-using Semi.Avalonia.Tokens;
+
 
 namespace KinematicEngine
 {
@@ -85,7 +83,7 @@ namespace KinematicEngine
 
         // --- interfaces?
         private static readonly int[] m_modal_group = Enumerable.Repeat(0, 120).ToArray();
-        public static SetupData _setup;
+        public static SetupData _setup = null!;
 
         /// <summary>
         /// Initialize interpreter. :contentReference[oaicite:4]{index=4}
@@ -184,13 +182,13 @@ namespace KinematicEngine
 
             // copy any parameter settings into parameters[]
             for (int i = 0; i < _setup.parameter_occurrence; i++)
-                _setup.parameters[_setup.parameter_numbers[i]] = _setup.parameter_values[i];
+                _setup.parameters[_setup.parameter_numbers![i]] = _setup.parameter_values![i];
 
             if (_setup.line_length != 0)
             {
-                status = ExecuteBlock(_setup.block1, _setup);
-                WriteGCodes(_setup.block1, _setup);
-                WriteMCodes(_setup.block1, _setup);
+                status = ExecuteBlock(_setup.block1!, _setup);
+                WriteGCodes(_setup.block1!, _setup);
+                WriteMCodes(_setup.block1!, _setup);
                 WriteSettings(_setup);
                 if (status != RS274NGC_OK &&
                     status != RS274NGC_EXECUTE_FINISH &&
@@ -386,10 +384,10 @@ namespace KinematicEngine
                 return NCE_TOOL_MAX_TOO_LARGE;
 
             for (int n = 0; n <= _setup.tool_max; n++)
-                _setup.tool_table[n] = Canon.GET_EXTERNAL_TOOL_TABLE(n);
+                _setup.tool_table![n] = Canon.GET_EXTERNAL_TOOL_TABLE(n);
 
             for (int n = _setup.tool_max + 1; n <= CANON_TOOL_MAX; n++)
-                _setup.tool_table[n] = new CANON_TOOL_TABLE();
+                _setup.tool_table![n] = new CANON_TOOL_TABLE();
 
             return RS274NGC_OK;
         }
@@ -425,7 +423,7 @@ namespace KinematicEngine
             string? line;
             bool seenFirstPercent = false;
 
-            while ((line = _setup.file_pointer.ReadLine()) != null)
+            while ((line = _setup.file_pointer!.ReadLine()) != null)
             {
                 if (line.Trim() == "%")
                 {
@@ -455,7 +453,7 @@ namespace KinematicEngine
             if (mdi == null && _setup.file_pointer == null)
                 return NCE_FILE_NOT_OPEN;
 
-            string? text = mdi ?? _setup.file_pointer.ReadLine();
+            string? text = mdi ?? _setup.file_pointer!.ReadLine();
             if (text == null) return RS274NGC_ENDFILE;
 
             _setup.linetext = text.ToCharArray();
@@ -474,17 +472,17 @@ namespace KinematicEngine
 
         public static void ActiveGCodes(int[] codes)
         {
-            Array.Copy(_setup.active_g_codes, codes, RS274NGC_ACTIVE_G_CODES);
+            Array.Copy(_setup.active_g_codes!, codes, RS274NGC_ACTIVE_G_CODES);
         }
 
         public static void ActiveMCodes(int[] codes)
         {
-            Array.Copy(_setup.active_m_codes, codes, RS274NGC_ACTIVE_M_CODES);
+            Array.Copy(_setup.active_m_codes!, codes, RS274NGC_ACTIVE_M_CODES);
         }
 
         public static void ActiveSettings(double[] settings)
         {
-            Array.Copy(_setup.active_settings, settings, RS274NGC_ACTIVE_SETTINGS);
+            Array.Copy(_setup.active_settings!, settings, RS274NGC_ACTIVE_SETTINGS);
         }
 
         public static void ErrorText(int errorCode, StringBuilder errorText, int maxSize)
@@ -682,7 +680,7 @@ namespace KinematicEngine
             var g = s.active_g_codes;
             var compSide = (cutter_comp)s.cutter_comp_side;
             var units = (CANON_UNITS)s.length_units;
-            g[0] = s.sequence_number;
+            g![0] = s.sequence_number;
             g[1] = s.motion_mode;
             g[2] = block == null ? -1 : block.g_modes[0];
             g[3] = s.plane == (int)CANON_PLANE.XY ? G_17 : s.plane == (int)CANON_PLANE.XZ ? G_18 : G_19;
@@ -698,7 +696,7 @@ namespace KinematicEngine
                     s.feed_mode == (int)RS274NGC_FEED_MODE.PER_MINUTE ? G_94 : G_95;
             g[8] = s.origin_index < 7 ? 530 + 10 * s.origin_index : 584 + s.origin_index;
             g[9] = s.tool_length_offset == 0 && s.tool_xoffset == 0 && s.tool_yoffset == 0 ? G_49 : G_43;
-            g[10] = s.retract_mode == block.OLD_Z ? G_98 : G_99;
+            g[10] = s.retract_mode == block!.OLD_Z ? G_98 : G_99;
             g[11] = s.motion_mode == (int)CANON_MOTION_MODE.CANON_CONTINUOUS ? G_64 : G_61;
             g[12] = s.spindle_mode == (int)CANON_SPINDLE_MODE.CANON_SPINDLE_NORMAL ? G_97 : G_96;
             return RS274NGC_OK;
@@ -709,7 +707,7 @@ namespace KinematicEngine
         public static int WriteMCodes(Block block, SetupData s)
         {
             var m = s.active_m_codes;
-            m[0] = s.sequence_number;
+            m![0] = s.sequence_number;
             m[1] = block == null ? -1 : block.m_modes[4];
             m[2] = s.spindle_turning == (int)SPINDLE_STATE.STOPPED ? 5 : s.spindle_turning == (int)SPINDLE_STATE.CW ? 3 : 4;
             m[3] = block == null ? -1 : block.m_modes[6];
@@ -725,7 +723,7 @@ namespace KinematicEngine
         public static int WriteSettings(SetupData s)
         {
             var a = s.active_settings;
-            a[0] = s.sequence_number;
+            a![0] = s.sequence_number;
             a[1] = (int)s.feed_rate;
             a[2] = s.speed;
             return RS274NGC_OK;
@@ -2056,12 +2054,12 @@ namespace KinematicEngine
             else if (gCode == G_52)
             {
                 // Absolute axis‐offset set
-                if (b.x_flag) { s.axis_offset_x = b.x_number; s.current_x = s.current_x; }
-                if (b.y_flag) { s.axis_offset_y = b.y_number; s.current_y = s.current_y; }
-                if (b.z_flag) { s.axis_offset_z = b.z_number; s.current_z = s.current_z; }
-                if (b.a_flag) { s.AA_axis_offset = b.a_number; s.AA_current = s.AA_current; }
-                if (b.b_flag) { s.BB_axis_offset = b.b_number; s.BB_current = s.BB_current; }
-                if (b.c_flag) { s.CC_axis_offset = b.c_number; s.CC_current = s.CC_current; }
+                if (b.x_flag) { s.axis_offset_x = b.x_number; }
+                if (b.y_flag) { s.axis_offset_y = b.y_number; }
+                if (b.z_flag) { s.axis_offset_z = b.z_number; }
+                if (b.a_flag) { s.AA_axis_offset = b.a_number; }
+                if (b.b_flag) { s.BB_axis_offset = b.b_number; }
+                if (b.c_flag) { s.CC_axis_offset = b.c_number; }
 
                 Canon.SET_ORIGIN_OFFSETS(
                     s.origin_offset_x + s.axis_offset_x,

@@ -147,11 +147,7 @@ private const double L6   = 200.0;    // mm    private const double L6 = 0.200;
     }
 
     // Rotate a point around (xc,yc,zc) by angles a,b,c (degrees)
-    public void Rotate3(
-        double xc, double yc, double zc,
-        double x,  double y,  double z,
-        double a,  double b,  double c,
-        out double xp, out double yp, out double zp)
+    public void Rotate3(double xc, double yc, double zc, double x,  double y,  double z, double a,  double b,  double c, out double xp, out double yp, out double zp)
     {
         double ar = DegToRad(a);
         double br = DegToRad(b);
@@ -171,10 +167,7 @@ private const double L6   = 200.0;    // mm    private const double L6 = 0.200;
     }
 
     // Direct inverse kinematics solution (fanuc 6-axis)
-    private static bool SolveInverseKinematicsFanuc(
-        double x, double y, double z,
-        double a, double b, double c,
-        double[] Acts)
+    private static bool SolveInverseKinematicsFanuc(double x, double y, double z, double a, double b, double c, double[] Acts)
     {
         double ar = DegToRad(a);
         double br = DegToRad(b);

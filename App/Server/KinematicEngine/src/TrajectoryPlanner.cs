@@ -188,7 +188,7 @@ namespace KinematicEngine
                 u1 = u1,
                 v1 = v1,
 
-                angle = null,  // you’ll overwrite this in CCoordMotion
+                angle = null!,  // you’ll overwrite this in CCoordMotion
                 Duration = 0
             };
             _segments.Add(seg);     // <-- this line was missing
@@ -229,7 +229,7 @@ namespace KinematicEngine
                 u1 = u1,
                 v1 = v1,
 
-                angle = null,  // you’ll overwrite this in CCoordMotion
+                angle = null!,  // you’ll overwrite this in CCoordMotion
                 Duration = 0
             };
             _segments.Add(seg);     // <-- this line was missing
@@ -240,9 +240,7 @@ namespace KinematicEngine
         /// <summary>
         /// Insert a dwell segment. :contentReference[oaicite:4]{index=4}
         /// </summary>
-        public static int InsertDwell(
-            double t, double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0,
-            int sequence_number, int ID)
+        public static int InsertDwell(double t, double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0, int sequence_number, int ID)
         {
             var p = GetSegPtr(nsegs);
             p.type = SEG_DWELL;
@@ -264,13 +262,8 @@ namespace KinematicEngine
         /// <summary>
         /// Insert an arc segment. :contentReference[oaicite:5]{index=5}
         /// </summary>
-        public static int InsertArcSeg(
-            int plane,
-            double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0,
-            double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1,
-            double xc, double yc, bool dirIsCCW,
-            double MaxVel, double MaxAccel, double MaxDecel, double MaxLength,
-            int sequence_number, int ID)
+        public static int InsertArcSeg(int plane, double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0, double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1,
+                                        double xc, double yc, bool dirIsCCW, double MaxVel, double MaxAccel, double MaxDecel, double MaxLength, int sequence_number, int ID)
         {
             double dx = CalcLengthAlongCircle(x0, y0, x1, y1, xc, yc, dirIsCCW, out double radius, out double theta0, out double dtheta);
             var p = GetSegPtr(nsegs);

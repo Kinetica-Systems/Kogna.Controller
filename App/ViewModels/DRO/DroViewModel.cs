@@ -16,7 +16,7 @@ using CommunityToolkit.Mvvm.Input;
 using KognaServer.Models;
 using KognaServer.ViewModels;
 using KognaServer.Views;
-using KognaServer.Server.KognaServer;
+using KognaComms;
 
 
 
@@ -28,16 +28,16 @@ namespace KognaServer.ViewModels
         public ObservableCollection<AxisInfo> Axes { get; }
         public TcpPose Pose { get; } = new TcpPose();
         private static readonly string[] sourceArray = ["X", "Y", "Z", "A", "B", "C"];
-
+        public readonly KognaControl server = null!;
 
         
-        public DroViewModel(KognaServerMain server)
+        public DroViewModel(KognaControl server)
         {
             Axes = new ObservableCollection<AxisInfo>
             (
             sourceArray.Select(n => new AxisInfo(n))
             );
-
+/*
             server.OnStatusUpdate += s =>
             {
                 Dispatcher.UIThread.Post(() =>
@@ -51,7 +51,7 @@ namespace KognaServer.ViewModels
 
                 });
             };
-        }
+  */      }
 
        
 

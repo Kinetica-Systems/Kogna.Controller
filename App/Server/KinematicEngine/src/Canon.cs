@@ -1,7 +1,6 @@
 using System;
 using System.Globalization;
 using System.Text;
-using Avalonia.Controls.Platform;
 using static KinematicEngine.RS274NGC;
 
 namespace KinematicEngine

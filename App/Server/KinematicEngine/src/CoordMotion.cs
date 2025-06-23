@@ -3,9 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using AvaloniaEdit.Document;
-using KognaServer.Models;
-using KognaServer.Views;
+
 
 namespace KinematicEngine
 {
@@ -31,33 +29,30 @@ namespace KinematicEngine
         private double m_TimeAlreadyExecuted;
         private bool m_ThreadingMode;
         private bool m_SegmentsStartedExecuting;
-        private bool m_TapCycleInProgress = false;
-        private int m_PreviouslyStopped;
-        private int m_Stopping = 0;
-        private int STOPPED_NONE = 0;
-        private int m_PreviouslyStoppedType = 0;
-        private int SEG_UNDEFINED = 0;
-        private int m_PreviouslyStoppedID = -1;
-        private bool m_TCP_affects_actuators = true;  // assume Tool Center Point has effects except for simple cases
+        //private bool m_TapCycleInProgress = false;
+        //private int m_PreviouslyStopped;
+        //private int m_Stopping = 0;
+        //private int STOPPED_NONE = 0;
+        //private int m_PreviouslyStoppedType = 0;
+        //private int SEG_UNDEFINED = 0;
+        //private int m_PreviouslyStoppedID = -1;
+        //private bool m_TCP_affects_actuators = true;  // assume Tool Center Point has effects except for simple cases
 
 
         // Control flags
         private bool m_Abort;
         private bool m_Halt;
-        public bool Simulate { get; set; } = false;
+        //public bool Simulate { get; set; } = false;
         public bool DisableSoftLimits { get; private set; } = false;
         public bool AxisDisabled { get; set; }
-
-        // internal abort flag
-
 
         /// <summary>Request an abort.</summary>
         public void SetAbort() => m_Abort = true;
         public void ClearAbort() => m_Abort = false;
         public bool GetAbort() => m_Abort;
-        public void SetHalt() => m_Halt = true;
-        public void ClearHalt() => m_Halt = false;
-        public bool GetHalt() => m_Halt;
+        //public void SetHalt() => m_Halt = true;
+        //public void ClearHalt() => m_Halt = false;
+        //public bool GetHalt() => m_Halt;
 
         public int GetDestination(int axis, out double d)
         {
@@ -67,10 +62,10 @@ namespace KinematicEngine
         /// <summary>Clear any pending abort.</summary>
 
         // Overrides
-        private readonly double m_FeedRateOverride = 1.0;
-        private readonly double m_FeedRateRapidOverride = 1.0;
-        private readonly double m_HardwareFRORange = 0.0;
-        private readonly double m_SpindleRateOverride = 1.0;
+        //private readonly double m_FeedRateOverride = 1.0;
+       // private readonly double m_FeedRateRapidOverride = 1.0;
+       // private readonly double m_HardwareFRORange = 0.0;
+       // private readonly double m_SpindleRateOverride = 1.0;
         public bool RapidParamsDirty { get; set; } = true;
 
         // Axis definitions
@@ -79,33 +74,33 @@ namespace KinematicEngine
         // simulation & flow control
         private bool m_Simulate;
         private bool m_DoTime;
-        private bool m_Trace;
+       // private bool m_Trace;
         // Write buffer
-        private StringBuilder m_WriteLineBuffer = new StringBuilder();
-        private double m_WriteLineBufferTime;
+       // private StringBuilder m_WriteLineBuffer = new StringBuilder();
+        //private double m_WriteLineBufferTime;
 
         // Delegate definitions
         public delegate void StraightTraverseCallback(double x, double y, double z, int seq);
         public delegate void StraightTraverseSixAxisCallback(double x, double y, double z, double a, double b, double c, int seq);
         public delegate void StraightFeedCallback(double rate, double x, double y, double z, int seq, int id);
         public delegate void StraightFeedSixAxisCallback(double rate, double x, double y, double z, double a, double b, double c, int seq, int id);
-        public delegate void ArcFeedCallback(bool zeroLen, double rate, int plane, double fe, double se, double fa, double sa, int rot, double ae, int seq, int id);
-        public delegate void ArcFeedSixAxisCallback(bool zeroLen, double rate, int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, int seq, int id);
+        //public delegate void ArcFeedCallback(bool zeroLen, double rate, int plane, double fe, double se, double fa, double sa, int rot, double ae, int seq, int id);
+        //public delegate void ArcFeedSixAxisCallback(bool zeroLen, double rate, int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, int seq, int id);
 
         // Callback setters
-        private StraightTraverseCallback? m_StraightTraverseCb;
-        private StraightTraverseSixAxisCallback? m_StraightTraverse6Cb;
-        private StraightFeedCallback? m_StraightFeedCb;
-        private StraightFeedSixAxisCallback? m_StraightFeed6Cb;
-        private ArcFeedCallback? m_ArcFeedCb;
-        private ArcFeedSixAxisCallback? m_ArcFeed6Cb;
+        private StraightTraverseCallback? m_StraightTraverseCb = null!;
+        private StraightTraverseSixAxisCallback? m_StraightTraverse6Cb = null!;
+        private StraightFeedCallback? m_StraightFeedCb = null!;
+        private StraightFeedSixAxisCallback? m_StraightFeed6Cb = null!;
+        //private ArcFeedCallback? m_ArcFeedCb = null!;
+        //private ArcFeedSixAxisCallback? m_ArcFeed6Cb = null!;
 
 
         private const int MAX_SPECIAL_CMDS = 100;
         private const int MAX_LINE = 100;
-        private bool feed_override = true;	// whether feed override is enabled
-        private bool speed_override = true;  // whether spindle override is enabled
-        private int m_NumLinearNotDrawn = 0;
+        //private bool feed_override = true;	// whether feed override is enabled
+        //private bool speed_override = true;  // whether spindle override is enabled
+        //private int m_NumLinearNotDrawn = 0;
         // these mirror your C++ globals/member-variables:
         private SpecialCmd[] specialCmds;
         private int[] specialCmdsInitialSequenceNo;
@@ -125,14 +120,14 @@ namespace KinematicEngine
 
 
         public CKinematics Kinematics { get; private set; }
-        public event Action<Segment[]> OnSegmentReady;
+        //public event Action<KinematicEngine.Segment[]> ?OnSegmentReady;
         // give yourself a public setter (so server can update it):
-        private double _lastFeedRate;
-        public double LastFeedRate
-                {
-                    get => _lastFeedRate;
-                    set => _lastFeedRate = value;
-                }
+        //private double _lastFeedRate;
+        //public double LastFeedRate
+        //        {
+        //            get => _lastFeedRate;
+        //            set => _lastFeedRate = value;
+        //        }
 
 
         /// <summary>
@@ -262,12 +257,6 @@ namespace KinematicEngine
         }
 
 
-        // StraightFeedAccel overloads
-        public int StraightFeedAccel(double feed, double accel, double x, double y, double z, double a, double b, double c, int seq, int id)
-            => StraightFeedAccel(x, y, z, a, b, c, current_u, current_v, feed, accel, false, false, seq, id);
-
-        public int StraightFeedAccel(double x, double y, double z, double a, double b, double c, double u, double v, double feed, double accel, int seq, int id)
-            => StraightFeedAccel(x, y, z, a, b, c, u, v, feed, accel, false, false, seq, id);
 
         public int StraightFeedAccel(double x, double y, double z, double a, double b, double c, double u, double v, double feedRate, double accel, bool rapidMode, bool noCallback, int seq, int id)
         {
@@ -276,12 +265,6 @@ namespace KinematicEngine
             return 0;
         }
 
-        // ArcFeed overloads
-        public int ArcFeed(double feedRate, int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, int seq, int id)
-            => ArcFeedAccel(a, b, c, a, b, c, current_u, current_v, plane, fe, se, fa, sa, rot, ae, feedRate, double.PositiveInfinity, seq, id);
-
-        public int ArcFeed(double feedRate, int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, double u, double v, int seq, int id)
-            => ArcFeedAccel(a, b, c, a, b, c, u, v, plane, fe, se, fa, sa, rot, ae, feedRate, double.PositiveInfinity, seq, id);
 
         public int ArcFeedAccel(double x, double y, double z, double a, double b, double c, double u, double v, int plane, double fe, double se, double fa, double sa, int rot, double ae, double feedRate, double accel, int seq, int id)
         {
@@ -289,9 +272,6 @@ namespace KinematicEngine
             // ... implementation
             return 0;
         }
-
-        public int StraightFeed(double rate, double x, double y, double z, double a, double b, double c, double u, double v, int seq = -1, int id = 0)
-            => StraightFeedAccel(x, y, z, a, b, c, u, v, rate, rate, false, false, seq, id);
 
         public int ArcFeed(int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, double u, double v, double feedRate, double accel, int seq = -1, int id = 0)
             => ArcFeedAccel(a, b, c, a, b, c, u, v, plane, fe, se, fa, sa, rot, ae, feedRate, accel, seq, id);
@@ -408,19 +388,22 @@ namespace KinematicEngine
         }
 
 
-    public void GetPosition(int axis, out double pos) {
-        switch(axis) {
-            case 1: pos = current_x; break;
-            case 2: pos = current_y; break;
-            case 3: pos = current_z; break;
-            case 4: pos = current_a; break;
-            case 5: pos = current_b; break;
-            case 6: pos = current_c; break;
-            case 7: pos = current_u; break;
-            case 8: pos = current_v; break;
-            default: pos = 0; break;
+        public double GetPosition(int axis, out double pos)
+        {
+            switch (axis)
+            {
+                case 1: pos = current_x; break;
+                case 2: pos = current_y; break;
+                case 3: pos = current_z; break;
+                case 4: pos = current_a; break;
+                case 5: pos = current_b; break;
+                case 6: pos = current_c; break;
+                case 7: pos = current_u; break;
+                case 8: pos = current_v; break;
+                default: pos = 0; break;
 
-        }
+            }
+        return pos;
     }
 
 
@@ -517,13 +500,9 @@ namespace KinematicEngine
         }
 
         public int GetAxisDefinitions(out int x, out int y, out int z, out int a, out int b, out int c)
-             => GetAxisDefinitions(out x, out y, out z, out a, out b, out c, out int u, out int v);
-
-        public int GetAxisDefinitions(out int x, out int y, out int z, out int a, out int b, out int c, out int u, out int v)
         {
             x = x_axis; y = y_axis; z = z_axis;
             a = a_axis; b = b_axis; c = c_axis;
-            u = u_axis; v = v_axis;
             m_DefineCS_valid = true;
             return 0;
         }
@@ -581,7 +560,7 @@ namespace KinematicEngine
             _kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, Acts);
 
             // 1) Call the int-returning function
-            int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis, out int u_axis, out int v_axis);
+            int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis);
 
             // 2) Check for non-zero (error)
             if (rc != 0)
@@ -603,9 +582,9 @@ namespace KinematicEngine
                 return true;
             if (c_axis >= 0 && CheckLimit(c_axis, Acts[c_axis], MP.SoftLimitPosX, MP.SoftLimitNegX, 'C', errMsg))
                 return true;
-            if (u_axis >= 0 && CheckLimit(u_axis, Acts[u_axis], MP.SoftLimitPosX, MP.SoftLimitNegX, 'X', errMsg))
+            if (u_axis >= 0 && CheckLimit(u_axis, Acts[u_axis], MP.SoftLimitPosX, MP.SoftLimitNegX, 'U', errMsg))
                 return true;
-            if (v_axis >= 0 && CheckLimit(v_axis, Acts[v_axis], MP.SoftLimitPosX, MP.SoftLimitNegX, 'X', errMsg))
+            if (v_axis >= 0 && CheckLimit(v_axis, Acts[v_axis], MP.SoftLimitPosX, MP.SoftLimitNegX, 'V', errMsg))
                 return true;
 
             return false;
@@ -625,7 +604,7 @@ namespace KinematicEngine
             x = y = z = a = b = c = u = v = 0.0;
 
             // 1) Figure out which logical axis maps to which motor index
-            int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis, out int u_axis, out int v_axis);
+            int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis);
 
             if (rc != 0)
             {
@@ -656,7 +635,7 @@ namespace KinematicEngine
             }
 
             // 3) Convert to CAD coords
-            double tx, ty, tz, ta, tb, tc, tu2, tv2;
+            double tx, ty, tz, ta, tb, tc;
             _kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc);
 
             // 4) Compute tolerances

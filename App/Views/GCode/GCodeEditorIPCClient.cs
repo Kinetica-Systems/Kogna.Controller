@@ -14,22 +14,35 @@ namespace KognaServer.Views
     /// </summary>
     public class KinematicEngineClient : IDisposable
     {
-        private readonly TcpClient _tcp;
-        //private readonly NetworkStream _stream;
+        private readonly TcpClient _ipcClient;
         private readonly SemaphoreSlim _sendLock = new(1, 1);
-        private readonly StreamReader _reader;
-        private readonly StreamWriter   _writer;
-
+        private readonly StreamReader _ipcReader;
+        private readonly StreamWriter   _ipcWriter;
         public KinematicEngineClient(string host, int port)
+        
         {
-            _tcp = new TcpClient("localhost", 5001);
-          //  _tcp.Connect(host, port);
-           var _stream = _tcp.GetStream();
-            _reader = new StreamReader(_stream, Encoding.ASCII, leaveOpen: true);
-            _writer = new StreamWriter(_stream, Encoding.ASCII, leaveOpen: true)
+            try
             {
-                AutoFlush = true
-            };
+                _ipcClient = new TcpClient("localhost", 5000);
+                var stream = _ipcClient.GetStream();
+                _ipcReader = new StreamReader(stream, Encoding.UTF8);
+                _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+
+                Console.WriteLine("🔌 IPC socket connected to 127.0.0.1:5000\n");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($" IPC connection failed: {ex.Message}\n");
+
+                // fall back to harmless, never-null stubs
+                _ipcClient = new TcpClient();                  
+                _ipcReader = new StreamReader(Stream.Null);        
+                _ipcWriter = new StreamWriter(Stream.Null){AutoFlush=true};
+        
+            }
+
+
+
         }
 
         /// <summary>
@@ -42,10 +55,10 @@ namespace KognaServer.Views
             try
             {
                 // Write the command plus newline
-                await _writer.WriteLineAsync(commandLine);
+                await _ipcWriter.WriteLineAsync(commandLine);
 
                 // Read one response line (up to the newline)
-                var json = await _reader.ReadLineAsync();
+                var json = await _ipcReader.ReadLineAsync();
                 //Console.WriteLine($"[RAW JSON]  {json}");
 
                 // if the connection closed or no data, return null
@@ -64,9 +77,9 @@ namespace KognaServer.Views
 
         public void Dispose()
         {
-            _reader?.Dispose();
-            _writer?.Dispose();
-            _tcp?.Close();
+            _ipcReader?.Dispose();
+            _ipcWriter?.Dispose();
+            _ipcClient?.Close();
             _sendLock?.Dispose();
         }
     }

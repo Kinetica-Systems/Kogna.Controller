@@ -18,6 +18,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Prevent files under KinematicEngine/ from being compiled by MainApp -->
+
+
+
+
+    <Compile Remove="Server\**\*.cs" />
+    <Compile Remove="Server\**\AssemblyInfo.cs" />
+    <None    Remove="Server\*.cs" />
+    <ProjectReference Include="Server\Server.csproj"
+                      Condition="Exists('Server\Server.csproj')" />
+    <ProjectReference Include="Server\KinematicEngine\KinematicEngine.csproj"
+                      Condition="Exists('Server\KinematicEngine\KinematicEngine.csproj')" />
+    <ProjectReference Include="Server\TCPServer\TCPServer.csproj"
+                      Condition="Exists('Server\TCPServer\TCPServer.csproj')" />
+
     <PackageReference Include="Avalonia" Version="11.3.0" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
@@ -32,6 +47,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="NewtonSoft.Json" Version="13.0.3" />
     <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.0.2" />
+    <PackageReference Include="OxyPlot.Avalonia" Version="2.1.0" />
     <PackageReference Include="Semi.Avalonia" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.8" />

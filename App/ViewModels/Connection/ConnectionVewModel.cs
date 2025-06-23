@@ -20,11 +20,12 @@ namespace KognaServer.ViewModels
         private readonly StreamWriter _ipcWriter;
         private readonly CancellationTokenSource _cts = new();
 
-        [ObservableProperty]
-        private bool _isConnected;
+      //  [ObservableProperty]
+        private bool _kognaIsConnected {get; set;}
+        private bool _isConnected { get; }
 
-        public string ButtonConnectionStatus => IsConnected ? "Connected" : "Disconnected";
-        public IBrush ButtonBrush        => IsConnected ? Brushes.Green : Brushes.Red;
+        public string ButtonConnectionStatus => !_kognaIsConnected ? "Connected" : "Disconnected";
+        public IBrush ButtonBrush        => !_kognaIsConnected ? Brushes.Green : Brushes.Red;
 
         public ConnectionViewModel()
         {
@@ -43,7 +44,7 @@ namespace KognaServer.ViewModels
                 _ipcClient = new TcpClient();                  // not connected
                 _ipcReader = new StreamReader(Stream.Null);        
                 _ipcWriter = new StreamWriter(Stream.Null){AutoFlush=true};
-                _isConnected = false;
+                _kognaIsConnected = false;
             }
 
             // 2) Start polling the KognaServer connection state
@@ -54,15 +55,9 @@ namespace KognaServer.ViewModels
         [RelayCommand]
         public async Task ConnectAsync()
         {
-            await SendCommandAsync("Start");
+            await SendCommandAsync("IsConnected");
         }
 
-        // 4) (Optional) you could add a DisconnectAsync similarly:
-        // [RelayCommand]
-        // public async Task DisconnectAsync()
-        // {
-        //     await SendCommandAsync("Stop");
-        // }
 
         // 5) Periodically ask the server if it's connected
         private async Task PollConnectionLoopAsync(CancellationToken ct)
@@ -75,7 +70,7 @@ namespace KognaServer.ViewModels
                     // marshal back onto UI thread
                     Dispatcher.UIThread.Post(() =>
                     {
-                        IsConnected = connected;
+                        _kognaIsConnected = connected;
                         OnPropertyChanged(nameof(ButtonConnectionStatus));
                         OnPropertyChanged(nameof(ButtonBrush));
                     });

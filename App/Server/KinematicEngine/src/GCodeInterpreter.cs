@@ -73,6 +73,7 @@ namespace KinematicEngine
                 Action = action;
                 DParams = new double[MAX_MCODE_DOUBLE_PARAMS];
                 ParameterString = string.Empty;
+                return;
             }
         }
 
@@ -91,58 +92,52 @@ namespace KinematicEngine
         /// <summary>
         /// Full C# port of the DynoMotion CGCodeInterpreter class.
         /// </summary>
-        public class GCodeInterpreter : IDisposable
+        /// <remarks>
+        /// Constructor with reference to the coordination/motion engine.
+        /// </remarks>
+        public class GCodeInterpreter(CCoordMotion coordMotion) : IDisposable
         {
             // --- Constants ---
-            private const int INTERP_TEXT_SIZE = 4096;
+            //private const int INTERP_TEXT_SIZE = 4096;
 
             // --- Core fields ---
-            private readonly CCoordMotion CoordMotion;
+            private readonly CCoordMotion CoordMotion = coordMotion;
             private bool m_Halt;
             private bool m_HaltNextLine;
             private int m_CurrentLine;
-            private int m_GCodeReads;
-            private string m_InFile;
+            private int? m_GCodeReads;
+            private string? m_InFile;
             private int m_exitcode;
             private int m_InvokeExitcode;
-            private Thread m_InterpretThread;
-            private Thread m_InvokeThread;
+            private Thread? m_InterpretThread;
+            private Thread? m_InvokeThread;
 
             // --- File paths ---
-            public string ToolFile { get; private set; }
-            public string SetupFile { get; private set; }
-            public string GeoFile { get; private set; }
-            public string VarsFile { get; private set; }
+            public string? ToolFile { get; private set; }
+            public string? SetupFile { get; private set; }
+            public string? GeoFile { get; private set; }
+            public string? VarsFile { get; private set; }
 
             // --- Callbacks ---
-            private GStatusCallback _statusFn;
-            private GCompleteCallback _completeFn;
-            private GUserCallback _userFn;
-            private GMUserCallback _userFnMCode;
-            private GScreenScriptCallback _screenScriptCallback;
+            private GStatusCallback? _statusFn;
+            private GCompleteCallback? _completeFn;
+            //private GUserCallback? _userFn;
+            //private GMUserCallback? _userFnMCode;
+            //private GScreenScriptCallback? _screenScriptCallback;
 
             // --- Interpreter state ---
-            private SetupData _setup;
+            private SetupData? _setup;
             // in GCodeInterpreter.cs, inside the GCodeInterpreter class
-            public double CurrentFeedRate => _setup.feed_rate;
+            public double CurrentFeedRate => _setup!.feed_rate;
 
-            public string ErrorOutput { get; private set; }
-            private bool m_StateSaved;
-              private bool _streaming;
+            public string? ErrorOutput { get; private set; }
+            //private bool? m_StateSaved;
+            //private bool? _streaming;
 
             // --- M-code actions ---
-            public MCodeAction[] McodeActions { get; }
+            //public MCodeAction[]? McodeActions { get; }
 
-            /// <summary>
-            /// Constructor with reference to the coordination/motion engine.
-            /// </summary>
-            public GCodeInterpreter(CCoordMotion coordMotion)
-            {
-                CoordMotion = coordMotion;
 
-            }
-
- 
 
 
             /// <summary>
@@ -214,7 +209,7 @@ namespace KinematicEngine
                     return ExitWithError(status);
 
                 int programStatus = RS274NGC_OK;
-                using (var reader = new StreamReader(m_InFile))
+                using (var reader = new StreamReader(m_InFile!))
                 {
                     string line;
                     while ((programStatus == RS274NGC_OK) && reader.Peek() >= 0)
@@ -244,8 +239,8 @@ namespace KinematicEngine
             /// </summary>
             private void DoExecuteComplete()
             {
-                CoordMotion.DownloadFinish();
-                _completeFn?.Invoke(m_exitcode, m_CurrentLine, m_InvokeExitcode, ErrorOutput);
+                //CoordMotion.DownloadFinish();
+                _completeFn?.Invoke(m_exitcode, m_CurrentLine, m_InvokeExitcode, ErrorOutput!);
             }
 
             /// <summary>
@@ -253,7 +248,7 @@ namespace KinematicEngine
             /// </summary>
             private int ExitWithError(int code)
             {
-                _completeFn?.Invoke(code, m_CurrentLine, m_InvokeExitcode, ErrorOutput);
+                _completeFn?.Invoke(code, m_CurrentLine, m_InvokeExitcode, ErrorOutput!);
                 return code;
             }
 
@@ -282,10 +277,10 @@ namespace KinematicEngine
             public void SetGeoFile(string f) => GeoFile = f;
             public void SetVarsFile(string f) => VarsFile = f;
 
-            public int ReadToolFile() => RS274NGC.ReadTool(ToolFile);
-            public int ReadSetupFile() => RS274NGC.ReadSetup(SetupFile);
-            public int ReadGeoFile() => RS274NGC.ReadGeo(GeoFile);
-            public int ReadVarsFile() => RS274NGC.ReadVars(VarsFile);
+            public int ReadToolFile() => RS274NGC.ReadTool(ToolFile!);
+            public int ReadSetupFile() => RS274NGC.ReadSetup(SetupFile!);
+            public int ReadGeoFile() => RS274NGC.ReadGeo(GeoFile!);
+            public int ReadVarsFile() => RS274NGC.ReadVars(VarsFile!);
 
             // --- M-code action invocation ---
             public int InvokeAction(int action, bool wait = true) => RS274NGC.InvokeAction(action, wait);

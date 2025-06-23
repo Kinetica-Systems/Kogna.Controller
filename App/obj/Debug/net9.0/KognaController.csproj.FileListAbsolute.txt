@@ -45,6 +45,8 @@ C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\HarfBuzzSharp.d
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\MicroCom.Runtime.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Microsoft.Win32.SystemEvents.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\OxyPlot.Avalonia.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\OxyPlot.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Semi.Avalonia.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Semi.Avalonia.ColorPicker.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Semi.Avalonia.DataGrid.dll
@@ -95,6 +97,12 @@ C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\runtimes\unix\l
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\runtimes\win\lib\netcoreapp3.0\System.Drawing.Common.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\runtimes\win\lib\netstandard2.0\System.Security.Cryptography.ProtectedData.dll
 C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\runtimes\win\lib\netcoreapp3.0\System.Windows.Extensions.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\KinematicEngine.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Server.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\TCPServer.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\Server.pdb
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\KinematicEngine.pdb
+C:\Users\liamb\Programming\Kogna.Controller\App\bin\Debug\net9.0\TCPServer.pdb
 C:\Users\liamb\Programming\Kogna.Controller\App\obj\Debug\net9.0\KognaController.csproj.AssemblyReference.cache
 C:\Users\liamb\Programming\Kogna.Controller\App\obj\Debug\net9.0\Avalonia\Resources.Inputs.cache
 C:\Users\liamb\Programming\Kogna.Controller\App\obj\Debug\net9.0\Avalonia\resources

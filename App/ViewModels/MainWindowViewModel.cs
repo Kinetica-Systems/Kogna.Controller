@@ -1,6 +1,9 @@
 ﻿using KognaServer;
 using KognaServer.ViewModels;
-using KognaServer.Server.KognaServer;
+using KognaComms;
+
+using OxyPlot;
+using OxyPlot.Series;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,15 +18,18 @@ namespace KognaServer.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
-        private KognaServerMain _server { get; }
+        public KognaControl _server { get; }
         public DroViewModel DroVm { get; }
         public TerminalViewModel TerminalViewModel { get; }
         public ConnectionViewModel ConnectionVm { get; }
         public GCodeEditorViewModel GcodeVm { get; }
+      
+
+        // keep track of elapsed time (ms)
 
 
         public MainWindowViewModel(
-            KognaServerMain server,
+            KognaControl server,
             ConnectionViewModel connectionVm,
             DroViewModel droVm,
             TerminalViewModel terminalVm,
@@ -36,5 +42,6 @@ namespace KognaServer.ViewModels
             GcodeVm = gCodeEditor;
 
         }
+        
     }
 }

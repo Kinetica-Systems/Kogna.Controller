@@ -67,7 +67,7 @@ namespace KognaServer.ViewModels
         }
 
         public ICommand SaveCommand { get; }
-        private readonly string _connString;
+        private readonly string _connString = null!;
         private readonly string _robotName = "<YourRobotName>"; // TODO: set your actual robot name
 
         public AdvancedSettingsWindowViewModel()
@@ -81,7 +81,7 @@ namespace KognaServer.ViewModels
         private void LoadDomains()
         {
             Domains.Clear();
-            using var conn = new SQLiteConnection(_connString);
+            using var conn = new SQLiteConnection(_connString!);
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT name FROM parameter_domains ORDER BY name;";
@@ -96,7 +96,7 @@ namespace KognaServer.ViewModels
         private void LoadParameters(string domain)
         {
             Parameters.Clear();
-            using var conn = new SQLiteConnection(_connString);
+            using var conn = new SQLiteConnection(_connString!);
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"

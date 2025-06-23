@@ -36,15 +36,14 @@ using System.Collections.Generic;
 using KognaServer.ViewModels;
 using KognaServer.Server;
 using System.Reactive.Joins;
-using KognaServer.Server.KinematicEngine;             // for TextDocument
 
 namespace KognaServer.ViewModels
 {
     public partial class GCodeEditorViewModel : ObservableObject
     {
 
-        private readonly TextEditor? _editor = null!;
-        private string fileContent { get; set; }
+       // private readonly TextEditor? _editor = null!;
+       // private string? fileContent { get; set; }
 
         public GCodeEditorViewModel()
         {

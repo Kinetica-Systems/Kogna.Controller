@@ -12,7 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 
 using KognaServer.ViewModels;
 using KognaServer.Server;
-using KognaServer.Server.KognaServer;
+using KognaComms;
 using KognaServer.Views;
 
 namespace KognaServer.Views;

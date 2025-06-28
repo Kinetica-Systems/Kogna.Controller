@@ -84,14 +84,15 @@ namespace KinematicEngine
         // --- interfaces?
         private static readonly int[] m_modal_group = Enumerable.Repeat(0, 120).ToArray();
         public static SetupData _setup = null!;
+        public CCoordMotion _motion;
 
         /// <summary>
         /// Initialize interpreter. :contentReference[oaicite:4]{index=4}
         /// </summary>
-        public static int Init()
+        public static int Init(SetupData Setup)
         {
-            _setup = new SetupData();
-            _setup.CM = new CCoordMotion();
+            _setup = Setup;
+           // _setup.CM = new CCoordMotion();
             // call into your hardware interface
             Canon.INIT_CANON();
             SetupData.StackIndex = 0;

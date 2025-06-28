@@ -188,7 +188,7 @@ namespace KinematicEngine
             if (CheckIfThreadingInProgress()) return;
 
             GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
-
+/*
             CM.StraightTraverse(GC.UserUnitsToInchesX(x + _setup.axis_offset_x + _setup.origin_offset_x + _setup.tool_xoffset),
                                 GC.UserUnitsToInches(y + _setup.axis_offset_y + _setup.origin_offset_y + _setup.tool_yoffset),
                                 GC.UserUnitsToInches(z + _setup.axis_offset_z + _setup.origin_offset_z + _setup.tool_length_offset),
@@ -198,7 +198,7 @@ namespace KinematicEngine
                                 GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
                                 GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
                  _setup.sequence_number, 0, _setup.feed_rate);
-
+*/
         }
  
         public static void STRAIGHT_TRAVERSE(double x, double y, double z, double a, double b, double c, double u, double v) //8 args
@@ -208,7 +208,7 @@ namespace KinematicEngine
             if (CheckIfThreadingInProgress()) return;
 
             GC.SaveStateOnceOnly();  // save the state here before creating any motion segments
-
+/*
             CM.StraightTraverse(GC.UserUnitsToInchesX(x + _setup.axis_offset_x + _setup.origin_offset_x + _setup.tool_xoffset),
                                 GC.UserUnitsToInches(y + _setup.axis_offset_y + _setup.origin_offset_y + _setup.tool_yoffset),
                                 GC.UserUnitsToInches(z + _setup.axis_offset_z + _setup.origin_offset_z + _setup.tool_length_offset),
@@ -218,7 +218,7 @@ namespace KinematicEngine
                                 GC.UserUnitsToInches(u + _setup.UU_axis_offset + _setup.UU_origin_offset),
                                 GC.UserUnitsToInches(v + _setup.VV_axis_offset + _setup.VV_origin_offset),
                  _setup.sequence_number, 0, _setup.feed_rate);
-
+*/
         }
         //public void STRAIGHT_TRAVERSE(double x, double y, double z, int sequence_number, bool noCallback = false)
         // { /* stub */ }
@@ -287,16 +287,16 @@ namespace KinematicEngine
             GC.SaveStateOnceOnly();
 
             // 7) call into the motion engine
-            CM.StraightFeed(feedRate,
-                GC.UserUnitsToInchesX(x  /* axis offset */),
-                GC.UserUnitsToInches(y  /* axis offset */),
-                GC.UserUnitsToInches(z  /* axis offset */),
-                GC.UserUnitsToInchesOrDegA(a  /* offset */),
-                GC.UserUnitsToInchesOrDegB(b  /* offset */),
-                GC.UserUnitsToInchesOrDegC(c  /* offset */),
-                GC.UserUnitsToInches(u  /* + offset */),
-                GC.UserUnitsToInches(v  /* + offset */),
-                pureAngle ? 1 : 0);
+            //CM.StraightFeed(feedRate,
+              //  GC.UserUnitsToInchesX(x  /* axis offset */),
+                //GC.UserUnitsToInches(y  /* axis offset */),
+                //GC.UserUnitsToInches(z  /* axis offset */),
+                //GC.UserUnitsToInchesOrDegA(a  /* offset */),
+                //GC.UserUnitsToInchesOrDegB(b  /* offset */),
+                //GC.UserUnitsToInchesOrDegC(c  /* offset */),
+                //GC.UserUnitsToInches(u  /* + offset */),
+                //GC.UserUnitsToInches(v  /* + offset */),
+                //pureAngle ? true : false);
 
             // 8) update programOrigin for next delta
             programOrigin = new CANON_VECTOR { X = x, Y = y, Z = z /* etc */ };

@@ -10,37 +10,14 @@ namespace KinematicEngine
     public struct CPT3D { public double x, y, z; }
 
     // Motion parameters mirror the C++ MOTION_PARAMS struct
-    public class MotionParams
-    {
-        public double BreakAngle;
-        public double TPLookahead;
-        public double MaxAccelV, MaxAccelU, MaxAccelC, MaxAccelB, MaxAccelA, MaxAccelX, MaxAccelY, MaxAccelZ;
-        public double MaxVelV,  MaxVelU,  MaxVelC,  MaxVelB,  MaxVelA,  MaxVelX,  MaxVelY,  MaxVelZ;
-        public double MaxRapidJerkV, MaxRapidJerkU, MaxRapidJerkC, MaxRapidJerkB, MaxRapidJerkA, MaxRapidJerkX, MaxRapidJerkY, MaxRapidJerkZ;
-        public double MaxRapidAccelV, MaxRapidAccelU, MaxRapidAccelC, MaxRapidAccelB, MaxRapidAccelA, MaxRapidAccelX, MaxRapidAccelY, MaxRapidAccelZ;
-        public double MaxRapidVelV,   MaxRapidVelU,   MaxRapidVelC,   MaxRapidVelB,   MaxRapidVelA,   MaxRapidVelX,   MaxRapidVelY,   MaxRapidVelZ;
-        public double CountsPerInchV, CountsPerInchU, CountsPerInchC, CountsPerInchB, CountsPerInchA, CountsPerInchX, CountsPerInchY, CountsPerInchZ;
-        public double MaxLinearLength;
-        public double MaxAngularChange;
-        public double MaxRapidFRO;
-        public double CollinearTol;
-        public double CornerTol;
-        public double FacetAngle;
-        public bool UseOnlyLinearSegments;
-        public bool DoRapidsAsFeeds;
-        public bool DegreesA, DegreesB, DegreesC;
-        public double SoftLimitNegX, SoftLimitNegY, SoftLimitNegZ, SoftLimitNegA, SoftLimitNegB, SoftLimitNegC, SoftLimitNegU, SoftLimitNegV;
-        public double SoftLimitPosX, SoftLimitPosY, SoftLimitPosZ, SoftLimitPosA, SoftLimitPosB, SoftLimitPosC, SoftLimitPosU, SoftLimitPosV;
-        public bool   TCP_Active;
-        public double TCP_X, TCP_Y, TCP_Z;
-    }
+
 
     public class CKinematics : IDisposable
     {
         private const int NGCODE_AXES = 8;
 
         // Public state
-        public MotionParams m_MotionParams;
+        public KEngine.MOTION_PARAMS motionParams;
         public bool GeoTableValid;
         public bool[] LinearTableValid;
         public bool AnyLinearTableValid;
@@ -55,121 +32,19 @@ namespace KinematicEngine
         public double GeoOffsetX, GeoOffsetY;
         public static int MaxDecelTime(int axis, double vel, double accel, double jerk) => throw new NotImplementedException();
         public static int NominalFROTime(char axis) => throw new NotImplementedException();
+
+
         public CKinematics()
         {
-            m_MotionParams = new MotionParams
-            {
-                BreakAngle = 30.0,
-                TPLookahead = 3.0,
-                MaxAccelV = 1.0,
-                MaxAccelU = 1.0,
-                MaxAccelC = 1.0,
-                MaxAccelB = 1.0,
-                MaxAccelA = 1.0,
-                MaxAccelX = 1.0,
-                MaxAccelY = 1.0,
-                MaxAccelZ = 1.0,
-                MaxVelV = 1.0,
-                MaxVelU = 1.0,
-                MaxVelC = 1.0,
-                MaxVelB = 1.0,
-                MaxVelA = 1.0,
-                MaxVelX = 1.0,
-                MaxVelY = 1.0,
-                MaxVelZ = 1.0,
-                MaxRapidJerkV = 10.0,
-                MaxRapidJerkU = 10.0,
-                MaxRapidJerkC = 10.0,
-                MaxRapidJerkB = 10.0,
-                MaxRapidJerkA = 10.0,
-                MaxRapidJerkX = 10.0,
-                MaxRapidJerkY = 10.0,
-                MaxRapidJerkZ = 10.0,
-                MaxRapidAccelV = 1.0,
-                MaxRapidAccelU = 1.0,
-                MaxRapidAccelC = 1.0,
-                MaxRapidAccelB = 1.0,
-                MaxRapidAccelA = 1.0,
-                MaxRapidAccelX = 1.0,
-                MaxRapidAccelY = 1.0,
-                MaxRapidAccelZ = 1.0,
-                MaxRapidVelV = 1.0,
-                MaxRapidVelU = 1.0,
-                MaxRapidVelC = 1.0,
-                MaxRapidVelB = 1.0,
-                MaxRapidVelA = 1.0,
-                MaxRapidVelX = 1.0,
-                MaxRapidVelY = 1.0,
-                MaxRapidVelZ = 1.0,
-                CountsPerInchV = 100.0,
-                CountsPerInchU = 100.0,
-                CountsPerInchC = 100.0,
-                CountsPerInchB = 100.0,
-                CountsPerInchA = 100.0,
-                CountsPerInchX = 100.0,
-                CountsPerInchY = 100.0,
-                CountsPerInchZ = 100.0,
-                MaxLinearLength = 1e30,
-                MaxAngularChange = 1e30,
-                MaxRapidFRO = 1.0,
-                CollinearTol = 0.0002,
-                CornerTol = 0.0002,
-                FacetAngle = 0.5,
-                UseOnlyLinearSegments = false,
-                DoRapidsAsFeeds = false,
-                DegreesA = false,
-                DegreesB = false,
-                DegreesC = false,
-                SoftLimitNegX = -1e30,
-                SoftLimitNegY = -1e30,
-                SoftLimitNegZ = -1e30,
-                SoftLimitNegA = -1e30,
-                SoftLimitNegB = -1e30,
-                SoftLimitNegC = -1e30,
-                SoftLimitNegU = -1e30,
-                SoftLimitNegV = -1e30,
-                SoftLimitPosX = 1e30,
-                SoftLimitPosY = 1e30,
-                SoftLimitPosZ = 1e30,
-                SoftLimitPosA = 1e30,
-                SoftLimitPosB = 1e30,
-                SoftLimitPosC = 1e30,
-                SoftLimitPosU = 1e30,
-                SoftLimitPosV = 1e30,
-                TCP_Active = false,
-                TCP_X = 0.0,
-                TCP_Y = 0.0,
-                TCP_Z = 0.0,
-            };
-
-            GeoTableValid = AnyLinearTableValid = false;
-            GeoTable = null!;
-            LinearTables = new double[NGCODE_AXES][];
-            LinearTableValid = new bool[NGCODE_AXES];
-            NLinear = new int[NGCODE_AXES];
-            LinearSpacings = new double[NGCODE_AXES];
-            LinearOffset = new double[NGCODE_AXES];
-            for (int i = 0; i < NGCODE_AXES; i++)
-            {
-                LinearTables[i] = null!;
-                LinearTableValid[i] = false;
-            }
         }
 
 
-        public int Initialize(string geoFile, string[] linearFiles)
+        public int Start()
         {
-            // Load geometric table
-            int geoStatus = ReadGeoTable(geoFile);
-            GeoTableValid = (geoStatus == 0);
-            // Load linear tables
-            for (int i = 0; i < NGCODE_AXES; i++)
-            {
-                string path = (linearFiles != null && i < linearFiles.Length) ? linearFiles[i] : null!;
-                ReadLinearTable(i, path, out bool valid);
-            }
-            AnyLinearTableValid = LinearTableValid.Any(v => v);
-            return geoStatus;
+                     
+            
+
+            return 1;
         }
 
 
@@ -228,21 +103,21 @@ namespace KinematicEngine
             double fdu = Math.Abs(du), fdv = Math.Abs(dv);
             if (pureAngle)
             {
-                if (fda > 0 && m_MotionParams.MaxVelA < FeedRateToUse * fda / d) FeedRateToUse = m_MotionParams.MaxVelA * d / fda;
-                if (fdb > 0 && m_MotionParams.MaxVelB < FeedRateToUse * fdb / d) FeedRateToUse = m_MotionParams.MaxVelB * d / fdb;
-                if (fdc > 0 && m_MotionParams.MaxVelC < FeedRateToUse * fdc / d) FeedRateToUse = m_MotionParams.MaxVelC * d / fdc;
+                if (fda > 0 && motionParams.MaxVelA < FeedRateToUse * fda / d) FeedRateToUse = motionParams.MaxVelA * d / fda;
+                if (fdb > 0 && motionParams.MaxVelB < FeedRateToUse * fdb / d) FeedRateToUse = motionParams.MaxVelB * d / fdb;
+                if (fdc > 0 && motionParams.MaxVelC < FeedRateToUse * fdc / d) FeedRateToUse = motionParams.MaxVelC * d / fdc;
             }
             else
             {
-                if (fdx > 0 && m_MotionParams.MaxVelX < FeedRateToUse * fdx / d) FeedRateToUse = m_MotionParams.MaxVelX * d / fdx;
-                if (fdy > 0 && m_MotionParams.MaxVelY < FeedRateToUse * fdy / d) FeedRateToUse = m_MotionParams.MaxVelY * d / fdy;
-                if (fdz > 0 && m_MotionParams.MaxVelZ < FeedRateToUse * fdz / d) FeedRateToUse = m_MotionParams.MaxVelZ * d / fdz;
-                if (fdu > 0 && m_MotionParams.MaxVelU < FeedRateToUse * fdu / d) FeedRateToUse = m_MotionParams.MaxVelU * d / fdu;
-                if (fdv > 0 && m_MotionParams.MaxVelV < FeedRateToUse * fdv / d) FeedRateToUse = m_MotionParams.MaxVelV * d / fdv;
+                if (fdx > 0 && motionParams.MaxVelX < FeedRateToUse * fdx / d) FeedRateToUse = motionParams.MaxVelX * d / fdx;
+                if (fdy > 0 && motionParams.MaxVelY < FeedRateToUse * fdy / d) FeedRateToUse = motionParams.MaxVelY * d / fdy;
+                if (fdz > 0 && motionParams.MaxVelZ < FeedRateToUse * fdz / d) FeedRateToUse = motionParams.MaxVelZ * d / fdz;
+                if (fdu > 0 && motionParams.MaxVelU < FeedRateToUse * fdu / d) FeedRateToUse = motionParams.MaxVelU * d / fdu;
+                if (fdv > 0 && motionParams.MaxVelV < FeedRateToUse * fdv / d) FeedRateToUse = motionParams.MaxVelV * d / fdv;
                 // fallback angular limits
-                if (fda > 0) { double Max = m_MotionParams.MaxVelA; if (Max < FeedRateToUse * fda / d) FeedRateToUse = Max * d / fda; }
-                if (fdb > 0) { double Max = m_MotionParams.MaxVelB; if (Max < FeedRateToUse * fdb / d) FeedRateToUse = Max * d / fdb; }
-                if (fdc > 0) { double Max = m_MotionParams.MaxVelC; if (Max < FeedRateToUse * fdc / d) FeedRateToUse = Max * d / fdc; }
+                if (fda > 0) { double Max = motionParams.MaxVelA; if (Max < FeedRateToUse * fda / d) FeedRateToUse = Max * d / fda; }
+                if (fdb > 0) { double Max = motionParams.MaxVelB; if (Max < FeedRateToUse * fdb / d) FeedRateToUse = Max * d / fdb; }
+                if (fdc > 0) { double Max = motionParams.MaxVelC; if (Max < FeedRateToUse * fdc / d) FeedRateToUse = Max * d / fdc; }
             }
             rate = FeedRateToUse;
             return 0;
@@ -263,20 +138,20 @@ namespace KinematicEngine
             double fdu = Math.Abs(du), fdv = Math.Abs(dv);
             if (pureAngle)
             {
-                if (fda > 0 && m_MotionParams.MaxAccelA < AccelToUse * fda / d) AccelToUse = m_MotionParams.MaxAccelA * d / fda;
-                if (fdb > 0 && m_MotionParams.MaxAccelB < AccelToUse * fdb / d) AccelToUse = m_MotionParams.MaxAccelB * d / fdb;
-                if (fdc > 0 && m_MotionParams.MaxAccelC < AccelToUse * fdc / d) AccelToUse = m_MotionParams.MaxAccelC * d / fdc;
+                if (fda > 0 && motionParams.MaxAccelA < AccelToUse * fda / d) AccelToUse = motionParams.MaxAccelA * d / fda;
+                if (fdb > 0 && motionParams.MaxAccelB < AccelToUse * fdb / d) AccelToUse = motionParams.MaxAccelB * d / fdb;
+                if (fdc > 0 && motionParams.MaxAccelC < AccelToUse * fdc / d) AccelToUse = motionParams.MaxAccelC * d / fdc;
             }
             else
             {
-                if (fdx > 0 && m_MotionParams.MaxAccelX < AccelToUse * fdx / d) AccelToUse = m_MotionParams.MaxAccelX * d / fdx;
-                if (fdy > 0 && m_MotionParams.MaxAccelY < AccelToUse * fdy / d) AccelToUse = m_MotionParams.MaxAccelY * d / fdy;
-                if (fdz > 0 && m_MotionParams.MaxAccelZ < AccelToUse * fdz / d) AccelToUse = m_MotionParams.MaxAccelZ * d / fdz;
-                if (fdu > 0 && m_MotionParams.MaxAccelU < AccelToUse * fdu / d) AccelToUse = m_MotionParams.MaxAccelU * d / fdu;
-                if (fdv > 0 && m_MotionParams.MaxAccelV < AccelToUse * fdv / d) AccelToUse = m_MotionParams.MaxAccelV * d / fdv;
-                if (fda > 0) { double Max = m_MotionParams.MaxAccelA; if (Max < AccelToUse * fda / d) AccelToUse = Max * d / fda; }
-                if (fdb > 0) { double Max = m_MotionParams.MaxAccelB; if (Max < AccelToUse * fdb / d) AccelToUse = Max * d / fdb; }
-                if (fdc > 0) { double Max = m_MotionParams.MaxAccelC; if (Max < AccelToUse * fdc / d) AccelToUse = Max * d / fdc; }
+                if (fdx > 0 && motionParams.MaxAccelX < AccelToUse * fdx / d) AccelToUse = motionParams.MaxAccelX * d / fdx;
+                if (fdy > 0 && motionParams.MaxAccelY < AccelToUse * fdy / d) AccelToUse = motionParams.MaxAccelY * d / fdy;
+                if (fdz > 0 && motionParams.MaxAccelZ < AccelToUse * fdz / d) AccelToUse = motionParams.MaxAccelZ * d / fdz;
+                if (fdu > 0 && motionParams.MaxAccelU < AccelToUse * fdu / d) AccelToUse = motionParams.MaxAccelU * d / fdu;
+                if (fdv > 0 && motionParams.MaxAccelV < AccelToUse * fdv / d) AccelToUse = motionParams.MaxAccelV * d / fdv;
+                if (fda > 0) { double Max = motionParams.MaxAccelA; if (Max < AccelToUse * fda / d) AccelToUse = Max * d / fda; }
+                if (fdb > 0) { double Max = motionParams.MaxAccelB; if (Max < AccelToUse * fdb / d) AccelToUse = Max * d / fdb; }
+                if (fdc > 0) { double Max = motionParams.MaxAccelC; if (Max < AccelToUse * fdc / d) AccelToUse = Max * d / fdc; }
             }
             accel = AccelToUse;
             return 0;
@@ -312,20 +187,20 @@ namespace KinematicEngine
             double fdu = Math.Abs(du), fdv = Math.Abs(dv);
             if (pureAngle)
             {
-                if (fda > 0 && m_MotionParams.MaxRapidJerkA < JerkToUse * fda / d) JerkToUse = m_MotionParams.MaxRapidJerkA * d / fda;
-                if (fdb > 0 && m_MotionParams.MaxRapidJerkB < JerkToUse * fdb / d) JerkToUse = m_MotionParams.MaxRapidJerkB * d / fdb;
-                if (fdc > 0 && m_MotionParams.MaxRapidJerkC < JerkToUse * fdc / d) JerkToUse = m_MotionParams.MaxRapidJerkC * d / fdc;
+                if (fda > 0 && motionParams.MaxRapidJerkA < JerkToUse * fda / d) JerkToUse = motionParams.MaxRapidJerkA * d / fda;
+                if (fdb > 0 && motionParams.MaxRapidJerkB < JerkToUse * fdb / d) JerkToUse = motionParams.MaxRapidJerkB * d / fdb;
+                if (fdc > 0 && motionParams.MaxRapidJerkC < JerkToUse * fdc / d) JerkToUse = motionParams.MaxRapidJerkC * d / fdc;
             }
             else
             {
-                if (fdx > 0 && m_MotionParams.MaxRapidJerkX < JerkToUse * fdx / d) JerkToUse = m_MotionParams.MaxRapidJerkX * d / fdx;
-                if (fdy > 0 && m_MotionParams.MaxRapidJerkY < JerkToUse * fdy / d) JerkToUse = m_MotionParams.MaxRapidJerkY * d / fdy;
-                if (fdz > 0 && m_MotionParams.MaxRapidJerkZ < JerkToUse * fdz / d) JerkToUse = m_MotionParams.MaxRapidJerkZ * d / fdz;
-                if (fdu > 0 && m_MotionParams.MaxRapidJerkU < JerkToUse * fdu / d) JerkToUse = m_MotionParams.MaxRapidJerkU * d / fdu;
-                if (fdv > 0 && m_MotionParams.MaxRapidJerkV < JerkToUse * fdv / d) JerkToUse = m_MotionParams.MaxRapidJerkV * d / fdv;
-                if (fda > 0) { double Max = m_MotionParams.MaxRapidJerkA; if (Max < JerkToUse * fda / d) JerkToUse = Max * d / fda; }
-                if (fdb > 0) { double Max = m_MotionParams.MaxRapidJerkB; if (Max < JerkToUse * fdb / d) JerkToUse = Max * d / fdb; }
-                if (fdc > 0) { double Max = m_MotionParams.MaxRapidJerkC; if (Max < JerkToUse * fdc / d) JerkToUse = Max * d / fdc; }
+                if (fdx > 0 && motionParams.MaxRapidJerkX < JerkToUse * fdx / d) JerkToUse = motionParams.MaxRapidJerkX * d / fdx;
+                if (fdy > 0 && motionParams.MaxRapidJerkY < JerkToUse * fdy / d) JerkToUse = motionParams.MaxRapidJerkY * d / fdy;
+                if (fdz > 0 && motionParams.MaxRapidJerkZ < JerkToUse * fdz / d) JerkToUse = motionParams.MaxRapidJerkZ * d / fdz;
+                if (fdu > 0 && motionParams.MaxRapidJerkU < JerkToUse * fdu / d) JerkToUse = motionParams.MaxRapidJerkU * d / fdu;
+                if (fdv > 0 && motionParams.MaxRapidJerkV < JerkToUse * fdv / d) JerkToUse = motionParams.MaxRapidJerkV * d / fdv;
+                if (fda > 0) { double Max = motionParams.MaxRapidJerkA; if (Max < JerkToUse * fda / d) JerkToUse = Max * d / fda; }
+                if (fdb > 0) { double Max = motionParams.MaxRapidJerkB; if (Max < JerkToUse * fdb / d) JerkToUse = Max * d / fdb; }
+                if (fdc > 0) { double Max = motionParams.MaxRapidJerkC; if (Max < JerkToUse * fdc / d) JerkToUse = Max * d / fdc; }
             }
             jerk = JerkToUse;
             return 0;
@@ -447,8 +322,8 @@ namespace KinematicEngine
         public int GetParameter(string key, out double value)
         {
             // simplistic reflection-based retrieval
-            var field = typeof(MotionParams).GetField(key);
-            if (field != null && field.GetValue(m_MotionParams) is double d)
+            var field = typeof(KEngine.MOTION_PARAMS).GetField(key);
+            if (field != null && field.GetValue(motionParams) is double d)
             {
                 value = d;
                 return 0;
@@ -461,47 +336,7 @@ namespace KinematicEngine
         {
             return new string(s.Where(ch => ch != c).ToArray());
         }
-        /// <summary>
-        /// Factory: load the text file at 'filePath', which should list
-        /// the geometric table on line 1 and one linear‐table per axis thereafter.
-        /// </summary>
-        public static CKinematics LoadFromFile(string filePath)
-        {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException("Kinematics definition not found", filePath);
 
-            // Read every non-blank line as a relative path
-            var lines = File.ReadAllLines(filePath)
-                            .Select(l => l.Trim())
-                            .Where(l => l.Length > 0)
-                            .ToArray();
-
-            if (lines.Length == 0)
-                throw new InvalidDataException("Kinematics file is empty: " + filePath);
-
-            // First line is the geo‐table
-            string geoRel = lines[0];
-            // Remaining lines are linear tables (one per axis)
-            var linearRels = lines.Skip(1).ToArray();
-
-            // Base directory for all relative names
-            string dir = Path.GetDirectoryName(filePath)!;
-
-            // Build full paths
-            string geoPath    = Path.Combine(dir, geoRel);
-            string[] linearPaths = linearRels
-                .Select(rel => Path.Combine(dir, rel))
-                .ToArray();
-
-            // Create, initialize, and return
-            var kin = new CKinematics();
-            int status = kin.Initialize(geoPath, linearPaths);
-            if (status != 0)
-                throw new InvalidOperationException(
-                    $"Failed to initialize kinematics (Init returned {status})");
-
-            return kin;
-        }
     
     }
 }

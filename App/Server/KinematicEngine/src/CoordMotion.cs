@@ -13,9 +13,9 @@ namespace KinematicEngine
     /// </summary>
     public class CCoordMotion : IDisposable
     {
-        private double current_x = 50;
-        private double current_y = 100;   // a reachable home‐offset
-        private double current_z = 200;
+        private double current_x = 0;
+        private double current_y = 0;   // a reachable home‐offset
+        private double current_z = 0;
         private double current_a = 0;
         private double current_b = 0;
         private double current_c = 0;
@@ -109,40 +109,31 @@ namespace KinematicEngine
         private int specialCmdsInitialLast;
         private int SegBufToggle;
         private int nsegs;
-        private int m_nsegsDownloaded;
+        private int m_nsegsDownloaded = 0;
         private int ispecialCmdDownloaded;
         private const int SEG_LINEAR = 1; //ned to check
-        private RS274NGC.SEGMENT GetSegPtr(int idx) { /* … */ throw new NotImplementedException(); }
-        private RS274NGC.SetupData _setup = new RS274NGC.SetupData();
-        private readonly Kinematics6AxisFanuc _kinematics;
-        private readonly TrajectoryPlanner  _planner;
-        private double[] _lastActs = new double[8];    
+        private KEngine.SEGMENT GetSegPtr(int idx) { /* … */ throw new NotImplementedException(); }
+        private RS274NGC.SetupData _setup;
+        private Kinematics6AxisFanuc _kinematics;
+        private TrajectoryPlanner  _planner;
+        public KEngine.MOTION_PARAMS  _motionParams;
 
+        private KEngine _kEngine;
+        private double[] _lastActs;
+        private double[] _currentActs;
 
-        public CKinematics Kinematics { get; private set; }
-        //public event Action<KinematicEngine.Segment[]> ?OnSegmentReady;
-        // give yourself a public setter (so server can update it):
-        //private double _lastFeedRate;
-        //public double LastFeedRate
-        //        {
-        //            get => _lastFeedRate;
-        //            set => _lastFeedRate = value;
-        //        }
-
-
-        /// <summary>
-        /// Constructor initializes kinematics and state.
-        /// </summary>
-        public CCoordMotion()
+        
+        public CCoordMotion(Kinematics6AxisFanuc Kinematics, TrajectoryPlanner Planner, RS274NGC.SetupData Setup, KEngine kEngine)
         {
-          //  _setup = new RS274NGC.SetupData();
+            //  _setup = new RS274NGC.SetupData();
             var path = Path.GetDirectoryName(typeof(CCoordMotion).Assembly.Location)!;
-            _setup = new RS274NGC.SetupData();
-            _kinematics = new Kinematics6AxisFanuc();
-            _planner = new TrajectoryPlanner();
-            Kinematics = _kinematics;
+            _setup = Setup;
+            _planner = Planner;
+            _kinematics = Kinematics;
+            _kEngine = kEngine;
             _kinematics.MainPath = path;
-            _planner.Init();
+            _lastActs = new double[8];
+            _currentActs = new double[8];    
             DownloadInit();
             ResetMotionState();
 
@@ -168,6 +159,7 @@ namespace KinematicEngine
             m_TimeAlreadyExecuted = 0;
             m_ThreadingMode = false;
             m_SegmentsStartedExecuting = false;
+            
         }
 
         private void ResetMotionState()
@@ -180,88 +172,60 @@ namespace KinematicEngine
 
         private bool CommitPendingSegments(bool rapidMode)
         {
-            if (TrajectoryPlanner.PendingSegments > 0)
+            if (_planner.PendingSegments > 0)
             {
-                TrajectoryPlanner.RoundCorner(0);
-                if (rapidMode) TrajectoryPlanner.DoSegmentCallbacksRapid();
-                else TrajectoryPlanner.DoSegmentCallbacks();
+                _planner.RoundCorner(0);
+                if (rapidMode) _planner.DoSegmentCallbacksRapid();
+                else _planner.DoSegmentCallbacks();
                 //  if (!TrajectoryPlanner.DoRateAdjustments()) return true;
-                TrajectoryPlanner.MaximizeSegments();
+                _planner.MaximizeSegments();
             }
             return false;
         }
        
-        /// <summary>
-        /// Compute one rapid‐move segment for any combination of axes.
-        /// </summary>
-       public int StraightTraverse(double x, double y, double z, double a, double b, double c, double u, double v, int seq, int id, double feedRate)
+        public int StraightFeedAccel(double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0, double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1, double feedRate, double accel, bool rapidMode, int seq, int id)
         {
-            
-            if (_planner == null) throw new InvalidOperationException("TrajectoryPlanner is null!");
-            if (_setup           == null)    throw new InvalidOperationException("_setup is null!");
-            Console.WriteLine($"[CMD] target Cartesian: X={x}, Y={y}, Z={z}, A={a}, B={b}, C={c} F={feedRate}");
-            // 1) Compute your real actuator solution
+            if (_kinematics == null) throw new InvalidOperationException("_kinematics is null");
+            if (_planner   == null) throw new InvalidOperationException("_planner   is null");
+            if (_lastActs  == null) throw new InvalidOperationException("_lastActs  is null");
+
+
+            // 1) Solve inverse kinematics
+            //    startActs holds your previous joint angles;
+            //    endActs will be filled in with the new solution.
             var startActs = (double[])_lastActs.Clone();
+            var endActs = new double[startActs.Length];
+
+            int rc = _kinematics.TransformCADtoActuators(x1, y1, z1, a1, b1, c1, u1, v1, endActs);
+            if (rc != 0)
+            {
+                Console.WriteLine($"[IK ERROR] could not solve IK for target ({x1},{y1},{z1}) rc={rc}");
+                return rc;
+            }
+            current_x = x1;
+            current_y = y1;
+            current_z = z1;
+            // 2) Enqueue into the trajectory planner
+            if (rapidMode)
+            {
+
+                // G0: pure rapid
+                _planner.InsertRapidLinearSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, seq, id);
+                
+            }
+            else
+            {
+                // G1: feed with acceleration control
+                // Pass feedRate and accel as your MaxVel / MaxAccel
+                _planner.InsertLinearSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, seq, id, feedRate, accel);
+            }
+            _planner.DoRateAdjustments(0, _planner.SegCount());
+
+
             
-            var endActs = new double[8];
-            int rc2 = _kinematics.TransformCADtoActuators(x,y,z,a,b,c,u,v,endActs);
-            if (rc2 != 0)
-                {
-                Console.WriteLine($"[IK ERROR] could not solve IK for X={x},Y={y},Z={z} (rc={rc2})");
-                return -1;    // or otherwise abort
-                }
-            Console.WriteLine($"[IK OK] startActs=[{string.Join(",", startActs)}]");
-            Console.WriteLine($"[IK OK] endActs = [{string.Join(", ", endActs)}]");
-            Console.WriteLine($"[IK] rc2={rc2}");            
-            double vMax = feedRate / 60.0;
-            _planner.RapidSCurve6Axis(startActs, endActs, vMax, _setup.RapidAccelMax,  _setup.RapidJerkMax, _setup.SliceDt, seq, id);
-    
+            // 5) update your “last known” joint angles
+            Array.Copy(endActs, _currentActs, _currentActs.Length);
 
-            _lastActs = endActs;
-            current_x = x;
-            current_y = y;
-            current_z = z;
-            current_a = a;
-            current_b = b;
-            current_c = c;
-
-
-            return 0;
-        }
-
-        public int StraightFeed(double feedRate, double x, double y, double z, double a, double b, double c, double u, double v, bool noCallback = false, int seq = -1, int id = 0)
-        {
-            // 1) Compute actuator angles
-            var acts = new double[8];
-            _kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, acts);
-
-            // 2) Enqueue a LINEAR (G1) move
-          // TrajectoryPlanner.InsertLinearSeg(current_x, current_y, current_z, current_a, current_b, current_c, current_u, current_v, x, y, z, a, b, c, u, v, seq, id);
-
-            // 3) Patch in the real joint angles and duration if you want
-            int idx = TrajectoryPlanner.SegCount() - 1;
-            var seg = TrajectoryPlanner.GetSegment(idx);
-            seg.angle    = (double[])acts.Clone();
-            // compute approximate duration (ms) = distance / feedRate * 60,000
-            double dist = Math.Sqrt(
-                Math.Pow(x - current_x, 2) +
-                Math.Pow(y - current_y, 2) +
-                Math.Pow(z - current_z, 2)
-            );
-            seg.Duration = (int)(dist / feedRate * 60000);
-            TrajectoryPlanner.ReplaceSegment(idx, seg);
-
-           
-
-            return 0;
-        }
-
-
-
-        public int StraightFeedAccel(double x, double y, double z, double a, double b, double c, double u, double v, double feedRate, double accel, bool rapidMode, bool noCallback, int seq, int id)
-        {
-            // Ported from C++ CCoordMotion::StraightFeedAccelRapid
-            // ... implementation
             return 0;
         }
 
@@ -315,7 +279,7 @@ namespace KinematicEngine
             else
             {
                 // 3) attach to last segment
-                RS274NGC.SEGMENT p = GetSegPtr(nsegs - 1);
+                KEngine.SEGMENT p = GetSegPtr(nsegs - 1);
 
                 if (p.SpecialCmdsFirst == -1)
                     p.SpecialCmdsFirst = nspecialCmds;
@@ -342,15 +306,15 @@ namespace KinematicEngine
         // === Helper Methods ===
         private bool DownloadDoneSegments()
         {
-            if (TrajectoryPlanner.nsegs > m_nsegs_downloaded)
+            if (_planner.nsegs > m_nsegs_downloaded)
             {
-                var seg = TrajectoryPlanner.GetSegment(m_nsegs_downloaded);
+                var seg = _planner.GetSegment(m_nsegs_downloaded);
                 if (seg.Done)
                 {
                     if (m_nsegs_downloaded == 0 && !m_Simulate)
                         if (WaitForSegmentsFinished() != 0) { m_Abort = true; return true; }
-                    while (m_nsegs_downloaded < TrajectoryPlanner.SegCount() && TrajectoryPlanner.GetSegment(m_nsegs_downloaded).Done)
-                        TrajectoryPlanner.OutputSegment(m_nsegs_downloaded++);
+                    while (m_nsegs_downloaded < _planner.SegCount() && _planner.GetSegment(m_nsegs_downloaded).Done)
+                        _planner.OutputSegment(m_nsegs_downloaded++);
                 }
             }
             return false;
@@ -359,10 +323,10 @@ namespace KinematicEngine
         public int FlushSegments()
         {
             int a = 1;  //check this
-            TrajectoryPlanner.RoundCorner(a);
-            TrajectoryPlanner.MaximizeSegments();
-            for (int i = m_nsegs_downloaded; i < TrajectoryPlanner.SegCount(); i++)
-                if (TrajectoryPlanner.OutputSegment(i) != 0) { m_Abort = true; return 1; }
+            _planner.RoundCorner(a);
+            _planner.MaximizeSegments();
+            for (int i = m_nsegs_downloaded; i < _planner.SegCount(); i++)
+                if (_planner.OutputSegment(i) != 0) { m_Abort = true; return 1; }
             return FlushWriteLineBuffer();
         }
 
@@ -409,9 +373,6 @@ namespace KinematicEngine
 
         public int GetAxisDone(int axis, out int r)
             => RS274NGC.GetAxisDone(axis, out r);
-
-        public MotionParams GetMotionParams()
-            => Kinematics.m_MotionParams;
 
         public int MeasurePointAppendToFile(string name)
             => RS274NGC.MeasurePointAppendToFile(name);
@@ -469,10 +430,10 @@ namespace KinematicEngine
             }
         }
         public int DoRateAdjustments(int i0, int i1)
-            => TrajectoryPlanner.DoRateAdjustments(i0, i1) ? 0 : 1;
+            => _planner.DoRateAdjustments(i0, i1) ? 0 : 1;
 
         public int DoRateAdjustmentsArc(int i, double rad, double th0, double dth, double dc)
-            => TrajectoryPlanner.DoRateAdjustmentsArc(i, rad, th0, dth, dc) ? 0 : 1;
+            => _planner.DoRateAdjustmentsArc(i, rad, th0, dth, dc) ? 0 : 1; 
 
         public int SetRapidSettings(double feed, double accel)
             => RS274NGC.SetRapidSettings((int)feed, accel);
@@ -509,19 +470,11 @@ namespace KinematicEngine
 
         public bool IsCoordinateSystemValid() => m_DefineCS_valid;
 
-        // Read current absolute position (3-axis)
-        public int ReadCurAbsPosition(out double x, out double y, out double z, bool snap = false, bool noGeo = false)
-            => RS274NGC.ReadCurAbsPosition(out x, out y, out z, snap, noGeo);
-
-        // Read current absolute position (5-axis)
-        public int ReadCurAbsPosition(out double x, out double y, out double z, out double u, out double v, bool snap = false, bool noGeo = false)
-            => RS274NGC.ReadCurAbsPositionFull(out x, out y, out z, out u, out v, snap, noGeo);
-
         // Utility for wait-alias
         public int WaitForMoveXYZABCFinished() => WaitForSegmentsFinished();
 
         // Push motion parameters into the trajectory planner
-        public void SetTPParams() => TrajectoryPlanner.SetParams(Kinematics.m_MotionParams);
+        public void SetTPParams() => _planner.SetParams(_kEngine._MOTION_PARAMS);
 
         // Clean up any remaining buffer and finish
         public void Dispose()
@@ -550,7 +503,7 @@ namespace KinematicEngine
 
         public bool CheckSoftLimits(double x, double y, double z, double a, double b, double c, double u, double v, StringBuilder errMsg)
         {
-            var MP = Kinematics.m_MotionParams;
+            var MP = _kEngine._MOTION_PARAMS;
 
             if (DisableSoftLimits)
                 return false;
@@ -756,7 +709,7 @@ namespace KinematicEngine
                 }
 
                 // let the planner combine/maximize segments
-                TrajectoryPlanner.MaximizeSegments();
+                _planner.MaximizeSegments();
 
                 // push any newly-done segments out; if that errors, abort
                 if (DownloadDoneSegments())

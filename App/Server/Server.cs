@@ -51,13 +51,8 @@ public class KognaControl
 
     public string ProcessIpcCommand(string commandLine, out string response) //take the string, figure out where its meant to be directed to and send it there.
     {
-        Console.WriteLine("hit entry");
+        Console.WriteLine("hit IPC entry");
 
-        var match = Regex.Match(commandLine, @"\bF([\d\.]+)", RegexOptions.IgnoreCase);
-        if (match.Success && double.TryParse(match.Groups[1].Value, out double fVal))
-        {
-            _lastFeedRate = fVal;
-        }
         if (string.IsNullOrWhiteSpace(commandLine))
         {
             response = "Error - Empty command";
@@ -87,7 +82,8 @@ public class KognaControl
             if (cmd == "gcode")
             {
                 Console.WriteLine($"GCode called");
-                response = "Not implemented yet";
+
+                _engine.ProcessCommand(payload); 
                 return response;
 
             }
@@ -119,7 +115,7 @@ public class KognaControl
 
 
         }
-        return response;
+        /*return response;
         /*
                 double ParseAxis(char letter, double current)
                 {

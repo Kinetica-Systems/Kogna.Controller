@@ -196,7 +196,7 @@ namespace KinematicEngine
                 ErrorOutput = string.Empty;
                 CoordMotion.DownloadInit();
 
-                int status = Init();
+                int status = 1;
                 if (status != RS274NGC_OK) return ExitWithError(status);
 
                 if (!string.IsNullOrEmpty(SetupFile) && (status = ReadSetup(SetupFile)) != RS274NGC_OK)
@@ -257,7 +257,7 @@ namespace KinematicEngine
             public void ClearHalt() => m_Halt = false;
             public bool GetHalt() => m_Halt;
             public bool GetHaltNextLine() => m_HaltNextLine;
-            public int InitializeInterp() => Init();
+            public int InitializeInterp() => Init(_setup);
             public void SetFeedRate(double feedRate) => RS274NGC.SetFeedRate(feedRate);
             public int SetCSS(int mode) => RS274NGC.SetCSS(mode);
             public SetupData GetRealTimeState() => RS274NGC.GetRealTimeState();
@@ -374,7 +374,7 @@ namespace KinematicEngine
             /// <summary>
             /// Handle a feed‐rate segment coming from the trajectory planner.
             /// </summary>
-            public static void OnFeedSegment(SEGMENT seg)
+            public static void OnFeedSegment(KEngine.SEGMENT seg)
             {
                 // translate your SEGMENT fields into a Canon.STRAIGHT_FEED call
                 Canon.STRAIGHT_FEED(seg.x, seg.y, seg.z, seg.a, seg.b, seg.c, seg.u, seg.v);
@@ -383,7 +383,7 @@ namespace KinematicEngine
             /// <summary>
             /// Handle a rapid‐traverse segment coming from the trajectory planner.
             /// </summary>
-            public static void OnRapidSegment(SEGMENT seg)
+            public static void OnRapidSegment(KEngine.SEGMENT seg)
             {
                 // similarly call the rapid traversal macro
                 Canon.STRAIGHT_TRAVERSE(seg.x, seg.y, seg.z, seg.a, seg.b, seg.c, seg.u, seg.v, noCallback: true, seq: seg.sequence_number, id: seg.ID);

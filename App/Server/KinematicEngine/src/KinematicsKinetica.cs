@@ -1,30 +1,25 @@
 using System;
 using System.Collections.Generic;
 using KinematicEngine;
+
 // Ported from Kinematics6AxisFanuc.h/cpp
-public class Kinematics6AxisFanuc : CKinematics
+public class Kinematics6AxisFanuc : CKinematics 
 {
     // Link length constants
-private const double L1_X = 180.0;    // mm
+    private const double L1_X = 180.0;    // mm
+private KEngine.MOTION_PARAMS motionParams;
 private const double L1_Z = 1000.0;   // mm
 private const double L2   = 950.0;    // mm
 private static readonly double L3 = Math.Sqrt(1150*1150 +  240*240);
 private const double L6   = 200.0;    // mm    private const double L6 = 0.200;
 
+    public Kinematics6AxisFanuc()
+    {
+    }
+
     // Pivot offset
     public double PivotToChuckLength { get; set; }
 
-    public Kinematics6AxisFanuc()
-    {
-        PivotToChuckLength = 7.874;
-        // Initialize motion parameters (inherited from CKinematics)
-        m_MotionParams.MaxLinearLength = 0.05;
-        m_MotionParams.MaxAngularChange = 0.5;
-        m_MotionParams.MaxRapidFRO = 1.0;
-        m_MotionParams.UseOnlyLinearSegments = true;
-        m_MotionParams.DoRapidsAsFeeds = true;
-        
-    }
     public virtual int TransformCADtoActuators(double x, double y, double z, double a, double b, double c, double u, double v, double[] Acts)
     {
         // 1) call the existing 6-axis version

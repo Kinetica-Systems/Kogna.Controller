@@ -135,18 +135,7 @@ namespace TCPServer
             finally { _mutex.ReleaseMutex(); }
         }
 
-        // Firmware and location info
-        public int FirmwareVersion()
-        {
-            Console.WriteLine("version call");
-                // send the literal Version command over TCP
-            if (WriteLineReadLine(0, "Version", out var resp) != KOGNA_OK)
-                return KOGNA_ERROR;
-                // parse the numeric portion of the reply
-                return int.TryParse(resp.Trim(), out var v) ? v : KOGNA_ERROR;
-
-
-        }
+        
         public string USBLocation() => Connected ? $"{IPAddress}:{Port}" : "Not Connected";
 
         // Locking
@@ -231,7 +220,7 @@ namespace TCPServer
 public int WriteLineReadLine(int board, string send, out string response)
 {
     _mutex.WaitOne();
-    //FlushInputBuffer();      // drop any partial fragments
+
     try
             {
                 // 1) Make sure we’re still connected

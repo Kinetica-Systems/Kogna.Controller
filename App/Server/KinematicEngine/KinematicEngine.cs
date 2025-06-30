@@ -23,7 +23,7 @@ namespace KinematicEngine
         public KEngine _kinematicEngine = null!;
         private double x, y, z, a, b, c, u, v;
         private double dx, dy, dz, da, db, dc, du, dv;
-        private double cx, cy, cz, ca, cb, cc, cu, cv;
+        private double cx, cy, cz, ca, cb, cc, cu, cv, ci, cj;
         private readonly List<CPT3D> _segStarts = new List<CPT3D>();
         private readonly List<CPT3D> _segEnds = new List<CPT3D>();
         private bool _running;
@@ -65,7 +65,7 @@ namespace KinematicEngine
             return _running;
         }
 
-        public string ProcessCommand(string commandLine)
+        public async Task<string> ProcessCommand(string commandLine)
         {
             Console.WriteLine("hit engine entry");
 
@@ -110,7 +110,9 @@ namespace KinematicEngine
                 cc = ParseAxis('C', cc);
                 cu = ParseAxis('U', cu);
                 cv = ParseAxis('V', cv);
-                Console.WriteLine($"{cx} {cy} {cz} {ca} {cb} {cc} {cu} {cv}");
+                ci = ParseAxis('I', ci);
+                cj = ParseAxis('J', cj);
+                Console.WriteLine($"{cx} {cy} {cz} {ca} {cb} {cc} {cu} {cv} {ci} {cj}");
 
                 _segStarts.Add(new CPT3D { x = x, y = y, z = z });
                 _segEnds.Add(new CPT3D { x = cx, y = cy, z = cz });
@@ -123,33 +125,34 @@ namespace KinematicEngine
                     _ccmotion.StraightFeedAccel(x, y, z, a, b, c, u, v, cx, cy, cz, ca, cb, cc, cu, cv, _lastFeedRate, _accel, true, seqNo, 0);
                     return response;
                 }
-                if (cmd == "G1")
+                if (cmd == "g1")
                 {
                     Console.WriteLine($"[ENGINE] dispatching motion '{cmd}' -> Straight Feed");
                     _ccmotion.StraightFeedAccel(x, y, z, a, b, c, u, v, cx, cy, cz, ca, cb, cc, cu, cv, _lastFeedRate, _accel, false, seqNo, 0);
                     return response;
                 }
-                if (cmd == "G2")
+                if (cmd == "g2")
                 {
-                    Console.WriteLine($"G2 Called");
+                    Console.WriteLine($"[ENGINE] dispatching motion '{cmd}' -> CW Arc");
+                    
+                    _ccmotion.ArcFeedAccel(x, y, z, a, b, c, u, v, cx, cy, cz, ca, cb, cc, cu, cv, ci, cj, false, _lastFeedRate, _accel, seqNo, 0);
+                    return response;
+                }
+                if (cmd == "g3")
+                {
+                    Console.WriteLine($"[ENGINE] dispatching motion '{cmd}' -> CCW Arc");
+                    _ccmotion.ArcFeedAccel(x, y, z, a, b, c, u, v, cx, cy, cz, ca, cb, cc, cu, cv, ci, cj, true, _lastFeedRate, _accel, seqNo, 0);
+                    return response;
+                }
+                if (cmd == "g4")
+                {
+                    Console.WriteLine($"Dwell - G4 Called");
                     response = "Not implemented yet";
                     return response;
                 }
-                if (cmd == "G2")
+                if (cmd == "g28")
                 {
-                    Console.WriteLine($"G2 Called");
-                    response = "Not implemented yet";
-                    return response;
-                }
-                if (cmd == "G2")
-                {
-                    Console.WriteLine($"G2 Called");
-                    response = "Not implemented yet";
-                    return response;
-                }
-                if (cmd == "G2")
-                {
-                    Console.WriteLine($"G2 Called");
+                    Console.WriteLine($"Home Axis - G28 Called");
                     response = "Not implemented yet";
                     return response;
                 }
@@ -415,7 +418,7 @@ namespace KinematicEngine
             public double qx0, qy0, qz0, qa0, qb0, qc0, qx1, qy1, qz1, qa1, qb1, qc1, qt;
             public double[] entry, exit;
             // arc‐specific
-            public double xc, yc;
+            public double xc, yc, i1, j1, theta0, dtheta, radius ;
             public bool DirIsCCW;
             public int plane;
 

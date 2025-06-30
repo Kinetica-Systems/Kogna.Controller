@@ -230,15 +230,54 @@ namespace KinematicEngine
         }
 
 
-        public int ArcFeedAccel(double x, double y, double z, double a, double b, double c, double u, double v, int plane, double fe, double se, double fa, double sa, int rot, double ae, double feedRate, double accel, int seq, int id)
+        public int ArcFeedAccel(double x0, double y0, double z0, double a0, double b0, double c0, double u0, double v0, double x1, double y1, double z1, double a1, double b1, double c1, double u1, double v1, double i1, double j1, bool DirIsCCW, double feedRate, double accel, int seq, int id)
         {
-            // Ported from C++ CCoordMotion::ArcFeedAccel
-            // ... implementation
+            if (_kinematics == null) throw new InvalidOperationException("_kinematics is null");
+            if (_planner   == null) throw new InvalidOperationException("_planner   is null");
+            if (_lastActs  == null) throw new InvalidOperationException("_lastActs  is null");
+
+
+            // 1) Solve inverse kinematics
+            //    startActs holds your previous joint angles;
+            //    endActs will be filled in with the new solution.
+            var startActs = (double[])_lastActs.Clone();
+            var endActs = new double[startActs.Length];
+
+            int rc = _kinematics.TransformCADtoActuators(x1, y1, z1, a1, b1, c1, u1, v1, endActs);
+            if (rc != 0)
+            {
+                Console.WriteLine($"[IK ERROR] could not solve IK for target ({x1},{y1},{z1}) rc={rc}");
+                return rc;
+            }
+            current_x = x1;
+            current_y = y1;
+            current_z = z1;
+            double xc = x0 - i1;
+            double yc = y0 - j1;
+            // 2) Enqueue into the trajectory planner
+            if (!DirIsCCW) //if its CW
+            {
+                Console.WriteLine($"hit G2 exit from coordmotion");
+                // G2: CW Arc
+                _planner.InsertArcSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, xc, yc, false, feedRate, accel, seq, id);
+
+            }
+            else // if CCW arc
+            {
+
+                Console.WriteLine($"hit G3 exit from coordmotion");
+                // G3: CCW Arc
+                _planner.InsertArcSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, xc, yc, true, feedRate, accel, seq, id);
+            }
+            _planner.DoRateAdjustments(0, _planner.SegCount());
+
+
+            
+            // 5) update your “last known” joint angles
+            Array.Copy(endActs, _currentActs, _currentActs.Length);
+
             return 0;
         }
-
-        public int ArcFeed(int plane, double fe, double se, double fa, double sa, int rot, double ae, double a, double b, double c, double u, double v, double feedRate, double accel, int seq = -1, int id = 0)
-            => ArcFeedAccel(a, b, c, a, b, c, u, v, plane, fe, se, fa, sa, rot, ae, feedRate, accel, seq, id);
 
         public int DoKMotionCmd(string cmd, bool flushBefore)
         {

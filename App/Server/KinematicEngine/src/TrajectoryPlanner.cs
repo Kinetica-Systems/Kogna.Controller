@@ -1,5 +1,5 @@
 using System;
-using System.Linq;           
+using System.Linq;
 using System.Collections.Generic;
 
 namespace KinematicEngine
@@ -65,12 +65,14 @@ namespace KinematicEngine
         
         private KEngine _engine;
         public TrajectoryPlanner _planner;
-        private CKinematics _cKinenmatics;
-        public TrajectoryPlanner(KEngine engine, CKinematics cKinematics)
+        private CKinematics _cKinematics;
+        private Kinematics6AxisFanuc _kFanuc;
+        public TrajectoryPlanner(KEngine engine, CKinematics cKinematics, Kinematics6AxisFanuc kFanuc)
         {
 
-            _cKinenmatics = cKinematics;
+            _cKinematics = cKinematics;
             _engine = engine;
+            _kFanuc = kFanuc;
             _planner = this;
 
 
@@ -172,8 +174,7 @@ namespace KinematicEngine
                 sequence_number = sequence_number,
                 ID = ID,
 
-                startActs = new double[]{ x0, y0, z0, a0, b0, c0 },
-                endActs   = new double[]{ x1, y1, z1, a1, b1, c1 },
+                //entry cartesian
                 x0 = x0,
                 y0 = y0,
                 z0 = z0,
@@ -182,7 +183,7 @@ namespace KinematicEngine
                 c0 = c0,
                 u0 = u0,
                 v0 = v0,
-
+                //exit cartesian
                 x1 = x1,
                 y1 = y1,
                 z1 = z1,
@@ -231,8 +232,8 @@ namespace KinematicEngine
                 type = SEG_RAPID,
                 sequence_number = sequence_number,
                 ID = ID,
-                startActs = new double[]{ x0, y0, z0, a0, b0, c0 },
-                endActs   = new double[]{ x1, y1, z1, a1, b1, c1 },
+
+                //entry cartesian
                 x0 = x0,
                 y0 = y0,
                 z0 = z0,
@@ -241,7 +242,7 @@ namespace KinematicEngine
                 c0 = c0,
                 u0 = u0,
                 v0 = v0,
-
+                //exit cartesian
                 x1 = x1,
                 y1 = y1,
                 z1 = z1,
@@ -250,6 +251,7 @@ namespace KinematicEngine
                 c1 = c1,
                 u1 = u1,
                 v1 = v1,
+
                 dx = dx,
                 C = C,      // seven phases for jerk-limited rapid
                 angle = new double[6],
@@ -302,10 +304,8 @@ namespace KinematicEngine
                 type = SEG_ARC,
                 sequence_number = sequence_number,
                 ID = ID,
-
-                startActs = new double[]{ x0, y0, z0, a0, b0, c0 },
-                endActs   = new double[]{ x1, y1, z1, a1, b1, c1 }, //the joint space array
-                x0 = x0, //individual joint spaces as doubles
+                //entry cartesian
+                x0 = x0, 
                 y0 = y0,
                 z0 = z0,
                 a0 = a0,
@@ -313,7 +313,7 @@ namespace KinematicEngine
                 c0 = c0,
                 u0 = u0,
                 v0 = v0,
-
+                //exit cartesian
                 x1 = x1,
                 y1 = y1,
                 z1 = z1,
@@ -322,7 +322,9 @@ namespace KinematicEngine
                 c1 = c1,
                 u1 = u1,
                 v1 = v1,
-                
+                xc = xc,
+                yc = yc,
+
                 dx = dx,
                 theta0 = theta0,
                 dtheta = dtheta,
@@ -344,7 +346,6 @@ namespace KinematicEngine
         /// Calculate trip states for a segment (2ⁿᵈ‐order or dispatch to rapid/dwell). :contentReference[oaicite:6]{index=6}</summary>
         public int CalcSegTripStates(int i)
         {
-            int n = _planner.SegCount();
             var p = _planner.GetSegment(i);
             var m = p._MOTION_PARAMS;
  
@@ -353,44 +354,18 @@ namespace KinematicEngine
             if (p.type == SEG_ARC) return CalcSegTripStatesArc(i);
             if (p.type == SEG_DWELL) return CalcSegTripStatesDwell(i);
 
-            double V0 = p.vel;
-            double V1 = (i < n - 1) ? _planner.GetSegment(i + 1).vel : 0.0;
-            double VM = m.MaxVel,
+            double VM = p.MaxVel,
                    A = m.MaxAccel,
-                   D = m.MaxDecel,
-                   X = p.dx;
+                   J = m.MaxJerk,
+                   X = p.dx;                
 
-            if (VM == 0 || A == 0 || D == 0)
-                return 1;
+            if (VM == 0 || A == 0 || J == 0) return 1;
 
-            double ta = (VM - V0) / A;
-            double da = (V0 + 0.5 * A * ta) * ta;
-            double td = (VM - V1) / D;
-            double dd = (V1 + 0.5 * D * td) * td;
-            double tc;
-
-            if (X > da + dd)
-            {
-                tc = (X - da - dd) / VM;
-            }
-            else
-            {
-                VM = Math.Sqrt((A * V1 * V1 + D * V0 * V0 + 2.0 * A * D * X) / (A + D));
-                ta = (VM - V0) / A;
-                td = (VM - V1) / D;
-                tc = 0.0;
-            }
-            if (p.C == null || p.C.Length < 7) p.C = new TP_COEFF[7];
-
-            // fill phases 0–2
-            p.C[0].a = 0; p.C[0].b = 0.5 * A; p.C[0].c = V0; p.C[0].d = 0; p.C[0].t = ta;
-            p.C[1].a = 0; p.C[1].b = 0; p.C[1].c = VM; p.C[1].d = da; p.C[1].t = tc;
-            p.C[2].a = 0; p.C[2].b = -0.5 * D; p.C[2].c = VM; p.C[2].d = da + VM * tc; p.C[2].t = td;
-            p.nTrips = 3;
-
-
-            OutputSegment(i);
-
+                string type = "";
+                var coeffs = Compute7PhaseCoeffs(X, J, A, VM, out type);
+                p.C = coeffs;
+                p.nTrips = coeffs.Length;
+                _planner.ReplaceSegment(i, p);
               
             return 0;
         }
@@ -401,7 +376,7 @@ namespace KinematicEngine
             Console.WriteLine("hit CalcSegTripStatesArc entry");
             var p = _planner.GetSegment(i);
             var m = p._MOTION_PARAMS;
-            double VM = m.MaxVel, A = m.MaxAccel, J = m.MaxJerk, X = p.dx;
+            double VM = p.MaxVel, A = m.MaxAccel, J = m.MaxJerk, X = p.dx;
                 if (VM == 0 || A == 0 || J == 0) return 1;
                 string type = "";
                 var coeffs = Compute7PhaseCoeffs(X, J, A, VM, out type);
@@ -429,79 +404,13 @@ namespace KinematicEngine
             // pointers into p.C[]
             TP_COEFF[] c = p.C;
 
-
-            // 1) Compute the raw distances for the 6 non-plateau legs at (J,A,V):
-            double tJ = MaxA / MaxJ;
-            double vPeak = MaxJ * tJ * tJ / 2.0;
-            double t0, t1, t2;                                // jerk-down time
-            double Dnom = 0;
-
-            if (vPeak >= MaxV)
-            {
-                // velocity-limited: we never reach full A
-                t0 = Math.Sqrt(2 * MaxV / MaxJ);    // time to jerk from 0→just‐enough accel to hit V
-                t1 = 0;                              // no constant-accel leg
-                t2 = t0;                            // jerk-down back to zero accel
-            }
-            else
-            {
-                // accel-limited: we hit full A, then coast up to V
-                t0 = tJ;
-                t1 = (MaxV - vPeak) / MaxA;        // constant-accel time
-                t2 = tJ;
-            }
-            // distances in each accel leg:
-            double d0 = MaxJ * Math.Pow(t0, 3) / 6.0;             // jerk-up
-            double v1 = MaxJ * t0 * t0 / 2.0;                       // velocity at end of phase0
-            double d1 = (v1 * t1) + (0.5 * MaxA * t1 * t1);                   // constant accel
-            double d2 = ((v1 + MaxA * t1) * t2) - (MaxJ * (Math.Pow(t2, 3) / 6.0)); // jerk-down
-
-
-            // 2) raw legs, **no plateau** in phase 3
-            double[] rawInc = {
-            d0,   // phase 0
-            d1,   // phase 1
-            d2,   // phase 2
-            0.0,  // phase 3 ← must be zero
-            d2,   // phase 4
-            d1,   // phase 5
-            d0    // phase 6
-            };
-
-            Dnom = 2 * (d0 + d1 + d2);
-
-            Console.WriteLine("RAW before compute7phcoeff legs (inc): " + string.Join(", ", rawInc.Select(x => x.ToString("0.###"))) + $"  -> Dnom={Dnom:0.###}  (target dx={dx:0.###})");
-
             //Console.WriteLine($"Scale Coeffs: ");
             Console.WriteLine($"values passed to 7ph dx= {dx} MaxJ= {MaxJ} MaxA= {MaxA} MaxV= {MaxV}");
             // (assume Compute7PhaseCoeffs(dx,J2,A2,V2) now bakes in the plateau properly)
             var scaled = Compute7PhaseCoeffs(dx, MaxJ, MaxA, MaxV, out type);
 
-            // helper to get phase length
-            double total = 0;
-
-            Console.WriteLine($"\nProfile type: {type}");
-            Console.WriteLine("Phase   t        ds         label");
-            double prev_p = 0;
-
-            for (int k = 0; k < scaled.Length; k++)
-            {
-                var ph = scaled[k];
-                double p_end = ph.a * Math.Pow(ph.t, 3)
-                             + ph.b * Math.Pow(ph.t, 2)
-                             + ph.c * ph.t
-                             + ph.d;
-                double ds = p_end - prev_p;
-                Console.WriteLine($"t={ph.t,8:0.000}  ds={ds,10:0.000}    {ph.label}");
-                total += ds;
-                prev_p = p_end;
-            }
-
-
-            Console.WriteLine($"TOTAL travel = {total:0.###} (should be {dx:0.###})");
-
             p.C = scaled;
-            p.nTrips = 7;
+
 
             _planner.ReplaceSegment(i, p);
 
@@ -1177,112 +1086,108 @@ static TP_COEFF[] Build7Phase(double dx, double J, double A, double V, out strin
         /// Take the indexed segment from the internal list and enqueue it for rapid dispatch.
         /// </summary>
         /// 
-        public int OutputSegment(int idx)
-        {
-            // grab the planned block
-            var blk = _planner.GetSegment(idx);
-
-            if (blk.type == SEG_LINEAR)
+       public int OutputSegment(int idx)
             {
-            var blockStart = blk.startActs;    // double[6]
-            var blockEnd = blk.endActs;      // double[6]
-            var L = blk.dx;
-            int nPhases = blk.C.Length;
-                // 3) walk through phases, slicing 0→L
-                for (int phase = 0; phase < nPhases; phase++)
+                var blk = _planner.GetSegment(idx);
+                if (blk.C == null || blk.C.Length == 0)
                 {
-                    var P = blk.C[phase];
-                    double s0 = P.d; // start distance along segment for this phase
-                    double s1 = phase + 1 < blk.C.Length ? blk.C[phase + 1].d : L; // end distance for this phase
+                    Console.WriteLine($"[ERROR] S-curve coeff array (blk.C) is null/empty in OutputSegment for idx={idx}, type={blk.type}");
+                    return -1;
+                }
+                if (blk.type == SEG_LINEAR || blk.type == SEG_RAPID)
+                {
+                    var blockStart = new double[] { blk.x0, blk.y0, blk.z0, blk.a0, blk.b0, blk.c0 };
+                    var blockEnd   = new double[] { blk.x1, blk.y1, blk.z1, blk.a1, blk.b1, blk.c1 };
+                    var L = blk.dx;
+                    int nPhases = blk.C?.Length ?? 0;
 
-                    double frac0 = Math.Clamp(s0 / L, 0.0, 1.0); // start fraction along block
-                    double frac1 = Math.Clamp(s1 / L, 0.0, 1.0); // end fraction
-
-                    // d) interpolate each joint between the block's true endpoints
-                    var entryPos = new double[6];
-                    var exitPos = new double[6];
-                    for (int ax = 0; ax < 6; ax++)
+                    for (int phase = 0; phase < nPhases; phase++)
                     {
-                        double Δ = blockEnd[ax] - blockStart[ax];
-                        entryPos[ax] = blockStart[ax] + Δ * frac0;
-                        exitPos[ax] = blockStart[ax] + Δ * frac1;
+                        var P = blk.C[phase];
+                        double s0 = P.d, s1 = phase + 1 < nPhases ? blk.C[phase + 1].d : L;
+                        double frac0 = Math.Clamp(s0 / L, 0.0, 1.0), frac1 = Math.Clamp(s1 / L, 0.0, 1.0);
+
+                        var entryCart = new double[6];
+                        var exitCart = new double[6];
+                        for (int ax = 0; ax < 6; ax++)
+                        {
+                            double delta = blockEnd[ax] - blockStart[ax];
+                            entryCart[ax] = blockStart[ax] + delta * frac0;
+                            exitCart[ax]  = blockStart[ax] + delta * frac1;
+                        }
+                        var entryActs = _kFanuc.TransformCADtoActuators(entryCart);
+                        var exitActs  = _kFanuc.TransformCADtoActuators(exitCart);
+
+                        _planner.EnqueueSegment(new KEngine.SEGMENT
+                        {
+                            type = blk.type,
+                            sequence_number = blk.sequence_number,
+                            ID = blk.ID,
+                            startActs = entryActs,
+                            endActs = exitActs,
+                            qa = P.a, qb = P.b, qc = P.c, qd = 0.0, qt = P.t
+                        });
+                        Console.WriteLine($"Phase {phase}, entry [{string.Join(", ", entryActs)}], exit [{string.Join(", ", exitActs)}], A {P.a}, B {P.b}, C {P.c}, D {P.d}, T {P.t}");
                     }
-
-                    // e) emit the sub‐segment
-                    EnqueueSegment(new KEngine.SEGMENT
-                    {
-                        type = SEG_RAPID,
-                        sequence_number = blk.sequence_number,
-                        ID = blk.ID,
-
-                        startActs = entryPos,
-                        endActs = exitPos,
-
-                        // carry forward the same timing & cubic shape:
-                        qa = P.a,
-                        qb = P.b,
-                        qc = P.c,
-                        qd = 0.0,       // local offset reset
-                        qt = P.t
-                    });
-                    Console.WriteLine($"Phase {phase}, entry [{string.Join(", ", entryPos)}], exit [{string.Join(", ", exitPos)}], " + $"A {P.a}, B {P.b}, C {P.c}, D {P.d}, T {P.t}");                // f) advance our little cursor
                 }
-            }
-            if (blk.type == SEG_ARC)
-            {
-                Console.WriteLine("Hit SEG_ARC Phase Slicer");
-                double arcL = blk.dx;
-                double xc = blk.xc;
-                double yc = blk.yc;
-                double r = Math.Sqrt((blk.x0 - blk.xc) * (blk.x0 - blk.xc) + (blk.y0 - blk.yc) * (blk.y0 - blk.yc));
-                double theta0 = Math.Atan2(blk.y0 - blk.yc, blk.x0 - blk.xc);
-                double dtheta = Math.Atan2(blk.y1 - blk.yc, blk.x1 - blk.xc) - theta0;
-                if (blk.DirIsCCW && dtheta <= 0) dtheta += 2 * Math.PI;
-                if (!blk.DirIsCCW && dtheta >= 0) dtheta -= 2 * Math.PI;
-
-                for (int phase = 0; phase < blk.C.Length; phase++)
+                if (blk.type == SEG_ARC)
                 {
-                    var P = blk.C[phase];
-                    double s0 = P.d;
-                    double s1 = phase + 1 < blk.C.Length ? blk.C[phase + 1].d : arcL;
+                    Console.WriteLine("Hit SEG_ARC Phase Slicer");
+                Console.WriteLine($"Arc Slicer Inputs: x0={blk.x0}, y0={blk.y0}, z0={blk.z0}, x1={blk.x1}, y1={blk.y1}, z1={blk.z1}, xc={blk.xc}, yc={blk.yc}, r=...");
 
-                    double frac0 = Math.Clamp(s0 / arcL, 0.0, 1.0);
-                    double frac1 = Math.Clamp(s1 / arcL, 0.0, 1.0);
+                    double arcL = blk.dx;
+                    double xc = blk.xc, yc = blk.yc;
+                    double r = Math.Sqrt((blk.x0 - blk.xc) * (blk.x0 - blk.xc) + (blk.y0 - blk.yc) * (blk.y0 - blk.yc));
+                    double theta0 = Math.Atan2(blk.y0 - blk.yc, blk.x0 - blk.xc);
+                    double dtheta = Math.Atan2(blk.y1 - blk.yc, blk.x1 - blk.xc) - theta0;
+                    if (blk.DirIsCCW && dtheta <= 0) dtheta += 2 * Math.PI;
+                    if (!blk.DirIsCCW && dtheta >= 0) dtheta -= 2 * Math.PI;
 
-                    double theta_entry = theta0 + frac0 * dtheta;
-                    double theta_exit = theta0 + frac1 * dtheta;
-
-                    double x0 = xc + r * Math.Cos(theta_entry);
-                    double y0 = yc + r * Math.Sin(theta_entry);
-                    double x1 = xc + r * Math.Cos(theta_exit);
-                    double y1 = yc + r * Math.Sin(theta_exit);
-
-                    // Z and other axes: interpolate linearly as before
-                    double z0 = blk.z0 + (blk.z1 - blk.z0) * frac0;
-                    double z1 = blk.z0 + (blk.z1 - blk.z0) * frac1;
-                    double[] entryPos = { x0, y0, z0, 0, 0, 0 };
-                    double[] exitPos = { x1, y1, z1, 0, 0, 0 };
-
-                    EnqueueSegment(new KEngine.SEGMENT
+                    int nPhases = blk.C?.Length ?? 0;
+                    for (int phase = 0; phase < nPhases; phase++)
                     {
-                        type = SEG_ARC,
-                        sequence_number = blk.sequence_number,
-                        ID = blk.ID,
-                        startActs = entryPos,
-                        endActs = exitPos,
-                        qa = P.a,
-                        qb = P.b,
-                        qc = P.c,
-                        qd = 0.0,
-                        qt = P.t
-                    });
 
-                    Console.WriteLine($"Arc Phase {phase}: frac0={frac0:0.###} frac1={frac1:0.###} | " + $"theta0={theta_entry * 180/Math.PI:0.##}deg theta1={theta_exit * 180/Math.PI:0.##}deg | " + $"entry=({x0:0.###},{y0:0.###},{z0:0.###}) exit=({x1:0.###},{y1:0.###},{z1:0.###}) | " + $"A={P.a:0.##} B={P.b:0.##} C={P.c:0.##} D={P.d:0.##} T={P.t:0.###}");
+                        var P = blk.C[phase];
+                        double s0 = P.d, s1 = phase + 1 < nPhases ? blk.C[phase + 1].d : arcL;
+                        double frac0 = Math.Clamp(s0 / arcL, 0.0, 1.0), frac1 = Math.Clamp(s1 / arcL, 0.0, 1.0);
+
+                        double theta_entry = theta0 + frac0 * dtheta;
+                        double theta_exit = theta0 + frac1 * dtheta;
+                        double x0 = xc + r * Math.Cos(theta_entry), y0 = yc + r * Math.Sin(theta_entry);
+                        double x1 = xc + r * Math.Cos(theta_exit), y1 = yc + r * Math.Sin(theta_exit);
+                        double z0 = blk.z0 + (blk.z1 - blk.z0) * frac0;
+                        double z1 = blk.z0 + (blk.z1 - blk.z0) * frac1;
+                        double a0 = blk.a0 + (blk.a1 - blk.a0) * frac0;
+                        double a1 = blk.a0 + (blk.a1 - blk.a0) * frac1;
+                        double b0 = blk.b0 + (blk.b1 - blk.b0) * frac0;
+                        double b1 = blk.b0 + (blk.b1 - blk.b0) * frac1;
+                        double c0 = blk.c0 + (blk.c1 - blk.c0) * frac0;
+                        double c1 = blk.c0 + (blk.c1 - blk.c0) * frac1;
+
+                        double[] entryPos = { x0, y0, z0, a0, b0, c0 };
+                        double[] exitPos  = { x1, y1, z1, a1, b1, c1 };
+
+                        var entryActs = _kFanuc.TransformCADtoActuators(entryPos);
+                        var exitActs  = _kFanuc.TransformCADtoActuators(exitPos);
+
+                        _planner.EnqueueSegment(new KEngine.SEGMENT
+                        {
+                            type = blk.type,
+                            sequence_number = blk.sequence_number,
+                            ID = blk.ID,
+                            startActs = entryActs,
+                            endActs = exitActs,
+                            qa = P.a, qb = P.b, qc = P.c, qd = 0.0, qt = P.t
+                        });
+
+                        Console.WriteLine($"Arc Phase {phase}: frac0={frac0:0.###} frac1={frac1:0.###} | "
+                            + $"theta0={theta_entry * 180/Math.PI:0.##}deg theta1={theta_exit * 180/Math.PI:0.##}deg | "
+                            + $"entry=({x0:0.###},{y0:0.###},{z0:0.###}) exit=({x1:0.###},{y1:0.###},{z1:0.###}) | "
+                            + $"A={P.a:0.##} B={P.b:0.##} C={P.c:0.##} D={P.d:0.##} T={P.t:0.###}");
+                    }
                 }
-            }
                 return 0;
-            
-        }
+            }
 
 
  

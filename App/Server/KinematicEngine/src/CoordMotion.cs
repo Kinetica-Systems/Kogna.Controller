@@ -189,42 +189,20 @@ namespace KinematicEngine
             if (_planner   == null) throw new InvalidOperationException("_planner   is null");
             if (_lastActs  == null) throw new InvalidOperationException("_lastActs  is null");
 
-
-            // 1) Solve inverse kinematics
-            //    startActs holds your previous joint angles;
-            //    endActs will be filled in with the new solution.
-            var startActs = (double[])_lastActs.Clone();
-            var endActs = new double[startActs.Length];
-
-            int rc = _kinematics.TransformCADtoActuators(x1, y1, z1, a1, b1, c1, u1, v1, endActs);
-            if (rc != 0)
-            {
-                Console.WriteLine($"[IK ERROR] could not solve IK for target ({x1},{y1},{z1}) rc={rc}");
-                return rc;
-            }
-            current_x = x1;
-            current_y = y1;
-            current_z = z1;
             // 2) Enqueue into the trajectory planner
             if (rapidMode)
             {
-
                 // G0: pure rapid
-                _planner.InsertRapidLinearSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, seq, id);
-                
+                _planner.InsertRapidLinearSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, seq, id);
             }
             else
             {
                 // G1: feed with acceleration control
                 // Pass feedRate and accel as your MaxVel / MaxAccel
-                _planner.InsertLinearSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, seq, id, feedRate, accel);
+                _planner.InsertLinearSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, seq, id, feedRate, accel);
             }
+
             _planner.DoRateAdjustments(0, _planner.SegCount());
-
-
-            
-            // 5) update your “last known” joint angles
-            Array.Copy(endActs, _currentActs, _currentActs.Length);
 
             return 0;
         }
@@ -236,30 +214,14 @@ namespace KinematicEngine
             if (_planner   == null) throw new InvalidOperationException("_planner   is null");
             if (_lastActs  == null) throw new InvalidOperationException("_lastActs  is null");
 
-
-            // 1) Solve inverse kinematics
-            //    startActs holds your previous joint angles;
-            //    endActs will be filled in with the new solution.
-            var startActs = (double[])_lastActs.Clone();
-            var endActs = new double[startActs.Length];
-
-            int rc = _kinematics.TransformCADtoActuators(x1, y1, z1, a1, b1, c1, u1, v1, endActs);
-            if (rc != 0)
-            {
-                Console.WriteLine($"[IK ERROR] could not solve IK for target ({x1},{y1},{z1}) rc={rc}");
-                return rc;
-            }
-            current_x = x1;
-            current_y = y1;
-            current_z = z1;
-            double xc = x0 - i1;
-            double yc = y0 - j1;
+            double xc = x0 + i1;
+            double yc = y0 + j1;
             // 2) Enqueue into the trajectory planner
             if (!DirIsCCW) //if its CW
             {
                 Console.WriteLine($"hit G2 exit from coordmotion");
                 // G2: CW Arc
-                _planner.InsertArcSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, xc, yc, false, feedRate, accel, seq, id);
+                _planner.InsertArcSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, xc, yc, false, feedRate, accel, seq, id);
 
             }
             else // if CCW arc
@@ -267,14 +229,9 @@ namespace KinematicEngine
 
                 Console.WriteLine($"hit G3 exit from coordmotion");
                 // G3: CCW Arc
-                _planner.InsertArcSeg(startActs[0], startActs[1], startActs[2], startActs[3], startActs[4], startActs[5], 0, 0, endActs[0], endActs[1], endActs[2], endActs[3], endActs[4], endActs[5], 0, 0, xc, yc, true, feedRate, accel, seq, id);
+                _planner.InsertArcSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, xc, yc, true, feedRate, accel, seq, id);
             }
             _planner.DoRateAdjustments(0, _planner.SegCount());
-
-
-            
-            // 5) update your “last known” joint angles
-            Array.Copy(endActs, _currentActs, _currentActs.Length);
 
             return 0;
         }
@@ -486,10 +443,6 @@ namespace KinematicEngine
         public double GetNominalFROChangeTime(char axis)
             => CKinematics.NominalFROTime(axis);
 
-        public int SetAxisDefinitions(int x, int y, int z, int a, int b, int c)
-            => SetAxisDefinitions(x, y, z, a, b, c, -1, -1);
-        // Axis definitions overloads
-
         public int SetAxisDefinitions(int x, int y, int z, int a, int b, int c, int u, int v)
         {
             x_axis = x; y_axis = y; z_axis = z;
@@ -548,8 +501,8 @@ namespace KinematicEngine
                 return false;
 
             // Allocate and fill Acts[]
-            double[] Acts = new double[8];
-            _kinematics.TransformCADtoActuators(x, y, z, a, b, c, u, v, Acts);
+            double[] cartesian = { x, y, z, a, b, c };
+            double[] Acts = _kinematics.TransformCADtoActuators(cartesian);
 
             // 1) Call the int-returning function
             int rc = GetAxisDefinitions(out int x_axis, out int y_axis, out int z_axis, out int a_axis, out int b_axis, out int c_axis);
@@ -626,9 +579,9 @@ namespace KinematicEngine
                 return 1;
             }
 
-            // 3) Convert to CAD coords
-            double tx, ty, tz, ta, tb, tc;
-            _kinematics.TransformActuatorstoCAD(Acts, out tx, out ty, out tz, out ta, out tb, out tc);
+            double[] cartesian = _kinematics.TransformActuatorsToCAD(Acts);
+            double tx = cartesian[0], ty = cartesian[1], tz = cartesian[2];
+            double ta = cartesian[3], tb = cartesian[4], tc = cartesian[5];
 
             // 4) Compute tolerances
             const double FLOAT_TOL = 1e-6;       // or whatever your C++ uses

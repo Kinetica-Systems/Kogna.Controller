@@ -49,7 +49,7 @@ namespace KinematicEngine
             _kEngine = this;
             _cKinematics = new CKinematics();
             _kinematics = new Kinematics6AxisFanuc();
-            _planner = new TrajectoryPlanner(_kEngine, _cKinematics);
+            _planner = new TrajectoryPlanner(_kEngine, _cKinematics, _kinematics);
             _setup = new RS274NGC.SetupData();
             _ccmotion = new CCoordMotion(_kinematics, _planner, _setup, _kEngine);
 
@@ -376,7 +376,7 @@ namespace KinematicEngine
         /// <summary>
         /// Defines the coordinate system mapping. Uses the same index for all axes by default.
         /// </summary>
-        public int SetAxisDefinitions(int csIndexx, int csIndexy, int csIndexz, int csIndexa, int csIndexb, int csIndexc) => _ccmotion.SetAxisDefinitions(csIndexx, csIndexy, csIndexz, csIndexa, csIndexb, csIndexc);
+        public int SetAxisDefinitions(int csIndexx, int csIndexy, int csIndexz, int csIndexa, int csIndexb, int csIndexc) => _ccmotion.SetAxisDefinitions(csIndexx, csIndexy, csIndexz, csIndexa, csIndexb, csIndexc, 0, 0);
         public int GetAxisDefinitions(out int csIndexx, out int csIndexy, out int csIndexz, out int csIndexa, out int csIndexb, out int csIndexc) => _ccmotion.GetAxisDefinitions(out csIndexx, out csIndexy, out csIndexz, out csIndexa, out csIndexb, out csIndexc);
 
         /// <summary>

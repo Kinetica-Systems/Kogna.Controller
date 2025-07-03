@@ -404,6 +404,8 @@ namespace KinematicEngine
             public Array[] arr;
             public double[] startActs;
             public double[] endActs;
+            public double vEntry; // Velocity at start of this segment/phase (mm/s)
+            public double vExit;  // Velocity at end of this segment/phase   (mm/s)
             public int ID;
             //realtime positions and cartesian targets
             public double x, y, z, a, b, c, d, u, v;

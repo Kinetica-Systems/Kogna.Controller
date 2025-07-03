@@ -226,11 +226,11 @@ namespace KinematicEngine
             }
             else // if CCW arc
             {
-
                 Console.WriteLine($"hit G3 exit from coordmotion");
                 // G3: CCW Arc
                 _planner.InsertArcSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, xc, yc, true, feedRate, accel, seq, id);
             }
+            
             _planner.DoRateAdjustments(0, _planner.SegCount());
 
             return 0;

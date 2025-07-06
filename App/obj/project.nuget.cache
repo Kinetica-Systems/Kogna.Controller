@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "sf7tjL6Cm4c=",
+  "dgSpecHash": "kfnEp60Wwgk=",
   "success": true,
-  "projectFilePath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
+  "projectFilePath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia\\11.3.0\\avalonia.11.3.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.22045.20230930\\avalonia.angle.windows.natives.2.1.22045.20230930.nupkg.sha512",

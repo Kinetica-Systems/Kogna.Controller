@@ -399,6 +399,8 @@ namespace KinematicEngine
             public int type;             // SEG_LINEAR, SEG_ARC, etc.
             public int nTrips;
             public int sequence_number;
+            public int segmentId;
+            
             public double Duration, t;
             public double[] angle;
             public Array[] arr;

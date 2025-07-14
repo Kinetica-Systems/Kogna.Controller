@@ -160,6 +160,7 @@ namespace KinematicEngine
             m_ThreadingMode = false;
             m_SegmentsStartedExecuting = false;
             
+            
         }
 
         private void ResetMotionState()
@@ -201,7 +202,14 @@ namespace KinematicEngine
                 // Pass feedRate and accel as your MaxVel / MaxAccel
                 _planner.InsertLinearSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, seq, id, feedRate, accel);
             }
-
+                current_x = x1;
+                current_y = y1;
+                current_z = z1;
+                current_a = a1;
+                current_b = b1;
+                current_c = c1;
+                current_u = u1;
+                current_v = v1;
             _planner.DoRateAdjustments(0, _planner.SegCount());
 
             return 0;
@@ -230,7 +238,14 @@ namespace KinematicEngine
                 // G3: CCW Arc
                 _planner.InsertArcSeg(x0, y0, z0, a0, b0, c0, 0, 0, x1, y1, z1, a1, b1, c1, 0, 0, xc, yc, true, feedRate, accel, seq, id);
             }
-            
+                current_x = x1;
+                current_y = y1;
+                current_z = z1;
+                current_a = a1;
+                current_b = b1;
+                current_c = c1;
+                current_u = u1;
+                current_v = v1;
             _planner.DoRateAdjustments(0, _planner.SegCount());
 
             return 0;

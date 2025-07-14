@@ -62,6 +62,8 @@ namespace KinematicEngine
             _cKinematics.Start();
             _planner.Init();
             Console.WriteLine($"Kinematic Engine Initialised");
+            _lastFeedRate = _MOTION_PARAMS.MaxVel;
+
             return _running;
         }
 

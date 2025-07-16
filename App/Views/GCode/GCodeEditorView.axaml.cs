@@ -54,7 +54,7 @@ namespace KognaServer.Views
         private readonly ObservableCollection<string> _responses = new();
         private GCodeStreamer? bufferCommandFile { get; set; } = null!;
         private String[] bufferedLines = [];
-        private readonly KinematicEngineClient _client = null!;
+        private readonly KinematicEngineClient? _client;
         public GCodeEditorView()
         {
             InitializeComponent();
@@ -126,12 +126,19 @@ namespace KognaServer.Views
         // Streams each non-empty line to your engine
         public async void StreamButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_client == null)
+            {
+                _responses.Clear();
+                _responses.Add("✖ Client not initialized - cannot stream commands");
+                return;
+            }
+            
             _responses.Clear();
             foreach (var line in Editor.Document.Lines
                         .Select(l => Editor.Document.GetText(l.Offset, l.Length))
                         .Where(l => !string.IsNullOrWhiteSpace(l)))
             {
-                // send each line and await the engine’s reply
+                // send each line and await the engine's reply
                 var newline = "r " + line;
                 var response = await _client.SendCommandAsync(newline);
 
@@ -167,6 +174,7 @@ namespace KognaServer.Views
             // 1) Turn each DocumentLine into its exact text
             var lines = Editor.Document.Lines
                         .Select(line =>
+                        
                                 Editor.Document.GetText(line.Offset, line.Length))
                         .ToArray();
 
@@ -185,7 +193,7 @@ namespace KognaServer.Views
         */
         protected override void OnUnloaded(RoutedEventArgs e)
             {
-                _client.Dispose();
+                _client?.Dispose();
                 base.OnUnloaded(e);
             }
 

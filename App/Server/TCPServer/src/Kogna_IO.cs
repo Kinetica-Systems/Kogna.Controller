@@ -9,6 +9,7 @@ using System.Threading;
 using System.Diagnostics;
 using System.Text;
 using System.IO;
+using System.Threading.Tasks; // Added for Task.Run
 
 
 namespace TCPServer
@@ -83,15 +84,38 @@ namespace TCPServer
                 var endPoint = new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
                 try
                 {
-                    // This will now block up to the OS TCP timeout (or you can use BeginConnect/ConnectAsync+WaitHandle)
-                    _socket.Connect(endPoint);
-                    Connected = true;
-                    NonRespondingCount = 0;
-
+                    Console.WriteLine($"[KOGNA_IO] Attempting to connect to {IPAddress}:{Port}");
+                    
+                    // Use async connect with timeout to prevent hanging
+                    var connectTask = Task.Run(() => _socket.ConnectAsync(endPoint));
+                    if (connectTask.Wait(TimeSpan.FromSeconds(10))) // 10 second timeout
+                    {
+                        if (connectTask.Exception != null)
+                        {
+                            throw connectTask.Exception.InnerException ?? connectTask.Exception;
+                        }
+                        
+                        Connected = true;
+                        NonRespondingCount = 0;
+                        Console.WriteLine($"[KOGNA_IO] Successfully connected to {IPAddress}:{Port}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[KOGNA_IO] Connection timeout to {IPAddress}:{Port}");
+                        ErrorMessage($"Connection timeout to {IPAddress}:{Port}");
+                        return KOGNA_TIMEOUT;
+                    }
                 }
                 catch (SocketException ex)
                 {
-                    ErrorMessage("Unable to connect: " + ex.Message);
+                    Console.WriteLine($"[KOGNA_IO] Socket error connecting to {IPAddress}:{Port}: {ex.Message}");
+                    ErrorMessage($"Unable to connect: {ex.Message}");
+                    return KOGNA_ERROR;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[KOGNA_IO] Unexpected error connecting to {IPAddress}:{Port}: {ex.Message}");
+                    ErrorMessage($"Unexpected error: {ex.Message}");
                     return KOGNA_ERROR;
                 }
 
@@ -100,9 +124,7 @@ namespace TCPServer
             finally
             {
                 _mutex.ReleaseMutex();
-
             }
-
         }
 
         public int Disconnect()

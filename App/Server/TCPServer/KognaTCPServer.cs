@@ -6,7 +6,7 @@ public class KServer
 {
     //public string? ipAddress;
     //public int? port;
-    public event Action<KognaStatus>? OnStatusUpdate;
+    public event Action<KognaMonitor.KognaStatus>? OnStatusUpdate;
     private CancellationTokenSource _cts = new();
 
     public  KognaIO? _io { get; set; }

@@ -97,7 +97,8 @@
       },
       "KinematicEngine/1.0.0": {
         "dependencies": {
-          "Newtonsoft.Json": "13.0.3"
+          "Newtonsoft.Json": "13.0.3",
+          "TCPServer": "1.0.0"
         },
         "runtime": {
           "KinematicEngine.dll": {

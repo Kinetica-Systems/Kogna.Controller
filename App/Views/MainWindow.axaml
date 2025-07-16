@@ -45,11 +45,11 @@
 </Expander>
 
         <TabControl Margin="5">
-        <TabItem Header="Tab 1">
+        <TabItem Header="G-Code Editor">
         <views:GCodeEditorView DataContext="{Binding GcodeVm}"  />
         </TabItem>
-        <TabItem Header="Tab 2">
-            <TextBlock Margin="5">This is tab 2 content</TextBlock>
+        <TabItem Header="Manual Jogging">
+            <views:JoggingView DataContext="{Binding JoggingVm}" />
         </TabItem>
         <TabItem Header="Tab 3">
             <TextBlock Margin="5">This is tab 3 content</TextBlock>

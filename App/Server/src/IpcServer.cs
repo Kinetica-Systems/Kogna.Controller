@@ -81,7 +81,7 @@ public class IpcServer
                     var cmdLine = new[]{ req.Command }
                    .Concat(req.Args ?? Enumerable.Empty<string>());
                     var cmd = string.Join(" ", cmdLine);
-                    _control.ProcessIpcCommand(cmd, out result);
+                    var (response, result) = await _control.ProcessIpcCommand(cmd);
    
                 var resp = new IpcResponse
                 {

@@ -18,28 +18,31 @@ namespace KognaServer.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
-        public KognaControl _server { get; }
+        public KognaControl? _server { get; }
         public DroViewModel DroVm { get; }
         public TerminalViewModel TerminalViewModel { get; }
         public ConnectionViewModel ConnectionVm { get; }
         public GCodeEditorViewModel GcodeVm { get; }
+        public JoggingViewModel JoggingVm { get; }
       
 
         // keep track of elapsed time (ms)
 
 
         public MainWindowViewModel(
-            KognaControl server,
+            KognaControl? server,
             ConnectionViewModel connectionVm,
             DroViewModel droVm,
             TerminalViewModel terminalVm,
-            GCodeEditorViewModel gCodeEditor)
+            GCodeEditorViewModel gCodeEditor,
+            JoggingViewModel joggingVm)
         {
             _server = server;
             ConnectionVm = connectionVm;
             DroVm = droVm;
             TerminalViewModel = terminalVm;
             GcodeVm = gCodeEditor;
+            JoggingVm = joggingVm;
 
         }
         

@@ -1,0 +1,129 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:KognaServer.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
+             x:Class="KognaServer.Views.JoggingView"
+             x:DataType="vm:JoggingViewModel"
+             Focusable="True">
+
+    <Design.DataContext>
+        <vm:JoggingViewModel/>
+    </Design.DataContext>
+
+    <ScrollViewer>
+        <StackPanel Margin="10" Spacing="10">
+            
+            <!-- Coordinate System Management -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+                <StackPanel Margin="5" Spacing="5">
+                    <TextBlock Text="Coordinate System" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                    <TextBlock Text="Active System:" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding ActiveCoordinateSystem}" FontSize="16" Foreground="Blue"/>
+                    <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,10,0,0">
+                        <Button Content="G53" Command="{Binding SetCoordinateSystemCommand}" CommandParameter="G53" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                        <Button Content="G54" Command="{Binding SetCoordinateSystemCommand}" CommandParameter="G54" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                        <Button Content="G55" Command="{Binding SetCoordinateSystemCommand}" CommandParameter="G55" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                        <Button Content="G56" Command="{Binding SetCoordinateSystemCommand}" CommandParameter="G56" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <Button Content="Zero Here" Command="{Binding ZeroCurrentPositionCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                        <Button Content="Get Status" Command="{Binding GetCoordinateSystemCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Jog Settings -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+                <StackPanel Margin="5" Spacing="5">
+                    <TextBlock Text="Jog Settings" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Step Size:" VerticalAlignment="Center"/>
+                        <NumericUpDown Value="{Binding JogStep}" Minimum="0.1" Maximum="100" Increment="0.1" 
+                                      Width="80" IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="Speed:" VerticalAlignment="Center"/>
+                        <NumericUpDown Value="{Binding JogSpeed}" Minimum="1" Maximum="1000" Increment="10" 
+                                      Width="80" IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Jog Controls -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+                <StackPanel Margin="5" Spacing="5">
+                    <TextBlock Text="Manual Jogging" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                    <!-- Z Axis -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="Z+" Command="{Binding JogZPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                    </StackPanel>
+                    <!-- Y and A Axes -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="A-" Command="{Binding JogANegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="Y+" Command="{Binding JogYPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="A+" Command="{Binding JogAPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                    </StackPanel>
+                    <!-- X, B, and C Axes -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="X-" Command="{Binding JogXNegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="B-" Command="{Binding JogBNegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="C-" Command="{Binding JogCNegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="C+" Command="{Binding JogCPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="B+" Command="{Binding JogBPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                        <Button Content="X+" Command="{Binding JogXPositiveCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                    </StackPanel>
+                    <!-- Y Axis -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="Y-" Command="{Binding JogYNegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                    </StackPanel>
+                    <!-- Z Axis -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="Z-" Command="{Binding JogZNegativeCommand}" 
+                                IsEnabled="{Binding IsJogging, Converter={x:Static BoolConverters.Not}}" Width="50" Height="30" Margin="2"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Keyboard Shortcuts -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+                <StackPanel Margin="5" Spacing="2">
+                    <TextBlock Text="Keyboard Shortcuts" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                    <TextBlock Text="Arrow Keys: X/Y movement" FontSize="10"/>
+                    <TextBlock Text="Page Up/Down: Z movement" FontSize="10"/>
+                    <TextBlock Text="Home/End: A rotation" FontSize="10"/>
+                    <TextBlock Text="Insert/Delete: B rotation" FontSize="10"/>
+                    <TextBlock Text="Focus this panel to use keyboard" FontSize="10" Foreground="Gray"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Status -->
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,10">
+                <StackPanel Margin="5">
+                    <TextBlock Text="Status" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl> 

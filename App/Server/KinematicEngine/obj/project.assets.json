@@ -14,6 +14,16 @@
             "related": ".xml"
           }
         }
+      },
+      "TCPServer/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/TCPServer.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/TCPServer.dll": {}
+        }
       }
     }
   },
@@ -47,11 +57,17 @@
         "newtonsoft.json.nuspec",
         "packageIcon.png"
       ]
+    },
+    "TCPServer/1.0.0": {
+      "type": "project",
+      "path": "../TCPServer/TCPServer.csproj",
+      "msbuildProject": "../TCPServer/TCPServer.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "Newtonsoft.Json >= 13.0.3"
+      "Newtonsoft.Json >= 13.0.3",
+      "TCPServer >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -85,7 +101,11 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

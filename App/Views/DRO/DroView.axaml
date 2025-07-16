@@ -3,24 +3,115 @@
              xmlns:vm="clr-namespace:KognaServer.ViewModels"
              x:Class="KognaServer.Views.DroView"
              x:DataType="vm:DroViewModel">
-  
-  
-  
-  
-  <StackPanel Margin="8" Spacing="6" MaxWidth="600">
-    <DataGrid ItemsSource="{Binding Axes}"
-              AutoGenerateColumns="False"
-              HeadersVisibility="Column"
-              CanUserResizeColumns="True"
-              >
-      <DataGrid.Columns>
-        <DataGridTextColumn Header="Axis"   Binding="{Binding Name}" Width="*"/>
-        <DataGridTextColumn Header="Actual" Binding="{Binding Actual, StringFormat=N3}" Width="*"/>
-        <DataGridTextColumn Header="Target" Binding="{Binding Target, StringFormat=N3}" Width="*"/>
-        <DataGridCheckBoxColumn Header="On?"  Binding="{Binding Enabled}" Width="*"/>
-      </DataGrid.Columns>
-    </DataGrid>
 
-    
-  </StackPanel>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" MaxWidth="400">
+    <StackPanel Margin="8" Spacing="8">
+
+      <!-- Current Cartesian Position -->
+      <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,4">
+        <StackPanel>
+          <Border Background="LightGray" Padding="8,4">
+            <TextBlock Text="Current Cartesian Position" FontWeight="Bold"/>
+          </Border>
+          <StackPanel Margin="8" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="X:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding CurrentX}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="Y:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding CurrentY}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Z:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding CurrentZ}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="A:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding CurrentA}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="B:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding CurrentB}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="C:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding CurrentC}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="U:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding CurrentU}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="V:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding CurrentV}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Target Cartesian Position -->
+      <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,4">
+        <StackPanel>
+          <Border Background="LightGray" Padding="8,4">
+            <TextBlock Text="Target Cartesian Position" FontWeight="Bold"/>
+          </Border>
+          <StackPanel Margin="8" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="X:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding TargetX}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="Y:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding TargetY}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="Z:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding TargetZ}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="A:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding TargetA}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="B:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding TargetB}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="C:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding TargetC}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="U:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding TargetU}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="V:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding TargetV}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Joint Angles -->
+      <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Margin="0,0,0,4">
+        <StackPanel>
+          <Border Background="LightGray" Padding="8,4">
+            <TextBlock Text="Joint Angles" FontWeight="Bold"/>
+          </Border>
+          <StackPanel Margin="8" Spacing="4">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="J1:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding JointAngle1}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="J2:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding JointAngle2}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="J3:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding JointAngle3}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="J4:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding JointAngle4}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="J5:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding JointAngle5}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="J6:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding JointAngle6}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock Text="J7:" FontWeight="Bold" Width="20"/>
+              <TextBlock Text="{Binding JointAngle7}" FontFamily="Consolas" MinWidth="60"/>
+              <TextBlock Text="J8:" FontWeight="Bold" Width="20" Margin="16,0,0,0"/>
+              <TextBlock Text="{Binding JointAngle8}" FontFamily="Consolas" MinWidth="60"/>
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
 </UserControl>

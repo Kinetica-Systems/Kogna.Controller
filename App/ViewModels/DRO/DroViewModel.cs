@@ -17,10 +17,7 @@ using KognaServer.Models;
 using KognaServer.ViewModels;
 using KognaServer.Views;
 using KognaComms;
-using TCPServer; // Add for KognaStatus
-
-
-
+using TCPServer;
 
 namespace KognaServer.ViewModels
 {
@@ -114,69 +111,45 @@ namespace KognaServer.ViewModels
 
         private void OnStatusUpdate(TCPServer.KognaMonitor.KognaStatus status)
         {
-            try
+            // Update Cartesian positions
+            CurrentX = status.CurrentX;
+            CurrentY = status.CurrentY;
+            CurrentZ = status.CurrentZ;
+            CurrentA = status.CurrentA;
+            CurrentB = status.CurrentB;
+            CurrentC = status.CurrentC;
+            CurrentU = status.CurrentU;
+            CurrentV = status.CurrentV;
+
+            // Update target positions
+            TargetX = status.TargetX;
+            TargetY = status.TargetY;
+            TargetZ = status.TargetZ;
+            TargetA = status.TargetA;
+            TargetB = status.TargetB;
+            TargetC = status.TargetC;
+            TargetU = status.TargetU;
+            TargetV = status.TargetV;
+
+            // Update joint angles
+            JointAngle1 = status.JointAngle1;
+            JointAngle2 = status.JointAngle2;
+            JointAngle3 = status.JointAngle3;
+            JointAngle4 = status.JointAngle4;
+            JointAngle5 = status.JointAngle5;
+            JointAngle6 = status.JointAngle6;
+            JointAngle7 = status.JointAngle7;
+            JointAngle8 = status.JointAngle8;
+
+            // Update axis info
+            for (int i = 0; i < Axes.Count; i++)
             {
-                Dispatcher.UIThread.Post(() =>
+                if (i < status.JointsActual.Length)
                 {
-                    try
-                    {
-                        // Update current cartesian positions
-                        if (status.JointsActual.Length > 0) CurrentX = status.CurrentX;
-                        if (status.JointsActual.Length > 1) CurrentY = status.CurrentY;
-                        if (status.JointsActual.Length > 2) CurrentZ = status.CurrentZ;
-                        if (status.JointsActual.Length > 3) CurrentA = status.CurrentA;
-                        if (status.JointsActual.Length > 4) CurrentB = status.CurrentB;
-                        if (status.JointsActual.Length > 5) CurrentC = status.CurrentC;
-                        if (status.JointsActual.Length > 6) CurrentU = status.CurrentU;
-                        if (status.JointsActual.Length > 7) CurrentV = status.CurrentV;
-
-                        // Update target cartesian positions
-                        if (status.JointsTarget.Length > 0) TargetX = status.TargetX;
-                        if (status.JointsTarget.Length > 1) TargetY = status.TargetY;
-                        if (status.JointsTarget.Length > 2) TargetZ = status.TargetZ;
-                        if (status.JointsTarget.Length > 3) TargetA = status.TargetA;
-                        if (status.JointsTarget.Length > 4) TargetB = status.TargetB;
-                        if (status.JointsTarget.Length > 5) TargetC = status.TargetC;
-                        if (status.JointsTarget.Length > 6) TargetU = status.TargetU;
-                        if (status.JointsTarget.Length > 7) TargetV = status.TargetV;
-
-                        // Update joint angles
-                        if (status.JointsActual.Length > 0) JointAngle1 = status.JointAngle1;
-                        if (status.JointsActual.Length > 1) JointAngle2 = status.JointAngle2;
-                        if (status.JointsActual.Length > 2) JointAngle3 = status.JointAngle3;
-                        if (status.JointsActual.Length > 3) JointAngle4 = status.JointAngle4;
-                        if (status.JointsActual.Length > 4) JointAngle5 = status.JointAngle5;
-                        if (status.JointsActual.Length > 5) JointAngle6 = status.JointAngle6;
-                        if (status.JointsActual.Length > 6) JointAngle7 = status.JointAngle7;
-                        if (status.JointsActual.Length > 7) JointAngle8 = status.JointAngle8;
-
-                        // Update the axes collection for the DataGrid
-                        for (int i = 0; i < Math.Min(status.JointsActual.Length, Axes.Count); i++)
-                        {
-                            Axes[i].Actual = status.JointsActual[i];
-                            Axes[i].Target = status.JointsTarget[i];
-                            Axes[i].Enabled = status.JointsEnabled[i];
-                        }
-
-                        Console.WriteLine($"[DRO] Updated positions - Current: ({CurrentX:F3}, {CurrentY:F3}, {CurrentZ:F3}) Target: ({TargetX:F3}, {TargetY:F3}, {TargetZ:F3})");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[DRO] ERROR in status update UI thread: {ex.Message}");
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DRO] ERROR in status update: {ex.Message}");
-            }
-        }
-
-        public void Dispose()
-        {
-            if (server != null && server._monitor != null)
-            {
-                server._monitor.OnStatusUpdate -= OnStatusUpdate;
+                    Axes[i].Actual = status.JointsActual[i];
+                    Axes[i].Target = status.JointsTarget[i];
+                    Axes[i].Enabled = status.JointsEnabled[i];
+                }
             }
         }
     }

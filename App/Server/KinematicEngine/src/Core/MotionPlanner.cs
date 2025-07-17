@@ -1,326 +1,212 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using SharedTypes;
 
 namespace KinematicEngine.Core
 {
     /// <summary>
-    /// Handles trajectory planning and optimization for multi-axis motion
+    /// Handles motion planning and trajectory generation
     /// </summary>
     public class MotionPlanner : IDisposable
     {
-        private readonly List<MotionSegment> _segments = new List<MotionSegment>();
-        private readonly Queue<MotionSegment> _pendingSegments = new Queue<MotionSegment>();
-        private readonly object _segmentLock = new object();
-        
-        private EngineConfiguration _config = null!;
-        private bool _disposed = false;
+        private readonly object _plannerLock = new object();
+        private readonly Queue<MotionSegment> _segmentQueue = new Queue<MotionSegment>();
+        private bool _isRunning;
+        private bool _disposed;
 
         /// <summary>
-        /// Gets the number of pending segments
+        /// Gets the number of pending motion segments in the queue
         /// </summary>
-        public int PendingSegmentCount => _pendingSegments.Count;
+        public int PendingSegmentCount => _segmentQueue.Count;
 
         /// <summary>
-        /// Gets the total planned time
+        /// Starts the motion planner
         /// </summary>
-        public double TotalPlannedTime { get; private set; }
-
-        /// <summary>
-        /// Initializes the motion planner with the given configuration
-        /// </summary>
-        /// <param name="config">Engine configuration</param>
-        public void Initialize(EngineConfiguration config)
+        public async Task StartAsync()
         {
-            _config = config;
-            lock (_segmentLock)
+            ThrowIfDisposed();
+
+            lock (_plannerLock)
             {
-                _segments.Clear();
-                _pendingSegments.Clear();
-                TotalPlannedTime = 0.0;
+                if (_isRunning)
+                {
+                    throw new InvalidOperationException("Motion planner is already running");
+                }
+                _isRunning = true;
             }
+
+            await Task.CompletedTask; // Placeholder for future async initialization
         }
 
         /// <summary>
-        /// Plans a motion command and adds it to the trajectory
+        /// Stops the motion planner and clears the segment queue
         /// </summary>
-        /// <param name="command">Motion command to plan</param>
-        /// <returns>Planning result</returns>
-        public PlanningResult PlanMotion(MotionCommand command)
+        public async Task StopAsync()
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(MotionPlanner));
+            ThrowIfDisposed();
+
+            lock (_plannerLock)
+            {
+                if (!_isRunning)
+                {
+                    throw new InvalidOperationException("Motion planner is not running");
+                }
+                _isRunning = false;
+                _segmentQueue.Clear();
+            }
+
+            await Task.CompletedTask; // Placeholder for future async cleanup
+        }
+
+        /// <summary>
+        /// Processes a motion command and adds it to the queue
+        /// </summary>
+        /// <param name="command">The motion command to process</param>
+        /// <returns>The result of processing the command</returns>
+        public async Task<CommandResult> ProcessCommandAsync(MotionCommand command)
+        {
+            ThrowIfDisposed();
+
+            if (command == null)
+            {
+                throw new ArgumentNullException(nameof(command));
+            }
+
+            if (!_isRunning)
+            {
+                return new CommandResult
+                {
+                    Success = false,
+                    ErrorMessage = "Motion planner is not running"
+                };
+            }
 
             try
             {
-                var segment = CreateMotionSegment(command);
+                var segment = await Task.Run(() => GenerateSegment(command));
                 
-                lock (_segmentLock)
+                lock (_plannerLock)
                 {
-                    _segments.Add(segment);
-                    _pendingSegments.Enqueue(segment);
-                    TotalPlannedTime += segment.Duration;
+                    _segmentQueue.Enqueue(segment);
                 }
 
-                return new PlanningResult
+                return new CommandResult
                 {
                     Success = true,
-                    SegmentCount = _segments.Count,
+                    CommandsInBuffer = _segmentQueue.Count,
                     EstimatedDuration = segment.Duration
                 };
             }
             catch (Exception ex)
             {
-                return new PlanningResult
+                return new CommandResult
                 {
                     Success = false,
-                    ErrorMessage = ex.Message
+                    ErrorMessage = $"Failed to process command: {ex.Message}"
                 };
             }
         }
 
         /// <summary>
-        /// Gets the next segment to execute
+        /// Gets the current buffer status
         /// </summary>
-        /// <returns>Next motion segment or null if none available</returns>
-        public MotionSegment? GetNextSegment()
+        /// <returns>The current buffer status</returns>
+        public BufferStatus GetBufferStatus()
         {
-            lock (_segmentLock)
-            {
-                return _pendingSegments.Count > 0 ? _pendingSegments.Dequeue() : null;
-            }
-        }
+            ThrowIfDisposed();
 
-        /// <summary>
-        /// Optimizes the trajectory for better performance
-        /// </summary>
-        public void OptimizeTrajectory()
-        {
-            lock (_segmentLock)
+            lock (_plannerLock)
             {
-                // Implement trajectory optimization algorithms here
-                // This could include:
-                // - Velocity profile optimization
-                // - Corner smoothing
-                // - Look-ahead optimization
-                // - Collision avoidance
-            }
-        }
-
-        /// <summary>
-        /// Clears all planned segments
-        /// </summary>
-        public void Clear()
-        {
-            lock (_segmentLock)
-            {
-                _segments.Clear();
-                _pendingSegments.Clear();
-                TotalPlannedTime = 0.0;
-            }
-        }
-
-        /// <summary>
-        /// Gets the current trajectory status
-        /// </summary>
-        /// <returns>Trajectory status information</returns>
-        public TrajectoryStatus GetStatus()
-        {
-            lock (_segmentLock)
-            {
-                return new TrajectoryStatus
+                return new BufferStatus
                 {
-                    TotalSegments = _segments.Count,
-                    PendingSegments = _pendingSegments.Count,
-                    TotalPlannedTime = TotalPlannedTime,
-                    IsOptimized = false // TODO: Implement optimization tracking
+                    CommandsInBuffer = _segmentQueue.Count,
+                    TotalBufferTime = CalculateTotalBufferTime(),
+                    IsBufferHealthy = _segmentQueue.Count > 0
                 };
             }
         }
 
-        private MotionSegment CreateMotionSegment(MotionCommand command)
+        private double CalculateTotalBufferTime()
         {
-            var segment = new MotionSegment
+            double totalTime = 0;
+            foreach (var segment in _segmentQueue)
             {
-                SequenceNumber = command.SequenceNumber,
-                Type = command.Type,
+                totalTime += segment.Duration;
+            }
+            return totalTime;
+        }
+
+        private MotionSegment GenerateSegment(MotionCommand command)
+        {
+            // TODO: Implement actual motion planning logic
+            return new MotionSegment
+            {
                 StartPosition = (double[])command.StartPosition.Clone(),
                 EndPosition = (double[])command.EndPosition.Clone(),
+                Type = command.Type,
                 FeedRate = command.FeedRate,
                 Acceleration = command.Acceleration,
                 Jerk = command.Jerk,
-                ArcCenter = command.Type == MotionType.Arc ? (double[])command.ArcCenter.Clone() : new double[2],
-                IsClockwise = command.IsClockwise,
-                DwellTime = command.DwellTime
+                Duration = EstimateSegmentDuration(command)
             };
-
-            // Calculate segment duration based on motion type
-            segment.Duration = CalculateSegmentDuration(segment);
-            
-            // Calculate velocity profile
-            segment.VelocityProfile = CalculateVelocityProfile(segment);
-            
-            return segment;
         }
 
-        private double CalculateSegmentDuration(MotionSegment segment)
+        private double EstimateSegmentDuration(MotionCommand command)
         {
-            switch (segment.Type)
+            // TODO: Implement proper duration calculation based on velocity and acceleration limits
+            return 1.0; // Default 1 second duration
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
             {
-                case MotionType.Linear:
-                    return CalculateLinearDuration(segment);
-                case MotionType.Arc:
-                    return CalculateArcDuration(segment);
-                case MotionType.Rapid:
-                    return CalculateRapidDuration(segment);
-                case MotionType.Dwell:
-                    return segment.DwellTime;
-                default:
-                    return 0.0;
+                throw new ObjectDisposedException(nameof(MotionPlanner));
             }
         }
 
-        private double CalculateLinearDuration(MotionSegment segment)
-        {
-            // Calculate distance
-            double distance = 0.0;
-            for (int i = 0; i < segment.StartPosition.Length; i++)
-            {
-                double delta = segment.EndPosition[i] - segment.StartPosition[i];
-                distance += delta * delta;
-            }
-            distance = Math.Sqrt(distance);
-
-            // Use feed rate to calculate time
-            return distance / segment.FeedRate;
-        }
-
-        private double CalculateArcDuration(MotionSegment segment)
-        {
-            // Calculate arc length
-            double arcLength = CalculateArcLength(segment);
-            return arcLength / segment.FeedRate;
-        }
-
-        private double CalculateArcLength(MotionSegment segment)
-        {
-            // Calculate radius and angle for arc
-            double dx = segment.EndPosition[0] - segment.StartPosition[0];
-            double dy = segment.EndPosition[1] - segment.StartPosition[1];
-            
-            double centerX = segment.ArcCenter[0];
-            double centerY = segment.ArcCenter[1];
-            
-            double startAngle = Math.Atan2(segment.StartPosition[1] - centerY, segment.StartPosition[0] - centerX);
-            double endAngle = Math.Atan2(segment.EndPosition[1] - centerY, segment.EndPosition[0] - centerX);
-            
-            double radius = Math.Sqrt((segment.StartPosition[0] - centerX) * (segment.StartPosition[0] - centerX) +
-                                    (segment.StartPosition[1] - centerY) * (segment.StartPosition[1] - centerY));
-            
-            double angleDiff = Math.Abs(endAngle - startAngle);
-            if (!segment.IsClockwise && angleDiff < Math.PI)
-                angleDiff = 2 * Math.PI - angleDiff;
-            else if (segment.IsClockwise && angleDiff > Math.PI)
-                angleDiff = 2 * Math.PI - angleDiff;
-            
-            return radius * angleDiff;
-        }
-
-        private double CalculateRapidDuration(MotionSegment segment)
-        {
-            // Rapid motions use maximum velocity
-            double maxVelocity = _config.MaxVelocities[0]; // Use first axis as reference
-            return CalculateLinearDuration(segment) * (segment.FeedRate / maxVelocity);
-        }
-
-        private double[] CalculateVelocityProfile(MotionSegment segment)
-        {
-            // Simple trapezoidal velocity profile
-            // In a real implementation, this would be more sophisticated
-            int steps = 100;
-            var profile = new double[steps];
-            
-            double duration = segment.Duration;
-            double maxVelocity = segment.FeedRate;
-            
-            for (int i = 0; i < steps; i++)
-            {
-                double t = (double)i / (steps - 1) * duration;
-                
-                if (t < duration / 3)
-                {
-                    // Acceleration phase
-                    profile[i] = maxVelocity * (3 * t / duration);
-                }
-                else if (t > 2 * duration / 3)
-                {
-                    // Deceleration phase
-                    profile[i] = maxVelocity * (3 * (duration - t) / duration);
-                }
-                else
-                {
-                    // Constant velocity phase
-                    profile[i] = maxVelocity;
-                }
-            }
-            
-            return profile;
-        }
-
-        public void Dispose()
+        /// <summary>
+        /// Releases the unmanaged resources used by the MotionPlanner and optionally releases the managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+        protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
-                lock (_segmentLock)
+                if (disposing)
                 {
-                    _segments.Clear();
-                    _pendingSegments.Clear();
+                    // Stop the planner if it's running
+                    if (_isRunning)
+                    {
+                        StopAsync().Wait();
+                    }
+
+                    lock (_plannerLock)
+                    {
+                        _segmentQueue.Clear();
+                    }
                 }
+
                 _disposed = true;
             }
         }
-    }
 
-    /// <summary>
-    /// Represents a single motion segment in the trajectory
-    /// </summary>
-    public class MotionSegment
-    {
-        public int SequenceNumber { get; set; }
-        public MotionType Type { get; set; }
-        public double[] StartPosition { get; set; } = new double[8];
-        public double[] EndPosition { get; set; } = new double[8];
-        public double FeedRate { get; set; }
-        public double Acceleration { get; set; }
-        public double Jerk { get; set; }
-        public double[] ArcCenter { get; set; } = new double[2];
-        public bool IsClockwise { get; set; }
-        public double DwellTime { get; set; }
-        public double Duration { get; set; }
-        public double[] VelocityProfile { get; set; } = new double[0];
-        public bool IsCompleted { get; set; }
-        public double CompletionTime { get; set; }
-    }
+        /// <summary>
+        /// Releases all resources used by the MotionPlanner.
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-    /// <summary>
-    /// Result of trajectory planning
-    /// </summary>
-    public class PlanningResult
-    {
-        public bool Success { get; set; }
-        public string? ErrorMessage { get; set; }
-        public int SegmentCount { get; set; }
-        public double EstimatedDuration { get; set; }
-    }
-
-    /// <summary>
-    /// Status information about the trajectory
-    /// </summary>
-    public class TrajectoryStatus
-    {
-        public int TotalSegments { get; set; }
-        public int PendingSegments { get; set; }
-        public double TotalPlannedTime { get; set; }
-        public bool IsOptimized { get; set; }
+        /// <summary>
+        /// Finalizer that ensures unmanaged resources are cleaned up if the object is not properly disposed.
+        /// </summary>
+        ~MotionPlanner()
+        {
+            Dispose(false);
+        }
     }
 } 

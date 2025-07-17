@@ -1,27 +1,26 @@
 {
   "version": 2,
-  "dgSpecHash": "B3ewHLEwsCk=",
+  "dgSpecHash": "tUUL7q/ac+4=",
   "success": true,
   "projectFilePath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia\\11.3.0\\avalonia.11.3.0.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia\\11.3.0-rc1\\avalonia.11.3.0-rc1.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.22045.20230930\\avalonia.angle.windows.natives.2.1.22045.20230930.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.avaloniaedit\\11.3.0\\avalonia.avaloniaedit.11.3.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.buildservices\\0.0.31\\avalonia.buildservices.0.0.31.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.colorpicker\\11.3.0\\avalonia.controls.colorpicker.11.3.0.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.colorpicker\\11.2.1\\avalonia.controls.colorpicker.11.2.1.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.datagrid\\11.2.1\\avalonia.controls.datagrid.11.2.1.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.controls.treedatagrid\\11.0.10\\avalonia.controls.treedatagrid.11.0.10.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.desktop\\11.3.0\\avalonia.desktop.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.diagnostics\\11.3.0\\avalonia.diagnostics.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.fonts.inter\\11.3.0\\avalonia.fonts.inter.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.freedesktop\\11.3.0\\avalonia.freedesktop.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.native\\11.3.0\\avalonia.native.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.remote.protocol\\11.3.0\\avalonia.remote.protocol.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.skia\\11.3.0\\avalonia.skia.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.themes.fluent\\11.3.0\\avalonia.themes.fluent.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.themes.simple\\11.3.0\\avalonia.themes.simple.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.win32\\11.3.0\\avalonia.win32.11.3.0.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.x11\\11.3.0\\avalonia.x11.11.3.0.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.desktop\\11.3.0-rc1\\avalonia.desktop.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.fonts.inter\\11.3.0-rc1\\avalonia.fonts.inter.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.freedesktop\\11.3.0-rc1\\avalonia.freedesktop.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.labs.controls\\11.3.0\\avalonia.labs.controls.11.3.0.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.native\\11.3.0-rc1\\avalonia.native.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.remote.protocol\\11.3.0-rc1\\avalonia.remote.protocol.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.skia\\11.3.0-rc1\\avalonia.skia.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.themes.fluent\\11.3.0-rc1\\avalonia.themes.fluent.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.win32\\11.3.0-rc1\\avalonia.win32.11.3.0-rc1.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.x11\\11.3.0-rc1\\avalonia.x11.11.3.0-rc1.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.behaviors\\11.0.2\\avalonia.xaml.behaviors.11.0.2.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactions\\11.0.2\\avalonia.xaml.interactions.11.0.2.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactions.custom\\11.0.2\\avalonia.xaml.interactions.custom.11.0.2.nupkg.sha512",
@@ -30,8 +29,8 @@
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactions.events\\11.0.2\\avalonia.xaml.interactions.events.11.0.2.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactions.reactive\\11.0.2\\avalonia.xaml.interactions.reactive.11.0.2.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactions.responsive\\11.0.2\\avalonia.xaml.interactions.responsive.11.0.2.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactivity\\11.3.0.6\\avalonia.xaml.interactivity.11.3.0.6.nupkg.sha512",
-    "C:\\Users\\liamb\\.nuget\\packages\\communitytoolkit.mvvm\\8.4.0\\communitytoolkit.mvvm.8.4.0.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\avalonia.xaml.interactivity\\11.0.2\\avalonia.xaml.interactivity.11.0.2.nupkg.sha512",
+    "C:\\Users\\liamb\\.nuget\\packages\\communitytoolkit.mvvm\\8.2.2\\communitytoolkit.mvvm.8.2.2.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\entityframework\\6.4.4\\entityframework.6.4.4.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\harfbuzzsharp\\7.3.0.3\\harfbuzzsharp.7.3.0.3.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\harfbuzzsharp.nativeassets.linux\\7.3.0.3\\harfbuzzsharp.nativeassets.linux.7.3.0.3.nupkg.sha512",
@@ -77,5 +76,18 @@
     "C:\\Users\\liamb\\.nuget\\packages\\system.windows.extensions\\4.7.0\\system.windows.extensions.4.7.0.nupkg.sha512",
     "C:\\Users\\liamb\\.nuget\\packages\\tmds.dbus.protocol\\0.21.2\\tmds.dbus.protocol.0.21.2.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "KognaController depends on Avalonia.Labs.Controls (>= 11.3.0-rc1) but Avalonia.Labs.Controls 11.3.0-rc1 was not found. Avalonia.Labs.Controls 11.3.0 was resolved instead.",
+      "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
+      "warningLevel": 1,
+      "filePath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\KognaController.csproj",
+      "libraryId": "Avalonia.Labs.Controls",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
 }

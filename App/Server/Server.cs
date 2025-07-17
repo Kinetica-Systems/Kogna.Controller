@@ -9,42 +9,67 @@ using AppServer;
 using TCPServer;
 using KinematicEngine.Core;
 using KinematicEngine.Kinematics;
-using KinematicEngine;
 using KinematicEngine.Configuration;
 using System.ComponentModel;
 using System.Linq;
 using System.Diagnostics;
 using System.IO;
+using GeometryEngine.Core;
+using GeometryEngine.Implementation;
+using SharedTypes;
+using System.Threading; // add for CancellationTokenSource
 
 namespace KognaComms;
 
-public class KognaControl
+public class KognaControl : IDisposable
 {
-    public KognaMonitor _monitor { get; set; }
-    public KognaMotion _coord { get; set; }
-    public RefactoredKinematicEngine _engine { get; set; }
-    public IpcServer _ipcServer { get; set; }
-    public KServer _tcpServer { get; set; }
-    public KognaIO _io { get; set; }
-    public KognaControl _control { get; set; }
-    private int intPort = 5000;
+    private readonly object _startLock = new object();
+    private bool _isStarted;
+    private bool _disposed;
+
+    public TCPServer.KognaMonitor _monitor { get; private set; }
+    public KognaMotion _coord { get; private set; }
+    public RefactoredKinematicEngine _engine { get; private set; }
+    public IpcServer _ipcServer { get; private set; }
+    public KServer _tcpServer { get; private set; }
+    public KognaIO _io { get; private set; }
+    private readonly int _intPort = 5000;
     private double _lastFeedRate;
 
-    //public event Action<KognaStatus>? OnStatusUpdate;
-
-
+    // Add new fields for geometry engine
+    private readonly GeometryEngine.Implementation.GeometryEngine _geometryEngine;
+    private readonly ToolpathConverter _toolpathConverter;
+    private readonly ToolpathConfig _toolpathConfig;
+    private List<Layer>? _slicedLayers;
+    private readonly CancellationTokenSource _monitorCts = new();
 
     public KognaControl(string ipAddress, int port)
     {
-        _control = this;
+        if (string.IsNullOrEmpty(ipAddress))
+        {
+            throw new ArgumentNullException(nameof(ipAddress));
+        }
+
         _io = new KognaIO(ipAddress, port);
         _coord = new KognaMotion(_io);
         _monitor = new KognaMonitor(_io, _coord);
         _tcpServer = new KServer(ipAddress, port, _monitor, _coord, _io);
-        _ipcServer = new IpcServer(intPort, this);
+        _ipcServer = new IpcServer(_intPort, this);
         var kinematics = new Fanuc6AxisKinematics();
         _engine = new RefactoredKinematicEngine(_coord, kinematics);
         _lastFeedRate = 100.0; // Initialize with default feed rate
+        
+        // Initialize geometry engine components
+        _geometryEngine = new GeometryEngine.Implementation.GeometryEngine();
+        _toolpathConfig = new ToolpathConfig
+        {
+            ExtrusionWidth = 0.4,
+            PrintSpeed = 60,
+            TravelSpeed = 120,
+            RetractLength = 4,
+            RetractSpeed = 45
+        };
+        _toolpathConverter = new ToolpathConverter(_toolpathConfig);
         
         // Set up console handler to capture C program output
         _io.SetConsoleCallback((board, message) =>
@@ -53,42 +78,213 @@ public class KognaControl
             return 0;
         });
     }
+
     public async Task<bool> Start()
     {
-        _tcpServer.Start(); //TCP server starts the monitor heartbeat
-        _ipcServer.Start();
-        var config = new EngineConfiguration
+        ThrowIfDisposed();
+
+        lock (_startLock)
         {
-            AxisCount = 6,
-            MaxVelocities = EngineConstants.DefaultLimits.MAX_VELOCITIES,
-            MaxAccelerations = EngineConstants.DefaultLimits.MAX_ACCELERATIONS,
-            MaxJerks = EngineConstants.DefaultLimits.MAX_JERKS,
-            EnableSoftLimits = true,
-            BufferSafetyMargin = 2,  // Trigger shutdown when 2 or fewer segments remain
-            // Set soft limits based on workspace and joint limits
-            SoftLimitsPositive = new double[]
+            if (_isStarted)
             {
-                2000.0,  // X axis (mm)
-                2000.0,  // Y axis (mm)
-                3000.0,  // Z axis (mm)
-                180.0,   // A axis (degrees)
-                90.0,    // B axis (degrees)
-                180.0    // C axis (degrees)
-            },
-            SoftLimitsNegative = new double[]
-            {
-                -2000.0, // X axis (mm)
-                -2000.0, // Y axis (mm)
-                0.0,     // Z axis (mm)
-                -180.0,  // A axis (degrees)
-                -90.0,   // B axis (degrees)
-                -180.0   // C axis (degrees)
+                throw new InvalidOperationException("KognaControl is already started");
             }
-        };
-        
-        await _engine.InitializeAsync(config);
-        await _engine.StartAsync();
-        return true;
+        }
+
+        try
+        {
+            Console.WriteLine("[KOGNA_CONTROL] Starting services...");
+
+            // Always start IPC listener first so UI can connect even if hardware is offline
+            _ipcServer.Start();
+            Console.WriteLine("[KOGNA_CONTROL] IPC server started successfully");
+
+            // Try to start the hardware‐facing TCP server, but don’t abort entire startup on failure
+            if (!_tcpServer.Start())
+            {
+                Console.WriteLine("[KOGNA_CONTROL] WARNING: Hardware TCP server failed to start (running in offline mode)");
+            }
+            else
+            {
+                Console.WriteLine("[KOGNA_CONTROL] TCP server started successfully");
+            }
+
+            // Configure and start the kinematic engine
+            var config = new EngineConfiguration
+            {
+                AxisCount = 6,
+                MaxVelocities = EngineConstants.DefaultLimits.MAX_VELOCITIES,
+                MaxAccelerations = EngineConstants.DefaultLimits.MAX_ACCELERATIONS,
+                MaxJerks = EngineConstants.DefaultLimits.MAX_JERKS,
+                EnableSoftLimits = true,
+                BufferSafetyMargin = 2,  // Trigger shutdown when 2 or fewer segments remain
+                SoftLimitsPositive = new double[]
+                {
+                    2000.0,  // X axis (mm)
+                    2000.0,  // Y axis (mm)
+                    3000.0,  // Z axis (mm)
+                    180.0,   // A axis (degrees)
+                    90.0,    // B axis (degrees)
+                    180.0    // C axis (degrees)
+                },
+                SoftLimitsNegative = new double[]
+                {
+                    -2000.0, // X axis (mm)
+                    -2000.0, // Y axis (mm)
+                    0.0,     // Z axis (mm)
+                    -180.0,  // A axis (degrees)
+                    -90.0,   // B axis (degrees)
+                    -180.0   // C axis (degrees)
+                }
+            };
+
+            // Initialize and start the engine
+            await _engine.InitializeAsync(config);
+            await _engine.StartAsync();
+
+            Console.WriteLine("[KOGNA_CONTROL] Kinematic engine started successfully");
+
+            // Attempt to connect to the robot controller and start the status monitor
+            if (!_io.Connected)
+            {
+                Console.WriteLine("[KOGNA_CONTROL] Attempting robot connection …");
+                if (_io.Connect())
+                {
+                    Console.WriteLine("[KOGNA_CONTROL] Robot connection established");
+                    _ = _monitor.StartAsyncMonitor(_monitorCts.Token); // fire-and-forget
+                }
+                else
+                {
+                    Console.WriteLine($"[KOGNA_CONTROL] WARNING: Robot connection failed – {_io.ErrMsg}");
+                }
+            }
+
+            lock (_startLock)
+            {
+                _isStarted = true;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[KOGNA_CONTROL] Error during startup: {ex.Message}");
+            Console.WriteLine($"[KOGNA_CONTROL] Stack trace: {ex.StackTrace}");
+
+            // Attempt to clean up on failure
+            try
+            {
+                await Stop();
+            }
+            catch (Exception stopEx)
+            {
+                Console.WriteLine($"[KOGNA_CONTROL] Error during cleanup: {stopEx.Message}");
+            }
+
+            return false;
+        }
+    }
+
+    public async Task Stop()
+    {
+        ThrowIfDisposed();
+
+        lock (_startLock)
+        {
+            if (!_isStarted)
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            Console.WriteLine("[KOGNA_CONTROL] Stopping services...");
+
+            // Stop the engine first
+            try
+            {
+                await _engine.StopAsync();
+                Console.WriteLine("[KOGNA_CONTROL] Kinematic engine stopped successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KOGNA_CONTROL] Error stopping kinematic engine: {ex.Message}");
+            }
+
+            // Stop the TCP server
+            try
+            {
+                _tcpServer.Stop();
+                Console.WriteLine("[KOGNA_CONTROL] TCP server stopped successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KOGNA_CONTROL] Error stopping TCP server: {ex.Message}");
+            }
+
+            // Stop the IPC server
+            try
+            {
+                _ipcServer.Stop();
+                Console.WriteLine("[KOGNA_CONTROL] IPC server stopped successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[KOGNA_CONTROL] Error stopping IPC server: {ex.Message}");
+            }
+
+            // Cancel monitor loop
+            try { _monitorCts.Cancel(); } catch {}
+
+            lock (_startLock)
+            {
+                _isStarted = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[KOGNA_CONTROL] Error during shutdown: {ex.Message}");
+            throw;
+        }
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Stop all services
+                Stop().Wait();
+
+                // Dispose managed resources
+                _io?.Dispose();
+                _geometryEngine?.Dispose();
+                (_engine as IDisposable)?.Dispose();
+            }
+
+            _disposed = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(KognaControl));
+        }
+    }
+
+    ~KognaControl()
+    {
+        Dispose(false);
     }
     
 
@@ -108,6 +304,13 @@ public class KognaControl
         try
         {
             string response = string.Empty;
+            // --- connection status -------------------------------------------------
+            if (cmd == "isconnected")
+            {
+                var isConnected = _io.Connected;
+                response = isConnected.ToString().ToLowerInvariant();
+                return (response, response);
+            }
             // 1) setcs - Set coordinate system
             if (cmd == "setcs")
             {
@@ -265,9 +468,13 @@ public class KognaControl
                         response = $"Error: {result.ErrorMessage}";
                         return (response, response);
                     }
+                    response = "GCode command executed successfully";
                 } 
+                else
+                {
+                    response = "Error: Failed to parse GCode command";
+                }
                 return (response, response);
-
             }
             if (cmd == "version")
             {
@@ -275,7 +482,6 @@ public class KognaControl
                 var ok = _io.WriteLineReadLine(0, $"Version", out response);
                 Console.WriteLine($"Version: {response}");
                 return (response, response);
-
             }
             if (cmd == "reset")
             {
@@ -426,6 +632,128 @@ public class KognaControl
                 return (response, response);
             }
 
+            // Add 3D printing commands
+            if (cmd == "loadstl")
+            {
+                Console.WriteLine($"Loading STL file: {payload}");
+                try
+                {
+                    var success = await _geometryEngine.LoadModelAsync(payload);
+                    response = success ? "STL file loaded successfully" : "Failed to load STL file";
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error loading STL file: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            if (cmd == "slice")
+            {
+                Console.WriteLine($"Slicing model with parameters: {payload}");
+                try
+                {
+                    var sliceParams = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (sliceParams.Length >= 1 && double.TryParse(sliceParams[0], out var layerHeight))
+                    {
+                        var config = new SlicingConfig
+                        {
+                            LayerHeight = layerHeight,
+                            PerimeterCount = sliceParams.Length > 1 && int.TryParse(sliceParams[1], out var p) ? p : 3,
+                            InfillDensity = sliceParams.Length > 2 && double.TryParse(sliceParams[2], out var d) ? d : 0.2,
+                            InfillPattern = sliceParams.Length > 3 ? sliceParams[3] : "grid"
+                        };
+
+                        var layers = await _geometryEngine.SliceModelAsync(layerHeight, config);
+                        _slicedLayers = layers.ToList(); // Store layers for preview
+                        var toolpaths = await _geometryEngine.GenerateToolpathsAsync(_slicedLayers, _toolpathConfig);
+
+                        // Convert toolpaths to motion commands
+                        var commands = new List<MotionCommand>();
+                        foreach (var toolpath in toolpaths)
+                        {
+                            commands.AddRange(_toolpathConverter.ConvertToolpath(toolpath));
+                        }
+
+                        // Execute motion commands
+                        foreach (var command in commands)
+                        {
+                            var result = await _engine.ProcessCommandAsync(command);
+                            if (!result.Success)
+                            {
+                                response = $"Error executing motion: {result.ErrorMessage}";
+                                return (response, response);
+                            }
+                        }
+
+                        response = "Model sliced and printed successfully";
+                    }
+                    else
+                    {
+                        response = "Error: Invalid layer height";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error slicing model: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            if (cmd == "preview")
+            {
+                Console.WriteLine($"Generating preview G-code");
+                try
+                {
+                    var config = new GCodeConfig
+                    {
+                        StartX = 0,
+                        StartY = 0,
+                        StartZ = 10,
+                        RelativeExtrusion = true,
+                        StartGCode = "G28 ; Home all axes\nG1 Z10 F1000 ; Raise Z\nM109 S200 ; Wait for hotend temp\nM190 S60 ; Wait for bed temp\nG92 E0 ; Reset extruder",
+                        EndGCode = "M104 S0 ; Turn off hotend\nM140 S0 ; Turn off bed\nG91 ; Relative positioning\nG1 E-3 F1800 ; Retract\nG1 Z10 F1000 ; Raise Z\nG90 ; Absolute positioning\nG1 X0 Y0 ; Present print\nM84 ; Disable motors"
+                    };
+
+                    if (_slicedLayers is null || _slicedLayers.Count == 0)
+                    {
+                        response = "Error: Slice the model first (no layers present)";
+                        return (response, response);
+                    }
+                    var toolpaths = await _geometryEngine.GenerateToolpathsAsync(_slicedLayers, _toolpathConfig);
+                    var gcode = await _geometryEngine.GenerateGCodeAsync(toolpaths, config);
+
+                    response = string.Join("\n", gcode);
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error generating preview: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            if (cmd == "loadgcode")
+            {
+                Console.WriteLine($"Loading G-code file: {payload}");
+                try
+                {
+                    var content = await File.ReadAllTextAsync(payload);
+                    response = content;
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error loading G-code file: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            if (cmd == "setgcode")
+            {
+                Console.WriteLine($"Setting G-code content");
+                response = payload;
+                return (response, response);
+            }
+
             // RS485 Passthrough for FS50L Servo Drives
             if (cmd == "rs485")
             {
@@ -498,14 +826,8 @@ public class KognaControl
                             var persistOk = _io.WriteLineReadLine(0, "GetPersistDec 10", out var persistResponse);
                             Console.WriteLine($"GetPersistDec returned: {persistOk}, response:'{persistResponse}'");
                             
-                            if (persistOk == KOGNA_OK && int.TryParse(persistResponse, out var result))
-                            {
-                                Console.WriteLine($"Parsed GetPersistDec value: {result}");
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Failed to parse GetPersistDec response: {persistResponse}");
-                            }
+                            int result = 0;
+                            var hasValidResult = persistOk == KOGNA_OK && int.TryParse(persistResponse, out result);
                             
                             if (hasValidResult)
                             {
@@ -890,14 +1212,10 @@ public class KognaControl
         }
         catch (Exception ex)
         {
-
             // log the full exception to console
             Console.WriteLine($"[ENGINE ERROR] {ex}");
-            string response = "Engine Error {ex}";
+            string response = $"Engine Error: {ex.Message}";
             return (response, response);
-            // return full message+stack and an empty segments array (never null)
-
-
         }
         /*return response;
         /*
@@ -969,6 +1287,7 @@ public class KognaControl
 
                 // Track which axes are set
                 bool[] axisSet = new bool[8];
+                bool hasMotion = false;
 
                 for (int i = 0; i < 8; i++)
                 {
@@ -990,21 +1309,25 @@ public class KognaControl
                             {
                                 case "0":
                                     command.Type = MotionType.Rapid;
+                                    hasMotion = true;
                                     break;
                                 case "1":
                                     command.Type = MotionType.Linear;
+                                    hasMotion = true;
                                     break;
                                 case "2":
                                     command.Type = MotionType.Arc;
                                     command.IsClockwise = true;
+                                    hasMotion = true;
                                     break;
                                 case "3":
                                     command.Type = MotionType.Arc;
                                     command.IsClockwise = false;
+                                    hasMotion = true;
                                     break;
                                 case "4":
                                     command.Type = MotionType.Dwell;
-                                    if (double.TryParse(parts.FirstOrDefault(p => p.StartsWith("P")), out var dwellTime))
+                                    if (double.TryParse(parts.FirstOrDefault(p => p.StartsWith("P"))?.Substring(1), out var dwellTime))
                                         command.DwellTime = dwellTime;
                                     break;
                                 case "53":
@@ -1038,35 +1361,64 @@ public class KognaControl
                             }
                             break;
                         case "X":
-                            if (double.TryParse(value, out var x)) { command.EndPosition[0] = x; axisSet[0] = true; }
-                            break;
                         case "Y":
-                            if (double.TryParse(value, out var y)) { command.EndPosition[1] = y; axisSet[1] = true; }
-                            break;
                         case "Z":
-                            if (double.TryParse(value, out var z)) { command.EndPosition[2] = z; axisSet[2] = true; }
-                            break;
                         case "A":
-                            if (double.TryParse(value, out var a)) { command.EndPosition[3] = a; axisSet[3] = true; }
-                            break;
                         case "B":
-                            if (double.TryParse(value, out var b)) { command.EndPosition[4] = b; axisSet[4] = true; }
-                            break;
                         case "C":
-                            if (double.TryParse(value, out var c)) { command.EndPosition[5] = c; axisSet[5] = true; }
+                            var axisIndex = "XYZABC".IndexOf(code[0]);
+                            if (axisIndex >= 0 && axisIndex < _coord.AxisCount)
+                            {
+                                if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var axisValue))
+                                {
+                                    // Validate against soft limits if enabled
+                                    if (_engine.Configuration.EnableSoftLimits)
+                                    {
+                                        var limit = axisValue >= 0 ? 
+                                            _engine.Configuration.SoftLimitsPositive[axisIndex] : 
+                                            _engine.Configuration.SoftLimitsNegative[axisIndex];
+                                            
+                                        if (Math.Abs(axisValue) > Math.Abs(limit))
+                                        {
+                                            throw new ArgumentException($"Axis {code} value {axisValue} exceeds soft limit of {limit}");
+                                        }
+                                    }
+                                    command.EndPosition[axisIndex] = axisValue;
+                                    axisSet[axisIndex] = true;
+                                    hasMotion = true;
+                                }
+                                else
+                                {
+                                    throw new ArgumentException($"Invalid value for axis {code}: {value}");
+                                }
+                            }
                             break;
                         case "F":
-                            if (double.TryParse(value, out var f))
+                            if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var f))
                             {
+                                if (f <= 0)
+                                {
+                                    throw new ArgumentException($"Feed rate must be positive: {f}");
+                                }
                                 command.FeedRate = f;
                                 _lastFeedRate = f;
                             }
+                            else
+                            {
+                                throw new ArgumentException($"Invalid feed rate value: {value}");
+                            }
                             break;
                         case "I":
-                            if (double.TryParse(value, out var i)) command.ArcCenter[0] = i;
-                            break;
                         case "J":
-                            if (double.TryParse(value, out var j)) command.ArcCenter[1] = j;
+                            var arcIndex = "IJ".IndexOf(code[0]);
+                            if (double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var arcValue))
+                            {
+                                command.ArcCenter[arcIndex] = arcValue;
+                            }
+                            else
+                            {
+                                throw new ArgumentException($"Invalid arc center value for {code}: {value}");
+                            }
                             break;
                         case "M":
                             // Handle M-codes for hardware control
@@ -1109,22 +1461,38 @@ public class KognaControl
                     }
                 }
 
-                // Fill in missing axes with current position
-                int axisCount = _coord.AxisCount;
-                for (int i = 0; i < axisCount; i++)
+                // Validate motion commands
+                if (hasMotion)
                 {
-                    if (!axisSet[i] || double.IsNaN(command.EndPosition[i]))
+                    // Fill in missing axes with current position
+                    int axisCount = _coord.AxisCount;
+                    for (int i = 0; i < axisCount; i++)
                     {
-                        command.EndPosition[i] = _coord.GetPosition(i);
+                        if (!axisSet[i] || double.IsNaN(command.EndPosition[i]))
+                        {
+                            command.EndPosition[i] = _coord.GetPosition(i);
+                        }
                     }
+
+                    // For arc moves, validate that I,J values are provided
+                    if (command.Type == MotionType.Arc)
+                    {
+                        if (double.IsNaN(command.ArcCenter[0]) || double.IsNaN(command.ArcCenter[1]))
+                        {
+                            throw new ArgumentException("Arc center (I,J) values must be provided for arc moves");
+                        }
+                    }
+
+                    return command;
                 }
 
-                return command;
+                // No motion in this command
+                return null;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[GCODE_PARSER] Error parsing G-code: {ex.Message}");
-                return null;
+                throw; // Rethrow to be handled by caller
             }
         }
 

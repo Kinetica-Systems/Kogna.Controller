@@ -15,9 +15,23 @@
           }
         }
       },
+      "SharedTypes/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/SharedTypes.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/SharedTypes.dll": {}
+        }
+      },
       "TCPServer/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3",
+          "SharedTypes": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/TCPServer.dll": {}
         },
@@ -58,6 +72,11 @@
         "packageIcon.png"
       ]
     },
+    "SharedTypes/1.0.0": {
+      "type": "project",
+      "path": "../../../Libraries/SharedTypes/SharedTypes.csproj",
+      "msbuildProject": "../../../Libraries/SharedTypes/SharedTypes.csproj"
+    },
     "TCPServer/1.0.0": {
       "type": "project",
       "path": "../TCPServer/TCPServer.csproj",
@@ -67,6 +86,7 @@
   "projectFileDependencyGroups": {
     "net9.0": [
       "Newtonsoft.Json >= 13.0.3",
+      "SharedTypes >= 1.0.0",
       "TCPServer >= 1.0.0"
     ]
   },
@@ -104,6 +124,9 @@
           "projectReferences": {
             "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
               "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+            },
+            "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+              "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
             }
           }
         }

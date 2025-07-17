@@ -17,7 +17,9 @@ namespace KognaServer.ViewModels
         public DelegateCommand(Action execute) => _execute = execute;
         public bool CanExecute(object? parameter) => true;
         public void Execute(object? parameter) => _execute();
+        #pragma warning disable CS0067 // Event never used
         public event EventHandler? CanExecuteChanged;
+        #pragma warning restore CS0067
     }
 
     // Model representing a parameter entry

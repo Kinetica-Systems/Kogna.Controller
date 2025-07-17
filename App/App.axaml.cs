@@ -12,6 +12,7 @@ using KognaServer.Views;
 using KognaServer.Server;
 
 using KognaComms;
+using KognaServer.Models;
 
 namespace KognaServer
 {
@@ -72,13 +73,14 @@ namespace KognaServer
                     var terminalVm = new TerminalViewModel();
                     var connectionVm = new ConnectionViewModel();
                     var GcodeVm = new GCodeEditorViewModel();
+                    var gCodeGeneratorVm = new GCodeGeneratorViewModel(new AppIpcClient(serverHost));
                     var joggingVm = new JoggingViewModel(serverHost);
                     // var Advanced        = new AdvancedSettingsWindowViewModel();
 
                     // Build MainWindowViewModel
                     Console.WriteLine("[APP] Creating MainWindowViewModel");
                     splash.ReportProgress(100);
-                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm, GcodeVm, joggingVm);
+                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm, GcodeVm, gCodeGeneratorVm, joggingVm);
                 });
 
                 // 5) Initialize and show MainWindow

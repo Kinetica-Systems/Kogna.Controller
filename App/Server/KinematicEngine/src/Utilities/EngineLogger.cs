@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using KinematicEngine.Configuration;
+using SharedTypes;
 
 namespace KinematicEngine.Utilities
 {
@@ -120,7 +121,7 @@ namespace KinematicEngine.Utilities
         /// </summary>
         /// <param name="component">Component name</param>
         /// <param name="command">Motion command</param>
-        public static void LogMotion(string component, Core.MotionCommand command)
+        public static void LogMotion(string component, MotionCommand command)
         {
             var sb = new StringBuilder();
             sb.AppendLine($"Motion Command: {command.Type}");
@@ -131,13 +132,13 @@ namespace KinematicEngine.Utilities
             sb.AppendLine($"Acceleration: {command.Acceleration}");
             sb.AppendLine($"Jerk: {command.Jerk}");
 
-            if (command.Type == Core.MotionType.Arc)
+            if (command.Type == MotionType.Arc)
             {
                 sb.AppendLine($"Arc Center: [{string.Join(", ", command.ArcCenter)}]");
                 sb.AppendLine($"Clockwise: {command.IsClockwise}");
             }
 
-            if (command.Type == Core.MotionType.Dwell)
+            if (command.Type == MotionType.Dwell)
             {
                 sb.AppendLine($"Dwell Time: {command.DwellTime}");
             }

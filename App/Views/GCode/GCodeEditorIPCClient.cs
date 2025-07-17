@@ -14,35 +14,50 @@ namespace KognaServer.Views
     /// </summary>
     public class KinematicEngineClient : IDisposable
     {
-        private readonly TcpClient _ipcClient;
+        private TcpClient? _ipcClient;
+        private StreamReader? _ipcReader;
+        private StreamWriter? _ipcWriter;
         private readonly SemaphoreSlim _sendLock = new(1, 1);
-        private readonly StreamReader _ipcReader;
-        private readonly StreamWriter   _ipcWriter;
+
+        private readonly string _host;
+        private readonly int _port;
+
         public KinematicEngineClient(string host, int port)
-        
         {
-            try
+            _host = host;
+            _port = port;
+        }
+
+        private async Task EnsureConnectedAsync()
+        {
+            if (_ipcClient?.Connected == true) return;
+
+            const int maxAttempts = 5;
+            var delay = TimeSpan.FromMilliseconds(500);
+
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                _ipcClient = new TcpClient("localhost", 5000);
-                var stream = _ipcClient.GetStream();
-                _ipcReader = new StreamReader(stream, Encoding.UTF8);
-                _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                try
+                {
+                    _ipcClient?.Dispose();
+                    _ipcClient = new TcpClient();
+                    await _ipcClient.ConnectAsync(_host, _port);
 
-                Console.WriteLine("🔌 IPC socket connected to 127.0.0.1:5000\n");
+                    var stream = _ipcClient.GetStream();
+                    _ipcReader = new StreamReader(stream, Encoding.UTF8);
+                    _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+
+                    Console.WriteLine($"🔌 IPC connected on attempt {attempt}");
+                    return;
+                }
+                catch (SocketException) when (attempt < maxAttempts)
+                {
+                    await Task.Delay(delay);
+                    delay += delay; // simple back-off
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($" IPC connection failed: {ex.Message}\n");
 
-                // fall back to harmless, never-null stubs
-                _ipcClient = new TcpClient();                  
-                _ipcReader = new StreamReader(Stream.Null);        
-                _ipcWriter = new StreamWriter(Stream.Null){AutoFlush=true};
-        
-            }
-
-
-
+            throw new InvalidOperationException($"Unable to connect to IPC server at {_host}:{_port}");
         }
 
         /// <summary>
@@ -51,14 +66,12 @@ namespace KognaServer.Views
         public async Task<IpcResponse?> SendCommandAsync(string commandLine)
         {
             
+            await EnsureConnectedAsync();
             await _sendLock.WaitAsync();
             try
             {
-                // Write the command plus newline
-                await _ipcWriter.WriteLineAsync(commandLine);
-
-                // Read one response line (up to the newline)
-                var json = await _ipcReader.ReadLineAsync();
+                await _ipcWriter!.WriteLineAsync(commandLine);
+                var json = await _ipcReader!.ReadLineAsync();
                 //Console.WriteLine($"[RAW JSON]  {json}");
 
                 // if the connection closed or no data, return null

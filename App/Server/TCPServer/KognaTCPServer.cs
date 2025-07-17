@@ -1,55 +1,119 @@
-﻿
+﻿using System;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace TCPServer;
 
 public class KServer
 {
-    //public string? ipAddress;
-    //public int? port;
-    public event Action<KognaMonitor.KognaStatus>? OnStatusUpdate;
-    private CancellationTokenSource _cts = new();
+    private readonly string _ipAddress;
+    private readonly int _port;
+    private readonly KognaMonitor _monitor;
+    private readonly KognaMotion _coord;
+    private readonly KognaIO _io;
+    private bool _isRunning;
+    private TcpListener? _listener;
+    private readonly CancellationTokenSource _cancellationTokenSource;
 
-    public  KognaIO? _io { get; set; }
-    public  KognaMotion _motion {get; set;}
-    public  KognaMonitor _monitor {get; set;}
-
-
-    public KServer(string ipAddress, int port, KognaMonitor monitor, KognaMotion motion, KognaIO io)
+    public KServer(string ipAddress, int port, KognaMonitor monitor, KognaMotion coord, KognaIO io)
     {
-        _io = io;
-        _motion = motion;
+        _ipAddress = ipAddress;
+        _port = port;
         _monitor = monitor;
+        _coord = coord;
+        _io = io;
+        _cancellationTokenSource = new CancellationTokenSource();
     }
-
 
     public bool Start()
     {
-        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] KognaServerHost.Start() called");
-        // ** establish TCP link to the Kogna device **
-        int connResult = _io!.Connect();
-        if (connResult != KognaIO.KOGNA_OK)
+        try
         {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] ERROR: Could not connect to Kogna at {_io.USBLocation()}. " + $"Code={connResult}, ErrMsg={_io.ErrMsg}");
-            return false;
-        }
-        else
-        {
-            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Connected to Kogna at {_io.USBLocation()}");
-            _monitor.OnStatusUpdate += s => OnStatusUpdate?.Invoke(s);
-            _ = _monitor.StartAsyncMonitor(_cts.Token);
+            _listener = new TcpListener(IPAddress.Parse(_ipAddress), _port);
+            _listener.Start();
+            _isRunning = true;
+
+            // Start accepting clients in the background
+            Task.Run(AcceptClientsAsync, _cancellationTokenSource.Token);
+
             return true;
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TCP_SERVER] Failed to start server: {ex.Message}");
+            return false;
+        }
     }
-    public bool Close()
+
+    public void Stop()
     {
-
-        _cts.Cancel();
-        _io!.Dispose();
-        //_coord.Dispose();
-        //_monitor.Dispose();
-        return true;
+        _isRunning = false;
+        _cancellationTokenSource.Cancel();
+        _listener?.Stop();
     }
 
+    private async Task AcceptClientsAsync()
+    {
+        try
+        {
+            while (_isRunning && !_cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                if (_listener == null) break;
+
+                var client = await _listener.AcceptTcpClientAsync();
+                _ = HandleClientAsync(client);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Console.WriteLine($"[TCP_SERVER] Error accepting clients: {ex.Message}");
+        }
+    }
+
+    private async Task HandleClientAsync(TcpClient client)
+    {
+        try
+        {
+            using var stream = client.GetStream();
+            var buffer = new byte[1024];
+
+            while (_isRunning && !_cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                var bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead == 0) break;
+
+                var message = Encoding.ASCII.GetString(buffer, 0, bytesRead);
+                var response = ProcessMessage(message);
+
+                var responseBytes = Encoding.ASCII.GetBytes(response);
+                await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TCP_SERVER] Error handling client: {ex.Message}");
+        }
+        finally
+        {
+            client.Dispose();
+        }
+    }
+
+    private string ProcessMessage(string message)
+    {
+        try
+        {
+            // Process the message and return appropriate response
+            return "OK";
+        }
+        catch (Exception ex)
+        {
+            return $"ERROR: {ex.Message}";
+        }
+    }
 }
 
     public class IpcRequest

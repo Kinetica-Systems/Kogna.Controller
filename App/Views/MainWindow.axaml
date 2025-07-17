@@ -45,8 +45,19 @@
 </Expander>
 
         <TabControl Margin="5">
-        <TabItem Header="G-Code Editor">
-        <views:GCodeEditorView DataContext="{Binding GcodeVm}"  />
+        <!-- G-code Editor Tab -->
+        <TabItem Header="G-code Editor">
+          <views:GCodeEditorView DataContext="{Binding GcodeVm}"/>
+        </TabItem>
+
+        <!-- G-code Generator Tab -->
+        <TabItem Header="G-code Generator">
+          <views:GCodeGeneratorView DataContext="{Binding GCodeGeneratorViewModel}"/>
+        </TabItem>
+
+        <!-- Terminal Tab -->
+        <TabItem Header="Terminal">
+          <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
         </TabItem>
         <TabItem Header="Manual Jogging">
             <views:JoggingView DataContext="{Binding JoggingVm}" />

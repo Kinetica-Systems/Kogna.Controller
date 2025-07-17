@@ -1,0 +1,1 @@
+// SupportStructure type moved to SharedTypes 

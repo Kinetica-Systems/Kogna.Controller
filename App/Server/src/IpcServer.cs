@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using System.Security.Cryptography.X509Certificates;
 using KognaComms;
-
+using System.Threading;
 
 
 namespace AppServer;
@@ -21,6 +21,7 @@ public class IpcServer
     public KognaControl _control;
     public bool _isConnected { get; set; }
     public string? result;
+    private CancellationTokenSource _cts = new CancellationTokenSource();
 
     public IpcServer(int port, KognaControl control)
     {
@@ -35,9 +36,22 @@ public class IpcServer
         _ = AcceptLoopAsync();
     }
 
+    public void Stop()
+    {
+        try
+        {
+            _cts.Cancel();
+            _listener.Stop();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[IPC_SERVER] Error during stop: {ex.Message}");
+        }
+    }
+
     private async Task AcceptLoopAsync()
     {
-        while (true)
+        while (!_cts.IsCancellationRequested)
         {
             var client = await _listener.AcceptTcpClientAsync();
             _ = HandleClientAsync(client);
@@ -53,45 +67,95 @@ public class IpcServer
         {
             while (true)
             {
-                var raw = await reader.ReadLineAsync();
-                if (raw is null)
-                    break;
-                if (string.IsNullOrWhiteSpace(raw))
-                    continue;
-
-                var req = JsonConvert.DeserializeObject<TCPServer.IpcRequest>(raw);
-                if (req == null || req?.Command == null)
+                try
                 {
-                    Console.WriteLine("bad json");
-                    // either JSON bad or missing command field
-                    break;
-                }
-                if (req.Command.Equals("isconnected", StringComparison.OrdinalIgnoreCase))
+                    var raw = await reader.ReadLineAsync();
+                    if (raw is null)
+                        break;
+                    if (string.IsNullOrWhiteSpace(raw))
+                        continue;
+
+                    Console.WriteLine($"[IPC_SERVER] Received request: {raw}");
+                    
+                    TCPServer.IpcRequest? req;
+                    try
                     {
-                        // optionally still ACK at writer
-                        await writer.WriteLineAsync("{\"Status\":\"OK\"}");
+                        req = JsonConvert.DeserializeObject<TCPServer.IpcRequest>(raw);
+                    }
+                    catch (JsonException ex)
+                    {
+                        Console.WriteLine($"[IPC_SERVER] JSON parsing error: {ex.Message}");
+                        await writer.WriteLineAsync(JsonConvert.SerializeObject(new IpcResponse
+                        {
+                            Status = "ERROR",
+                            Error = "Invalid JSON format",
+                            Result = string.Empty
+                        }));
                         continue;
                     }
 
-                var rawArgs = req.Args ?? Array.Empty<string>();
-                var intArgs = rawArgs .Select(s => int.TryParse(s, out var i) ? i : 0) .ToArray();
-                var singleArg = intArgs.Length > 0 ? intArgs[0] : 0;
+                    if (req == null || req?.Command == null)
+                    {
+                        Console.WriteLine("[IPC_SERVER] Invalid request format");
+                        await writer.WriteLineAsync(JsonConvert.SerializeObject(new IpcResponse
+                        {
+                            Status = "ERROR",
+                            Error = "Invalid request format",
+                            Result = string.Empty
+                        }));
+                        continue;
+                    }
 
-                
-                    var cmdLine = new[]{ req.Command }
-                   .Concat(req.Args ?? Enumerable.Empty<string>());
+                    if (req.Command.Equals("isconnected", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await writer.WriteLineAsync(JsonConvert.SerializeObject(new IpcResponse
+                        {
+                            Status = "OK",
+                            Result = "true",
+                            Error = string.Empty
+                        }));
+                        continue;
+                    }
+
+                    var rawArgs = req.Args ?? Array.Empty<string>();
+                    var intArgs = rawArgs.Select(s => int.TryParse(s, out var i) ? i : 0).ToArray();
+                    var singleArg = intArgs.Length > 0 ? intArgs[0] : 0;
+
+                    var cmdLine = new[] { req.Command }
+                        .Concat(req.Args ?? Enumerable.Empty<string>());
                     var cmd = string.Join(" ", cmdLine);
+                    
+                    Console.WriteLine($"[IPC_SERVER] Processing command: {cmd}");
                     var (response, result) = await _control.ProcessIpcCommand(cmd);
-   
-                var resp = new IpcResponse
+
+                    var resp = new IpcResponse
+                    {
+                        Status = string.IsNullOrEmpty(response) ? "ERROR" : "OK",
+                        Result = result ?? string.Empty,
+                        Error = string.IsNullOrEmpty(response) ? "Command failed" : string.Empty
+                    };
+                    
+                    await writer.WriteLineAsync(JsonConvert.SerializeObject(resp));
+                    Console.WriteLine($"[IPC_SERVER] Sent response: {JsonConvert.SerializeObject(resp)}");
+                }
+                catch (Exception ex)
                 {
-                    Status = "OK",
-                    Result = result
-                };
-                await writer.WriteLineAsync(JsonConvert.SerializeObject(resp));
-
-
-
+                    Console.WriteLine($"[IPC_SERVER] Error handling client: {ex.Message}");
+                    try
+                    {
+                        await writer.WriteLineAsync(JsonConvert.SerializeObject(new IpcResponse
+                        {
+                            Status = "ERROR",
+                            Error = $"Internal server error: {ex.Message}",
+                            Result = string.Empty
+                        }));
+                    }
+                    catch
+                    {
+                        // If we can't write the error response, just break the connection
+                        break;
+                    }
+                }
             }
         }
     }

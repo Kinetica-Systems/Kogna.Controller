@@ -1,636 +1,335 @@
 using System;
 using System.Threading.Tasks;
+using System.Numerics;
 using KinematicEngine.Core;
 using KinematicEngine.Kinematics;
 using TCPServer;
+using SharedTypes;
 
-namespace KinematicEngine
+namespace KinematicEngine.Core;
+
+/// <summary>
+/// Refactored kinematic engine that implements the new architecture for robot motion control.
+/// This class provides a high-level interface for motion planning, kinematics calculations,
+/// and hardware communication.
+/// </summary>
+public class RefactoredKinematicEngine : IKinematicEngine, IDisposable
 {
+    private readonly MotionPlanner _motionPlanner;
+    private readonly IKinematics _kinematics;
+    private readonly KognaMotion _kognaMotion;
+    private readonly CoordinateSystemManager _coordinateSystemManager;
+    private readonly object _engineLock = new object();
+    
+    private EngineConfiguration _config = null!;
+    private EngineStatus _status = EngineStatus.Uninitialized;
+    private double[] _currentPosition = new double[8];
+    private double[] _currentVelocity = new double[8];
+    private bool _disposed;
+
     /// <summary>
-    /// Refactored kinematic engine that implements the new architecture
+    /// Gets the current status of the kinematic engine.
     /// </summary>
-    public class RefactoredKinematicEngine : IKinematicEngine
+    public EngineStatus Status => _status;
+
+    /// <summary>
+    /// Gets the number of axes configured in the engine.
+    /// </summary>
+    public int AxisCount => _config?.AxisCount ?? 0;
+
+    /// <summary>
+    /// Gets the current position of all axes.
+    /// </summary>
+    /// <returns>An array containing the current position of each axis in their respective units (mm or degrees).</returns>
+    public double[] CurrentPosition => (double[])_currentPosition.Clone();
+
+    /// <summary>
+    /// Gets the current velocity of all axes.
+    /// </summary>
+    /// <returns>An array containing the current velocity of each axis in their respective units (mm/s or degrees/s).</returns>
+    public double[] CurrentVelocity => (double[])_currentVelocity.Clone();
+
+    /// <summary>
+    /// Gets the coordinate system manager that handles different coordinate frames.
+    /// </summary>
+    public CoordinateSystemManager CoordinateSystemManager => _coordinateSystemManager;
+
+    /// <summary>
+    /// Gets the current configuration of the kinematic engine.
+    /// </summary>
+    public EngineConfiguration Configuration => _config;
+
+    /// <summary>
+    /// Initializes a new instance of the RefactoredKinematicEngine class.
+    /// </summary>
+    /// <param name="kognaMotion">Hardware interface for motion control.</param>
+    /// <param name="kinematics">Kinematic calculations interface for the specific robot type.</param>
+    /// <exception cref="ArgumentNullException">Thrown when kognaMotion or kinematics is null.</exception>
+    public RefactoredKinematicEngine(KognaMotion kognaMotion, IKinematics kinematics)
     {
-        private readonly MotionPlanner _motionPlanner;
-        private readonly IKinematics _kinematics;
-        private readonly KognaMotion _kognaMotion;
-        private readonly CoordinateSystemManager _coordinateSystemManager;
-        private readonly object _engineLock = new object();
-        
-        private EngineConfiguration _config = null!;
-        private EngineStatus _status = EngineStatus.Uninitialized;
-        private double[] _currentPosition = new double[8];
-        private double[] _currentVelocity = new double[8];
-        private bool _disposed = false;
+        _kognaMotion = kognaMotion ?? throw new ArgumentNullException(nameof(kognaMotion));
+        _kinematics = kinematics ?? throw new ArgumentNullException(nameof(kinematics));
+        _motionPlanner = new MotionPlanner();
+        _coordinateSystemManager = new CoordinateSystemManager();
+    }
 
-        public EngineStatus Status => _status;
-        public int AxisCount => _config?.AxisCount ?? 0;
-        public double[] CurrentPosition => (double[])_currentPosition.Clone();
-        public double[] CurrentVelocity => (double[])_currentVelocity.Clone();
-        public CoordinateSystemManager CoordinateSystemManager => _coordinateSystemManager;
+    /// <summary>
+    /// Initializes the kinematic engine with the specified configuration.
+    /// </summary>
+    /// <param name="config">Configuration parameters for the engine.</param>
+    /// <returns>A task that represents the asynchronous initialization operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when config is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is already initialized or disposed.</exception>
+    /// <exception cref="KinematicEngineException">Thrown when initialization fails.</exception>
+    public async Task<bool> InitializeAsync(EngineConfiguration config)
+    {
+        ThrowIfDisposed();
 
-        /// <summary>
-        /// Initializes a new instance of the refactored kinematic engine
-        /// </summary>
-        /// <param name="kognaMotion">Hardware interface for motion control</param>
-        /// <param name="kinematics">Kinematic calculations interface</param>
-        public RefactoredKinematicEngine(KognaMotion kognaMotion, IKinematics kinematics)
+        if (config == null)
         {
-            _kognaMotion = kognaMotion ?? throw new ArgumentNullException(nameof(kognaMotion));
-            _kinematics = kinematics ?? throw new ArgumentNullException(nameof(kinematics));
-            _motionPlanner = new MotionPlanner();
-            _coordinateSystemManager = new CoordinateSystemManager();
+            throw new ArgumentNullException(nameof(config));
         }
 
-        public async Task<bool> InitializeAsync(EngineConfiguration config)
+        if (_status != EngineStatus.Uninitialized)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RefactoredKinematicEngine));
-
-            try
-            {
-                _status = EngineStatus.Initializing;
-                _config = config ?? throw new ArgumentNullException(nameof(config));
-                
-                // Initialize motion planner
-                _motionPlanner.Initialize(config);
-                
-                // Initialize hardware interface
-                await InitializeHardwareAsync();
-                
-                // Update current position from hardware
-                await UpdateCurrentPositionAsync();
-                
-                _status = EngineStatus.Ready;
-                Console.WriteLine("[REFACTORED_ENGINE] Initialized successfully");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _status = EngineStatus.Error;
-                Console.WriteLine($"[REFACTORED_ENGINE] Initialization failed: {ex.Message}");
-                return false;
-            }
+            throw new InvalidOperationException("Engine is already initialized");
         }
 
-        public Task<bool> StartAsync()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RefactoredKinematicEngine));
-
-            if (_status != EngineStatus.Ready)
-            {
-                Console.WriteLine($"[REFACTORED_ENGINE] Cannot start engine in status: {_status}");
-                return Task.FromResult(false);
-            }
-
-            try
-            {
-                _status = EngineStatus.Running;
-                Console.WriteLine("[REFACTORED_ENGINE] Started successfully");
-                return Task.FromResult(true);
-            }
-            catch (Exception ex)
-            {
-                _status = EngineStatus.Error;
-                Console.WriteLine($"[REFACTORED_ENGINE] Failed to start engine: {ex.Message}");
-                return Task.FromResult(false);
-            }
-        }
-
-        public Task<bool> StopAsync()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RefactoredKinematicEngine));
-
-            try
-            {
-                _status = EngineStatus.Stopping;
-                
-                // Stop all motion
-                StopAllMotionAsync().Wait();
-                
-                _status = EngineStatus.Stopped;
-                Console.WriteLine("[REFACTORED_ENGINE] Stopped successfully");
-                return Task.FromResult(true);
-            }
-            catch (Exception ex)
-            {
-                _status = EngineStatus.Error;
-                Console.WriteLine($"[REFACTORED_ENGINE] Failed to stop engine: {ex.Message}");
-                return Task.FromResult(false);
-            }
-        }
-
-        public async Task<CommandResult> ProcessCommandAsync(MotionCommand command)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RefactoredKinematicEngine));
-
-            if (_status != EngineStatus.Running)
-            {
-                return new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = $"Engine not running. Current status: {_status}"
-                };
-            }
-
-            try
-            {
-                // Check for buffer starvation before processing new command
-                CheckBufferStarvation();
-
-                // Validate command
-                var validationResult = ValidateCommand(command);
-                if (!validationResult.IsValid)
-                {
-                    return new CommandResult
-                    {
-                        Success = false,
-                        ErrorMessage = validationResult.ErrorMessage
-                    };
-                }
-
-                // Convert coordinates if needed
-                var convertedCommand = ConvertCoordinates(command);
-
-                // Plan the motion
-                var planningResult = _motionPlanner.PlanMotion(convertedCommand);
-                if (!planningResult.Success)
-                {
-                    return new CommandResult
-                    {
-                        Success = false,
-                        ErrorMessage = planningResult.ErrorMessage
-                    };
-                }
-
-                // Execute the motion
-                var executionResult = await ExecuteMotionAsync(convertedCommand);
-                if (!executionResult.Success)
-                {
-                    return executionResult;
-                }
-
-                return new CommandResult
-                {
-                    Success = true,
-                    CommandsInBuffer = _motionPlanner.PendingSegmentCount,
-                    EstimatedDuration = planningResult.EstimatedDuration,
-                    FinalPosition = (double[])convertedCommand.EndPosition.Clone()
-                };
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = ex.Message
-                };
-            }
-        }
-
-        public BufferStatus GetBufferStatus()
-        {
-            var trajectoryStatus = _motionPlanner.GetStatus();
-            
-            return new BufferStatus
-            {
-                TotalBufferTime = trajectoryStatus.TotalPlannedTime,
-                CommandsInBuffer = trajectoryStatus.PendingSegments,
-                CommandsCompleted = trajectoryStatus.TotalSegments - trajectoryStatus.PendingSegments,
-                AverageCommandDuration = trajectoryStatus.TotalSegments > 0 ? 
-                    trajectoryStatus.TotalPlannedTime / trajectoryStatus.TotalSegments : 0.0,
-                IsBufferHealthy = trajectoryStatus.PendingSegments > 0 && 
-                    trajectoryStatus.TotalPlannedTime <= _config.BufferMaxTime,
-                BufferUtilization = Math.Min(trajectoryStatus.TotalPlannedTime / _config.BufferTargetTime, 1.0),
-                EstimatedTimeToEmpty = trajectoryStatus.TotalPlannedTime
-            };
-        }
-
-        public MotionProfile GetMotionProfile()
-        {
-            return new MotionProfile
-            {
-                CurrentTime = GetCurrentTime(),
-                CurrentPosition = CurrentPosition,
-                CurrentVelocity = CurrentVelocity,
-                CurrentAcceleration = new double[8], // TODO: Calculate actual acceleration
-                BufferStatus = GetBufferStatus(),
-                RecentCommands = new MotionCommand[0] // TODO: Track recent commands
-            };
-        }
-
-        public bool IsReady()
-        {
-            return _status == EngineStatus.Running && !_disposed;
-        }
-
-        public void EmergencyStop()
+        try
         {
             lock (_engineLock)
             {
+                _config = config;
+                _status = EngineStatus.Initialized;
+                _currentPosition = new double[config.AxisCount];
+                _currentVelocity = new double[config.AxisCount];
+            }
+
+            await Task.CompletedTask; // Placeholder for future async initialization
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[KINEMATIC_ENGINE] Initialization failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Starts the kinematic engine and begins processing motion commands.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous start operation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is not initialized, already running, or disposed.</exception>
+    /// <exception cref="KinematicEngineException">Thrown when startup fails.</exception>
+    public async Task<bool> StartAsync()
+    {
+        ThrowIfDisposed();
+
+        if (_status == EngineStatus.Uninitialized)
+        {
+            throw new InvalidOperationException("Engine must be initialized before starting");
+        }
+
+        if (_status == EngineStatus.Running)
+        {
+            throw new InvalidOperationException("Engine is already running");
+        }
+
+        try
+        {
+            // Start motion planning and monitoring
+            await _motionPlanner.StartAsync();
+            _status = EngineStatus.Running;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[KINEMATIC_ENGINE] Start failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Stops the kinematic engine and halts all motion.
+    /// </summary>
+    /// <returns>A task that represents the asynchronous stop operation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is not running or is disposed.</exception>
+    /// <exception cref="KinematicEngineException">Thrown when shutdown fails.</exception>
+    public async Task<bool> StopAsync()
+    {
+        ThrowIfDisposed();
+
+        if (_status != EngineStatus.Running)
+        {
+            throw new InvalidOperationException("Engine is not running");
+        }
+
+        try
+        {
+            // Stop motion planning and monitoring
+            await _motionPlanner.StopAsync();
+            _status = EngineStatus.Stopped;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[KINEMATIC_ENGINE] Stop failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Processes a motion command and adds it to the motion queue.
+    /// </summary>
+    /// <param name="command">The motion command to process.</param>
+    /// <returns>A task that represents the asynchronous command processing operation.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when command is null.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is not running or is disposed.</exception>
+    /// <exception cref="KinematicEngineException">Thrown when command processing fails.</exception>
+    public async Task<CommandResult> ProcessCommandAsync(MotionCommand command)
+    {
+        ThrowIfDisposed();
+
+        if (command == null)
+        {
+            throw new ArgumentNullException(nameof(command));
+        }
+
+        if (_status != EngineStatus.Running)
+        {
+            throw new InvalidOperationException("Engine must be running to process commands");
+        }
+
+        try
+        {
+            return await _motionPlanner.ProcessCommandAsync(command);
+        }
+        catch (Exception ex)
+        {
+            throw new KinematicEngineException("Failed to process motion command", ex);
+        }
+    }
+
+    /// <summary>
+    /// Gets the current buffer status of the motion planner.
+    /// </summary>
+    /// <returns>The current buffer status containing segment count and available space.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is disposed.</exception>
+    public BufferStatus GetBufferStatus()
+    {
+        ThrowIfDisposed();
+        return _motionPlanner.GetBufferStatus();
+    }
+
+    /// <summary>
+    /// Gets the current motion profile including position, velocity, and acceleration.
+    /// </summary>
+    /// <returns>The current motion profile.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the engine is disposed.</exception>
+    public MotionProfile GetMotionProfile()
+    {
+        ThrowIfDisposed();
+        return new MotionProfile
+        {
+            CurrentPosition = CurrentPosition,
+            CurrentVelocity = CurrentVelocity,
+            CurrentAcceleration = new double[AxisCount], // TODO: Implement actual acceleration calculation
+            BufferStatus = GetBufferStatus(),
+            CurrentTime = DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond
+        };
+    }
+
+    /// <summary>
+    /// Checks if the engine is ready to process commands.
+    /// </summary>
+    /// <returns>True if the engine is initialized and running, false otherwise.</returns>
+    public bool IsReady()
+    {
+        return !_disposed && _status == EngineStatus.Running;
+    }
+
+    /// <summary>
+    /// Performs a manual reset of the engine (stop planner, clear buffers, reinitialize)
+    /// </summary>
+    public void ManualReset()
+    {
+        ThrowIfDisposed();
+        lock (_engineLock)
+        {
+            // Stop planner if running
+            _motionPlanner.StopAsync().Wait();
+            _motionPlanner.StartAsync().Wait();
+            _status = EngineStatus.Initialized;
+        }
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(RefactoredKinematicEngine));
+        }
+    }
+
+    /// <summary>
+    /// Releases the unmanaged resources used by the RefactoredKinematicEngine and optionally releases the managed resources.
+    /// </summary>
+    /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Stop the engine if it's running
                 if (_status == EngineStatus.Running)
                 {
-                    _status = EngineStatus.Error;
-                    
-                    // Stop hardware motion
-                    try
-                    {
-                        _kognaMotion.SendLinear(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[REFACTORED_ENGINE] Emergency stop hardware command failed: {ex.Message}");
-                    }
-                    
-                    Console.WriteLine("[REFACTORED_ENGINE] Emergency stop executed");
-                }
-            }
-        }
-
-        public void Reset()
-        {
-            lock (_engineLock)
-            {
-                _motionPlanner.Clear();
-                _status = EngineStatus.Ready;
-                Console.WriteLine("[REFACTORED_ENGINE] Engine reset to ready state");
-            }
-        }
-
-        /// <summary>
-        /// Manually resets the engine after buffer closure
-        /// </summary>
-        public void ManualReset()
-        {
-            lock (_engineLock)
-            {
-                if (_status == EngineStatus.BufferClosed)
-                {
-                    _motionPlanner.Clear();
-                    _status = EngineStatus.Ready;
-                    Console.WriteLine("[REFACTORED_ENGINE] Manual reset completed. Engine ready for new program.");
-                }
-                else
-                {
-                    Console.WriteLine($"[REFACTORED_ENGINE] Manual reset ignored. Current status: {_status}");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Checks for buffer starvation and initiates controlled shutdown if needed
-        /// </summary>
-        private void CheckBufferStarvation()
-        {
-            lock (_engineLock)
-            {
-                if (_status != EngineStatus.Running)
-                    return;
-
-                int pendingSegments = _motionPlanner.PendingSegmentCount;
-                
-                // Check if we're approaching the safety margin
-                if (pendingSegments <= _config.BufferSafetyMargin)
-                {
-                    Console.WriteLine($"[REFACTORED_ENGINE] Buffer starvation detected! Pending segments: {pendingSegments}, Safety margin: {_config.BufferSafetyMargin}");
-                    
-                    // Initiate controlled buffer shutdown
-                    InitiateControlledBufferShutdown();
-                }
-            }
-        }
-
-        /// <summary>
-        /// Initiates a controlled buffer shutdown by flushing the buffer and setting state
-        /// </summary>
-        private void InitiateControlledBufferShutdown()
-        {
-            try
-            {
-                Console.WriteLine("[REFACTORED_ENGINE] Initiating controlled buffer shutdown...");
-                
-                // Send FlushBuf command to tell controller this is all the commands
-                int flushResult = _kognaMotion.FlushBuffer();
-                Console.WriteLine($"[REFACTORED_ENGINE] FlushBuf result: {flushResult}");
-                
-                // Set status to BufferClosed - requires manual reset
-                _status = EngineStatus.BufferClosed;
-                
-                Console.WriteLine("[REFACTORED_ENGINE] Buffer closed. Manual reset required for next program.");
-                Console.WriteLine("[REFACTORED_ENGINE] Controller will complete current motion buffer safely.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[REFACTORED_ENGINE] ERROR during controlled buffer shutdown: {ex.Message}");
-                _status = EngineStatus.Error;
-            }
-        }
-
-        /// <summary>
-        /// Converts work coordinates to machine coordinates if needed
-        /// </summary>
-        /// <param name="command">Original motion command</param>
-        /// <returns>Command with machine coordinates</returns>
-        private MotionCommand ConvertCoordinates(MotionCommand command)
-        {
-            var convertedCommand = new MotionCommand
-            {
-                SequenceNumber = command.SequenceNumber,
-                Type = command.Type,
-                StartPosition = (double[])command.StartPosition.Clone(),
-                EndPosition = (double[])command.EndPosition.Clone(),
-                FeedRate = command.FeedRate,
-                Acceleration = command.Acceleration,
-                Jerk = command.Jerk,
-                ArcCenter = (double[])command.ArcCenter.Clone(),
-                IsClockwise = command.IsClockwise,
-                DwellTime = command.DwellTime,
-                Comment = command.Comment,
-                CoordinateSystem = command.CoordinateSystem,
-                UseMachineCoordinates = command.UseMachineCoordinates
-            };
-
-            // If using machine coordinates (G53), no conversion needed
-            if (command.UseMachineCoordinates)
-            {
-                return convertedCommand;
-            }
-
-            // Convert work coordinates to machine coordinates
-            if (!command.UseMachineCoordinates)
-            {
-                // Convert start position
-                convertedCommand.StartPosition = _coordinateSystemManager.ToMachineCoordinates(command.StartPosition);
-                
-                // Convert end position
-                convertedCommand.EndPosition = _coordinateSystemManager.ToMachineCoordinates(command.EndPosition);
-                
-                // Convert arc center if this is an arc motion
-                if (command.Type == MotionType.Arc)
-                {
-                    var arcCenterWork = new double[8];
-                    arcCenterWork[0] = command.ArcCenter[0];
-                    arcCenterWork[1] = command.ArcCenter[1];
-                    var arcCenterMachine = _coordinateSystemManager.ToMachineCoordinates(arcCenterWork);
-                    convertedCommand.ArcCenter[0] = arcCenterMachine[0];
-                    convertedCommand.ArcCenter[1] = arcCenterMachine[1];
-                }
-            }
-
-            return convertedCommand;
-        }
-
-        public void Dispose()
-        {
-            if (!_disposed)
-            {
-                _motionPlanner.Dispose();
-                _kinematics.Dispose();
-                _disposed = true;
-            }
-        }
-
-        private Task InitializeHardwareAsync()
-        {
-            try
-            {
-                // Get axis definitions from hardware
-                _kognaMotion.GetAxisDefinitions();
-                
-                Console.WriteLine($"[REFACTORED_ENGINE] Hardware initialized with {_kognaMotion.AxisCount} axes");
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException($"Failed to initialize hardware: {ex.Message}", ex);
-            }
-        }
-
-        private Task UpdateCurrentPositionAsync()
-        {
-            try
-            {
-                for (int i = 0; i < _config.AxisCount; i++)
-                {
-                    _currentPosition[i] = _kognaMotion.GetPosition(i);
-                }
-                
-                Console.WriteLine($"[REFACTORED_ENGINE] Current position updated: [{string.Join(", ", _currentPosition)}]");
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[REFACTORED_ENGINE] Failed to update current position: {ex.Message}");
-                return Task.CompletedTask;
-            }
-        }
-
-        private Task StopAllMotionAsync()
-        {
-            try
-            {
-                // Send stop command to hardware
-                _kognaMotion.SendLinear(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-                Console.WriteLine("[REFACTORED_ENGINE] All motion stopped");
-                return Task.CompletedTask;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[REFACTORED_ENGINE] Failed to stop motion: {ex.Message}");
-                return Task.CompletedTask;
-            }
-        }
-
-        private async Task<CommandResult> ExecuteMotionAsync(MotionCommand command)
-        {
-            try
-            {
-                Console.WriteLine($"[REFACTORED_ENGINE] Executing command {command.SequenceNumber}: {command.Type}");
-                
-                switch (command.Type)
-                {
-                    case MotionType.Linear:
-                        return await ExecuteLinearMotionAsync(command);
-                    case MotionType.Arc:
-                        return await ExecuteArcMotionAsync(command);
-                    case MotionType.Rapid:
-                        return await ExecuteRapidMotionAsync(command);
-                    case MotionType.Dwell:
-                        return await ExecuteDwellAsync(command);
-                    default:
-                        return new CommandResult
-                        {
-                            Success = false,
-                            ErrorMessage = $"Unknown motion type: {command.Type}"
-                        };
-                }
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = ex.Message
-                };
-            }
-        }
-
-        private Task<CommandResult> ExecuteLinearMotionAsync(MotionCommand command)
-        {
-            try
-            {
-                var result = _kognaMotion.SendLinear(
-                    command.StartPosition[0], command.StartPosition[1], command.StartPosition[2],
-                    command.StartPosition[3], command.StartPosition[4], command.StartPosition[5],
-                    command.EndPosition[0], command.EndPosition[1], command.EndPosition[2],
-                    command.EndPosition[3], command.EndPosition[4], command.EndPosition[5],
-                    command.FeedRate, command.Acceleration, command.Jerk, 0.0);
-                    
-                if (result != 0)
-                {
-                    return Task.FromResult(new CommandResult
-                    {
-                        Success = false,
-                        ErrorMessage = $"Hardware command failed with code: {result}"
-                    });
+                    StopAsync().Wait();
                 }
 
-                // Update current position
-                _currentPosition = (double[])command.EndPosition.Clone();
-                
-                return Task.FromResult(new CommandResult { Success = true });
-            }
-            catch (Exception ex)
-            {
-                return Task.FromResult(new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = ex.Message
-                });
-            }
-        }
-
-        private Task<CommandResult> ExecuteArcMotionAsync(MotionCommand command)
-        {
-            try
-            {
-                var result = _kognaMotion.SendArc(
-                    command.StartPosition[0], command.StartPosition[1], command.StartPosition[2],
-                    command.StartPosition[3], command.StartPosition[4], command.StartPosition[5],
-                    command.EndPosition[0], command.EndPosition[1], command.EndPosition[2],
-                    command.EndPosition[3], command.EndPosition[4], command.EndPosition[5],
-                    command.ArcCenter[0], command.ArcCenter[1], command.IsClockwise,
-                    command.FeedRate, command.Acceleration, command.Jerk, 0.0);
-                
-                if (result != 0)
-                {
-                    return Task.FromResult(new CommandResult
-                    {
-                        Success = false,
-                        ErrorMessage = $"Hardware arc command failed with code: {result}"
-                    });
-                }
-
-                // Update current position
-                _currentPosition = (double[])command.EndPosition.Clone();
-                
-                return Task.FromResult(new CommandResult { Success = true });
-            }
-            catch (Exception ex)
-            {
-                return Task.FromResult(new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = ex.Message
-                });
-            }
-        }
-
-        private async Task<CommandResult> ExecuteRapidMotionAsync(MotionCommand command)
-        {
-            // Rapid motion is similar to linear but with higher velocity
-            return await ExecuteLinearMotionAsync(command);
-        }
-
-        private async Task<CommandResult> ExecuteDwellAsync(MotionCommand command)
-        {
-            try
-            {
-                await Task.Delay((int)(command.DwellTime * 1000));
-                return new CommandResult { Success = true };
-            }
-            catch (Exception ex)
-            {
-                return new CommandResult
-                {
-                    Success = false,
-                    ErrorMessage = ex.Message
-                };
-            }
-        }
-
-        private CommandValidationResult ValidateCommand(MotionCommand command)
-        {
-            if (command == null)
-            {
-                return new CommandValidationResult { IsValid = false, ErrorMessage = "Command is null" };
+                // Dispose managed resources
+                (_motionPlanner as IDisposable)?.Dispose();
+                (_kinematics as IDisposable)?.Dispose();
             }
 
-            if (command.StartPosition == null || command.EndPosition == null)
-            {
-                return new CommandValidationResult { IsValid = false, ErrorMessage = "Position arrays are null" };
-            }
-
-            if (command.StartPosition.Length < _config.AxisCount || command.EndPosition.Length < _config.AxisCount)
-            {
-                return new CommandValidationResult { IsValid = false, ErrorMessage = "Position array length mismatch" };
-            }
-
-            if (command.FeedRate <= 0)
-            {
-                return new CommandValidationResult { IsValid = false, ErrorMessage = "Feed rate must be positive" };
-            }
-
-            if (command.Acceleration <= 0)
-            {
-                return new CommandValidationResult { IsValid = false, ErrorMessage = "Acceleration must be positive" };
-            }
-
-            // Check soft limits
-            if (_config.EnableSoftLimits)
-            {
-                for (int i = 0; i < _config.AxisCount; i++)
-                {
-                    if (command.EndPosition[i] > _config.SoftLimitsPositive[i] || 
-                        command.EndPosition[i] < _config.SoftLimitsNegative[i])
-                    {
-                        return new CommandValidationResult 
-                        { 
-                            IsValid = false, 
-                            ErrorMessage = $"Position {i} ({command.EndPosition[i]}) exceeds soft limits" 
-                        };
-                    }
-                }
-            }
-
-            return new CommandValidationResult { IsValid = true };
-        }
-
-        private double GetCurrentTime()
-        {
-            return Environment.TickCount / 1000.0;
+            _disposed = true;
         }
     }
 
     /// <summary>
-    /// Result of command validation
+    /// Releases all resources used by the RefactoredKinematicEngine.
     /// </summary>
-    public class CommandValidationResult
+    public void Dispose()
     {
-        public bool IsValid { get; set; }
-        public string? ErrorMessage { get; set; }
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
+
+    /// <summary>
+    /// Finalizer that ensures unmanaged resources are cleaned up if the object is not properly disposed.
+    /// </summary>
+    ~RefactoredKinematicEngine()
+    {
+        Dispose(false);
+    }
+}
+
+/// <summary>
+/// Custom exception for kinematic engine specific errors.
+/// </summary>
+public class KinematicEngineException : Exception
+{
+    /// <summary>
+    /// Initializes a new instance of the KinematicEngineException class with a specified error message.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    public KinematicEngineException(string message) : base(message) { }
+
+    /// <summary>
+    /// Initializes a new instance of the KinematicEngineException class with a specified error message
+    /// and a reference to the inner exception that is the cause of this exception.
+    /// </summary>
+    /// <param name="message">The message that describes the error.</param>
+    /// <param name="innerException">The exception that is the cause of the current exception.</param>
+    public KinematicEngineException(string message, Exception innerException) : base(message, innerException) { }
 } 

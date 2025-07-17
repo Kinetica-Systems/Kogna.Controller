@@ -4,14 +4,83 @@
     "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {}
   },
   "projects": {
-    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
+    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj",
-        "projectName": "KinematicEngine",
-        "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj",
+        "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
+        "projectName": "GeometryEngine",
+        "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
         "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\obj\\",
+        "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\liamb\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj",
+        "projectName": "KinematicEngine",
+        "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj",
+        "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -34,6 +103,9 @@
             "projectReferences": {
               "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
                 "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+              },
+              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -107,11 +179,17 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
-                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj"
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj"
+              },
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj"
               },
               "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
                 "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+              },
+              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -134,7 +212,7 @@
           "dependencies": {
             "Avalonia": {
               "target": "Package",
-              "version": "[11.3.0, )"
+              "version": "[11.0.6, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
@@ -169,6 +247,81 @@
         "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj",
         "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
         "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\liamb\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Newtonsoft.Json": {
+              "target": "Package",
+              "version": "[13.0.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.302/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
+        "projectName": "SharedTypes",
+        "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
+        "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
+        "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

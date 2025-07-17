@@ -58,7 +58,7 @@ namespace KognaServer.Views
         public GCodeEditorView()
         {
             InitializeComponent();
-            //_client = new KinematicEngineClient("localhost", 5000);
+            _client = new KinematicEngineClient("127.0.0.1", 5000);
             ResponseList.ItemsSource = _responses;
             Editor.Background = Brushes.Transparent;
             Editor.Foreground = Brushes.LightGray;

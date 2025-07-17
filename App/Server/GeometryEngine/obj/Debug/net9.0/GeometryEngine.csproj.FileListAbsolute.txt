@@ -1,0 +1,14 @@
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\bin\Debug\net9.0\GeometryEngine.deps.json
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\bin\Debug\net9.0\GeometryEngine.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\bin\Debug\net9.0\GeometryEngine.pdb
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\bin\Debug\net9.0\SharedTypes.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\bin\Debug\net9.0\SharedTypes.pdb
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.csproj.AssemblyReference.cache
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.csproj.CoreCompileInputs.cache
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.sourcelink.json
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\Geometry.239BD02C.Up2Date
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\refint\GeometryEngine.dll
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\GeometryEngine.pdb
+C:\Users\liamb\Programming\Kogna.Controller\App\Server\GeometryEngine\obj\Debug\net9.0\ref\GeometryEngine.dll

@@ -2,81 +2,76 @@
   "version": 3,
   "targets": {
     "net9.0": {
-      "Avalonia/11.3.0": {
+      "Avalonia/11.0.6": {
         "type": "package",
         "dependencies": {
-          "Avalonia.BuildServices": "0.0.31",
-          "Avalonia.Remote.Protocol": "11.3.0",
-          "MicroCom.Runtime": "0.11.0"
+          "Avalonia.BuildServices": "0.0.29",
+          "Avalonia.Remote.Protocol": "11.0.6",
+          "MicroCom.Runtime": "0.11.0",
+          "System.ComponentModel.Annotations": "4.5.0"
         },
         "compile": {
-          "ref/net8.0/Avalonia.Base.dll": {
+          "ref/net6.0/Avalonia.Base.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.Controls.dll": {
+          "ref/net6.0/Avalonia.Controls.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.DesignerSupport.dll": {
+          "ref/net6.0/Avalonia.DesignerSupport.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.Dialogs.dll": {
+          "ref/net6.0/Avalonia.Dialogs.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.Markup.Xaml.dll": {
+          "ref/net6.0/Avalonia.Markup.Xaml.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.Markup.dll": {
+          "ref/net6.0/Avalonia.Markup.dll": {
             "related": ".Xaml.xml;.xml"
           },
-          "ref/net8.0/Avalonia.Metal.dll": {
+          "ref/net6.0/Avalonia.Metal.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.MicroCom.dll": {
+          "ref/net6.0/Avalonia.MicroCom.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.OpenGL.dll": {
+          "ref/net6.0/Avalonia.OpenGL.dll": {
             "related": ".xml"
           },
-          "ref/net8.0/Avalonia.Vulkan.dll": {
-            "related": ".xml"
-          },
-          "ref/net8.0/Avalonia.dll": {
-            "related": ".Base.xml;.Controls.xml;.DesignerSupport.xml;.Dialogs.xml;.Markup.Xaml.xml;.Markup.xml;.Metal.xml;.MicroCom.xml;.OpenGL.xml;.Vulkan.xml;.xml"
+          "ref/net6.0/Avalonia.dll": {
+            "related": ".Base.xml;.Controls.xml;.DesignerSupport.xml;.Dialogs.xml;.Markup.Xaml.xml;.Markup.xml;.Metal.xml;.MicroCom.xml;.OpenGL.xml;.xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Avalonia.Base.dll": {
+          "lib/net6.0/Avalonia.Base.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.Controls.dll": {
+          "lib/net6.0/Avalonia.Controls.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.DesignerSupport.dll": {
+          "lib/net6.0/Avalonia.DesignerSupport.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.Dialogs.dll": {
+          "lib/net6.0/Avalonia.Dialogs.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.Markup.Xaml.dll": {
+          "lib/net6.0/Avalonia.Markup.Xaml.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.Markup.dll": {
+          "lib/net6.0/Avalonia.Markup.dll": {
             "related": ".Xaml.xml;.xml"
           },
-          "lib/net8.0/Avalonia.Metal.dll": {
+          "lib/net6.0/Avalonia.Metal.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.MicroCom.dll": {
+          "lib/net6.0/Avalonia.MicroCom.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.OpenGL.dll": {
+          "lib/net6.0/Avalonia.OpenGL.dll": {
             "related": ".xml"
           },
-          "lib/net8.0/Avalonia.Vulkan.dll": {
-            "related": ".xml"
-          },
-          "lib/net8.0/Avalonia.dll": {
-            "related": ".Base.xml;.Controls.xml;.DesignerSupport.xml;.Dialogs.xml;.Markup.Xaml.xml;.Markup.xml;.Metal.xml;.MicroCom.xml;.OpenGL.xml;.Vulkan.xml;.xml"
+          "lib/net6.0/Avalonia.dll": {
+            "related": ".Base.xml;.Controls.xml;.DesignerSupport.xml;.Dialogs.xml;.Markup.Xaml.xml;.Markup.xml;.Metal.xml;.MicroCom.xml;.OpenGL.xml;.xml"
           }
         },
         "build": {
@@ -84,21 +79,21 @@
           "buildTransitive/Avalonia.targets": {}
         }
       },
-      "Avalonia.BuildServices/0.0.31": {
+      "Avalonia.BuildServices/0.0.29": {
         "type": "package",
         "build": {
           "buildTransitive/Avalonia.BuildServices.targets": {}
         }
       },
-      "Avalonia.Remote.Protocol/11.3.0": {
+      "Avalonia.Remote.Protocol/11.0.6": {
         "type": "package",
         "compile": {
-          "lib/net8.0/Avalonia.Remote.Protocol.dll": {
+          "lib/net6.0/Avalonia.Remote.Protocol.dll": {
             "related": ".xml"
           }
         },
         "runtime": {
-          "lib/net8.0/Avalonia.Remote.Protocol.dll": {
+          "lib/net6.0/Avalonia.Remote.Protocol.dll": {
             "related": ".xml"
           }
         }
@@ -125,11 +120,34 @@
           }
         }
       },
+      "System.ComponentModel.Annotations/4.5.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
+        }
+      },
+      "GeometryEngine/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "SharedTypes": "1.0.0"
+        },
+        "compile": {
+          "bin/placeholder/GeometryEngine.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/GeometryEngine.dll": {}
+        }
+      },
       "KinematicEngine/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
         "dependencies": {
           "Newtonsoft.Json": "13.0.3",
+          "SharedTypes": "1.0.0",
           "TCPServer": "1.0.0"
         },
         "compile": {
@@ -139,9 +157,23 @@
           "bin/placeholder/KinematicEngine.dll": {}
         }
       },
+      "SharedTypes/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "compile": {
+          "bin/placeholder/SharedTypes.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/SharedTypes.dll": {}
+        }
+      },
       "TCPServer/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Newtonsoft.Json": "13.0.3",
+          "SharedTypes": "1.0.0"
+        },
         "compile": {
           "bin/placeholder/TCPServer.dll": {}
         },
@@ -152,10 +184,10 @@
     }
   },
   "libraries": {
-    "Avalonia/11.3.0": {
-      "sha512": "/j8J0QcekWFBl+DE/4g8WeSGwUK11auhh5d1o5pfOgi5gMrG6V9QdTsPv0ZCDL73c7dJwwL1BZn1WrhE11I76g==",
+    "Avalonia/11.0.6": {
+      "sha512": "BhuWLzZOWKqv6i0dTvbx/jsSwqZDhY4093+ihRai0TIc48kgGhX3TpUGRsRFfzfnb7FHwlkgZHjNgleVX+LEJg==",
       "type": "package",
-      "path": "avalonia/11.3.0",
+      "path": "avalonia/11.0.6",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
@@ -163,7 +195,7 @@
         "Icon.png",
         "analyzers/dotnet/cs/Avalonia.Analyzers.dll",
         "analyzers/dotnet/cs/Avalonia.Generators.dll",
-        "avalonia.11.3.0.nupkg.sha512",
+        "avalonia.11.0.6.nupkg.sha512",
         "avalonia.nuspec",
         "build/Avalonia.Generators.props",
         "build/Avalonia.props",
@@ -172,8 +204,6 @@
         "build/AvaloniaBuildTasks.targets",
         "build/AvaloniaItemSchema.xaml",
         "build/AvaloniaPrivateApis.targets",
-        "build/AvaloniaRules.Project.xml",
-        "build/AvaloniaSingleProject.targets",
         "build/AvaloniaVersion.props",
         "buildTransitive/Avalonia.Generators.props",
         "buildTransitive/Avalonia.props",
@@ -182,8 +212,26 @@
         "buildTransitive/AvaloniaBuildTasks.targets",
         "buildTransitive/AvaloniaItemSchema.xaml",
         "buildTransitive/AvaloniaPrivateApis.targets",
-        "buildTransitive/AvaloniaRules.Project.xml",
-        "buildTransitive/AvaloniaSingleProject.targets",
+        "lib/net461/Avalonia.Base.dll",
+        "lib/net461/Avalonia.Base.xml",
+        "lib/net461/Avalonia.Controls.dll",
+        "lib/net461/Avalonia.Controls.xml",
+        "lib/net461/Avalonia.DesignerSupport.dll",
+        "lib/net461/Avalonia.DesignerSupport.xml",
+        "lib/net461/Avalonia.Dialogs.dll",
+        "lib/net461/Avalonia.Dialogs.xml",
+        "lib/net461/Avalonia.Markup.Xaml.dll",
+        "lib/net461/Avalonia.Markup.Xaml.xml",
+        "lib/net461/Avalonia.Markup.dll",
+        "lib/net461/Avalonia.Markup.xml",
+        "lib/net461/Avalonia.Metal.dll",
+        "lib/net461/Avalonia.Metal.xml",
+        "lib/net461/Avalonia.MicroCom.dll",
+        "lib/net461/Avalonia.MicroCom.xml",
+        "lib/net461/Avalonia.OpenGL.dll",
+        "lib/net461/Avalonia.OpenGL.xml",
+        "lib/net461/Avalonia.dll",
+        "lib/net461/Avalonia.xml",
         "lib/net6.0/Avalonia.Base.dll",
         "lib/net6.0/Avalonia.Base.xml",
         "lib/net6.0/Avalonia.Controls.dll",
@@ -202,32 +250,28 @@
         "lib/net6.0/Avalonia.MicroCom.xml",
         "lib/net6.0/Avalonia.OpenGL.dll",
         "lib/net6.0/Avalonia.OpenGL.xml",
-        "lib/net6.0/Avalonia.Vulkan.dll",
-        "lib/net6.0/Avalonia.Vulkan.xml",
         "lib/net6.0/Avalonia.dll",
         "lib/net6.0/Avalonia.xml",
-        "lib/net8.0/Avalonia.Base.dll",
-        "lib/net8.0/Avalonia.Base.xml",
-        "lib/net8.0/Avalonia.Controls.dll",
-        "lib/net8.0/Avalonia.Controls.xml",
-        "lib/net8.0/Avalonia.DesignerSupport.dll",
-        "lib/net8.0/Avalonia.DesignerSupport.xml",
-        "lib/net8.0/Avalonia.Dialogs.dll",
-        "lib/net8.0/Avalonia.Dialogs.xml",
-        "lib/net8.0/Avalonia.Markup.Xaml.dll",
-        "lib/net8.0/Avalonia.Markup.Xaml.xml",
-        "lib/net8.0/Avalonia.Markup.dll",
-        "lib/net8.0/Avalonia.Markup.xml",
-        "lib/net8.0/Avalonia.Metal.dll",
-        "lib/net8.0/Avalonia.Metal.xml",
-        "lib/net8.0/Avalonia.MicroCom.dll",
-        "lib/net8.0/Avalonia.MicroCom.xml",
-        "lib/net8.0/Avalonia.OpenGL.dll",
-        "lib/net8.0/Avalonia.OpenGL.xml",
-        "lib/net8.0/Avalonia.Vulkan.dll",
-        "lib/net8.0/Avalonia.Vulkan.xml",
-        "lib/net8.0/Avalonia.dll",
-        "lib/net8.0/Avalonia.xml",
+        "lib/netcoreapp2.0/Avalonia.Base.dll",
+        "lib/netcoreapp2.0/Avalonia.Base.xml",
+        "lib/netcoreapp2.0/Avalonia.Controls.dll",
+        "lib/netcoreapp2.0/Avalonia.Controls.xml",
+        "lib/netcoreapp2.0/Avalonia.DesignerSupport.dll",
+        "lib/netcoreapp2.0/Avalonia.DesignerSupport.xml",
+        "lib/netcoreapp2.0/Avalonia.Dialogs.dll",
+        "lib/netcoreapp2.0/Avalonia.Dialogs.xml",
+        "lib/netcoreapp2.0/Avalonia.Markup.Xaml.dll",
+        "lib/netcoreapp2.0/Avalonia.Markup.Xaml.xml",
+        "lib/netcoreapp2.0/Avalonia.Markup.dll",
+        "lib/netcoreapp2.0/Avalonia.Markup.xml",
+        "lib/netcoreapp2.0/Avalonia.Metal.dll",
+        "lib/netcoreapp2.0/Avalonia.Metal.xml",
+        "lib/netcoreapp2.0/Avalonia.MicroCom.dll",
+        "lib/netcoreapp2.0/Avalonia.MicroCom.xml",
+        "lib/netcoreapp2.0/Avalonia.OpenGL.dll",
+        "lib/netcoreapp2.0/Avalonia.OpenGL.xml",
+        "lib/netcoreapp2.0/Avalonia.dll",
+        "lib/netcoreapp2.0/Avalonia.xml",
         "lib/netstandard2.0/Avalonia.Base.dll",
         "lib/netstandard2.0/Avalonia.Base.xml",
         "lib/netstandard2.0/Avalonia.Controls.dll",
@@ -246,10 +290,28 @@
         "lib/netstandard2.0/Avalonia.MicroCom.xml",
         "lib/netstandard2.0/Avalonia.OpenGL.dll",
         "lib/netstandard2.0/Avalonia.OpenGL.xml",
-        "lib/netstandard2.0/Avalonia.Vulkan.dll",
-        "lib/netstandard2.0/Avalonia.Vulkan.xml",
         "lib/netstandard2.0/Avalonia.dll",
         "lib/netstandard2.0/Avalonia.xml",
+        "ref/net461/Avalonia.Base.dll",
+        "ref/net461/Avalonia.Base.xml",
+        "ref/net461/Avalonia.Controls.dll",
+        "ref/net461/Avalonia.Controls.xml",
+        "ref/net461/Avalonia.DesignerSupport.dll",
+        "ref/net461/Avalonia.DesignerSupport.xml",
+        "ref/net461/Avalonia.Dialogs.dll",
+        "ref/net461/Avalonia.Dialogs.xml",
+        "ref/net461/Avalonia.Markup.Xaml.dll",
+        "ref/net461/Avalonia.Markup.Xaml.xml",
+        "ref/net461/Avalonia.Markup.dll",
+        "ref/net461/Avalonia.Markup.xml",
+        "ref/net461/Avalonia.Metal.dll",
+        "ref/net461/Avalonia.Metal.xml",
+        "ref/net461/Avalonia.MicroCom.dll",
+        "ref/net461/Avalonia.MicroCom.xml",
+        "ref/net461/Avalonia.OpenGL.dll",
+        "ref/net461/Avalonia.OpenGL.xml",
+        "ref/net461/Avalonia.dll",
+        "ref/net461/Avalonia.xml",
         "ref/net6.0/Avalonia.Base.dll",
         "ref/net6.0/Avalonia.Base.xml",
         "ref/net6.0/Avalonia.Controls.dll",
@@ -268,32 +330,28 @@
         "ref/net6.0/Avalonia.MicroCom.xml",
         "ref/net6.0/Avalonia.OpenGL.dll",
         "ref/net6.0/Avalonia.OpenGL.xml",
-        "ref/net6.0/Avalonia.Vulkan.dll",
-        "ref/net6.0/Avalonia.Vulkan.xml",
         "ref/net6.0/Avalonia.dll",
         "ref/net6.0/Avalonia.xml",
-        "ref/net8.0/Avalonia.Base.dll",
-        "ref/net8.0/Avalonia.Base.xml",
-        "ref/net8.0/Avalonia.Controls.dll",
-        "ref/net8.0/Avalonia.Controls.xml",
-        "ref/net8.0/Avalonia.DesignerSupport.dll",
-        "ref/net8.0/Avalonia.DesignerSupport.xml",
-        "ref/net8.0/Avalonia.Dialogs.dll",
-        "ref/net8.0/Avalonia.Dialogs.xml",
-        "ref/net8.0/Avalonia.Markup.Xaml.dll",
-        "ref/net8.0/Avalonia.Markup.Xaml.xml",
-        "ref/net8.0/Avalonia.Markup.dll",
-        "ref/net8.0/Avalonia.Markup.xml",
-        "ref/net8.0/Avalonia.Metal.dll",
-        "ref/net8.0/Avalonia.Metal.xml",
-        "ref/net8.0/Avalonia.MicroCom.dll",
-        "ref/net8.0/Avalonia.MicroCom.xml",
-        "ref/net8.0/Avalonia.OpenGL.dll",
-        "ref/net8.0/Avalonia.OpenGL.xml",
-        "ref/net8.0/Avalonia.Vulkan.dll",
-        "ref/net8.0/Avalonia.Vulkan.xml",
-        "ref/net8.0/Avalonia.dll",
-        "ref/net8.0/Avalonia.xml",
+        "ref/netcoreapp2.0/Avalonia.Base.dll",
+        "ref/netcoreapp2.0/Avalonia.Base.xml",
+        "ref/netcoreapp2.0/Avalonia.Controls.dll",
+        "ref/netcoreapp2.0/Avalonia.Controls.xml",
+        "ref/netcoreapp2.0/Avalonia.DesignerSupport.dll",
+        "ref/netcoreapp2.0/Avalonia.DesignerSupport.xml",
+        "ref/netcoreapp2.0/Avalonia.Dialogs.dll",
+        "ref/netcoreapp2.0/Avalonia.Dialogs.xml",
+        "ref/netcoreapp2.0/Avalonia.Markup.Xaml.dll",
+        "ref/netcoreapp2.0/Avalonia.Markup.Xaml.xml",
+        "ref/netcoreapp2.0/Avalonia.Markup.dll",
+        "ref/netcoreapp2.0/Avalonia.Markup.xml",
+        "ref/netcoreapp2.0/Avalonia.Metal.dll",
+        "ref/netcoreapp2.0/Avalonia.Metal.xml",
+        "ref/netcoreapp2.0/Avalonia.MicroCom.dll",
+        "ref/netcoreapp2.0/Avalonia.MicroCom.xml",
+        "ref/netcoreapp2.0/Avalonia.OpenGL.dll",
+        "ref/netcoreapp2.0/Avalonia.OpenGL.xml",
+        "ref/netcoreapp2.0/Avalonia.dll",
+        "ref/netcoreapp2.0/Avalonia.xml",
         "ref/netstandard2.0/Avalonia.Base.dll",
         "ref/netstandard2.0/Avalonia.Base.xml",
         "ref/netstandard2.0/Avalonia.Controls.dll",
@@ -312,25 +370,22 @@
         "ref/netstandard2.0/Avalonia.MicroCom.xml",
         "ref/netstandard2.0/Avalonia.OpenGL.dll",
         "ref/netstandard2.0/Avalonia.OpenGL.xml",
-        "ref/netstandard2.0/Avalonia.Vulkan.dll",
-        "ref/netstandard2.0/Avalonia.Vulkan.xml",
         "ref/netstandard2.0/Avalonia.dll",
         "ref/netstandard2.0/Avalonia.xml",
         "tools/net461/designer/Avalonia.Designer.HostApp.exe",
-        "tools/netstandard2.0/Avalonia.Build.Tasks.dll",
-        "tools/netstandard2.0/designer/Avalonia.Designer.HostApp.dll"
+        "tools/netcoreapp2.0/designer/Avalonia.Designer.HostApp.dll",
+        "tools/netstandard2.0/Avalonia.Build.Tasks.dll"
       ]
     },
-    "Avalonia.BuildServices/0.0.31": {
-      "sha512": "KmCN6Hc+45q4OnF10ge450yVUvWuxU6bdQiyKqiSvrHKpahNrEdk0kG6Ip6GHk2SKOCttGQuA206JVdkldEENg==",
+    "Avalonia.BuildServices/0.0.29": {
+      "sha512": "U4eJLQdoDNHXtEba7MZUCwrBErBTxFp6sUewXBOdAhU0Kwzwaa/EKFcYm8kpcysjzKtfB4S0S9n0uxKZFz/ikw==",
       "type": "package",
-      "path": "avalonia.buildservices/0.0.31",
+      "path": "avalonia.buildservices/0.0.29",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "Icon.png",
-        "avalonia.buildservices.0.0.31.nupkg.sha512",
+        "avalonia.buildservices.0.0.29.nupkg.sha512",
         "avalonia.buildservices.nuspec",
         "build/Avalonia.BuildServices.targets",
         "buildTransitive/Avalonia.BuildServices.targets",
@@ -339,20 +394,18 @@
         "tools/netstandard2.0/runtimeconfig.json"
       ]
     },
-    "Avalonia.Remote.Protocol/11.3.0": {
-      "sha512": "noH0+YgFsXshhDnEcBATw5EULNiTYv4gznE2OnSPDvU5K9/COVs6W3ZWlYY1lwY+w4x1IGueMux7dcw0TbjEzA==",
+    "Avalonia.Remote.Protocol/11.0.6": {
+      "sha512": "aIuCvIW+gjKg3USW6FuAMW6k2HDhTTCzWcGYCnuloOSnFe3EgeqEJr+qbO2whnMD1zLoJil3RWmTBl/b/yUqOw==",
       "type": "package",
-      "path": "avalonia.remote.protocol/11.3.0",
+      "path": "avalonia.remote.protocol/11.0.6",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
-        "avalonia.remote.protocol.11.3.0.nupkg.sha512",
+        "avalonia.remote.protocol.11.0.6.nupkg.sha512",
         "avalonia.remote.protocol.nuspec",
         "lib/net6.0/Avalonia.Remote.Protocol.dll",
         "lib/net6.0/Avalonia.Remote.Protocol.xml",
-        "lib/net8.0/Avalonia.Remote.Protocol.dll",
-        "lib/net8.0/Avalonia.Remote.Protocol.xml",
         "lib/netstandard2.0/Avalonia.Remote.Protocol.dll",
         "lib/netstandard2.0/Avalonia.Remote.Protocol.xml"
       ]
@@ -400,10 +453,109 @@
         "packageIcon.png"
       ]
     },
+    "System.ComponentModel.Annotations/4.5.0": {
+      "sha512": "UxYQ3FGUOtzJ7LfSdnYSFd7+oEv6M8NgUatatIN2HxNtDdlcvFAf+VIq4Of9cDMJEJC0aSRv/x898RYhB4Yppg==",
+      "type": "package",
+      "path": "system.componentmodel.annotations/4.5.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net45/_._",
+        "lib/net461/System.ComponentModel.Annotations.dll",
+        "lib/netcore50/System.ComponentModel.Annotations.dll",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.4/System.ComponentModel.Annotations.dll",
+        "lib/netstandard2.0/System.ComponentModel.Annotations.dll",
+        "lib/portable-net45+win8/_._",
+        "lib/uap10.0.16299/_._",
+        "lib/win8/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/_._",
+        "ref/net461/System.ComponentModel.Annotations.dll",
+        "ref/net461/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/System.ComponentModel.Annotations.dll",
+        "ref/netcore50/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/de/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/es/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/fr/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/it/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/ja/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/ko/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/ru/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/zh-hans/System.ComponentModel.Annotations.xml",
+        "ref/netcore50/zh-hant/System.ComponentModel.Annotations.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.1/System.ComponentModel.Annotations.dll",
+        "ref/netstandard1.1/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/de/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/es/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/fr/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/it/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/ja/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/ko/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/ru/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/zh-hans/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.1/zh-hant/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/System.ComponentModel.Annotations.dll",
+        "ref/netstandard1.3/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/de/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/es/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/fr/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/it/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/ja/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/ko/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/ru/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/zh-hans/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.3/zh-hant/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/System.ComponentModel.Annotations.dll",
+        "ref/netstandard1.4/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/de/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/es/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/fr/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/it/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/ja/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/ko/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/ru/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/zh-hans/System.ComponentModel.Annotations.xml",
+        "ref/netstandard1.4/zh-hant/System.ComponentModel.Annotations.xml",
+        "ref/netstandard2.0/System.ComponentModel.Annotations.dll",
+        "ref/netstandard2.0/System.ComponentModel.Annotations.xml",
+        "ref/portable-net45+win8/_._",
+        "ref/uap10.0.16299/_._",
+        "ref/win8/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "system.componentmodel.annotations.4.5.0.nupkg.sha512",
+        "system.componentmodel.annotations.nuspec",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
+    "GeometryEngine/1.0.0": {
+      "type": "project",
+      "path": "GeometryEngine/GeometryEngine.csproj",
+      "msbuildProject": "GeometryEngine/GeometryEngine.csproj"
+    },
     "KinematicEngine/1.0.0": {
       "type": "project",
       "path": "KinematicEngine/KinematicEngine.csproj",
       "msbuildProject": "KinematicEngine/KinematicEngine.csproj"
+    },
+    "SharedTypes/1.0.0": {
+      "type": "project",
+      "path": "../../Libraries/SharedTypes/SharedTypes.csproj",
+      "msbuildProject": "../../Libraries/SharedTypes/SharedTypes.csproj"
     },
     "TCPServer/1.0.0": {
       "type": "project",
@@ -413,9 +565,11 @@
   },
   "projectFileDependencyGroups": {
     "net9.0": [
-      "Avalonia >= 11.3.0",
+      "Avalonia >= 11.0.6",
+      "GeometryEngine >= 1.0.0",
       "KinematicEngine >= 1.0.0",
       "Newtonsoft.Json >= 13.0.3",
+      "SharedTypes >= 1.0.0",
       "TCPServer >= 1.0.0"
     ]
   },
@@ -426,11 +580,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
+      "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
       "projectName": "Server",
-      "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
+      "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
       "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\obj\\",
+      "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -451,11 +605,17 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
-              "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj"
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj"
+            },
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\KinematicEngine\\KinematicEngine.csproj"
             },
             "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
               "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
+            },
+            "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+              "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
             }
           }
         }
@@ -478,7 +638,7 @@
         "dependencies": {
           "Avalonia": {
             "target": "Package",
-            "version": "[11.3.0, )"
+            "version": "[11.0.6, )"
           },
           "Newtonsoft.Json": {
             "target": "Package",

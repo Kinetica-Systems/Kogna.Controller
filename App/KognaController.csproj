@@ -1,4 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
@@ -6,45 +8,31 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <Folder Include="Models\" />
     <Folder Include="Server\" />
     <Folder Include="Views\" />
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="Assets\**\*.png" />
-   
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Prevent files under KinematicEngine/ from being compiled by MainApp -->
-
-
-
-
     <Compile Remove="Server\**\*.cs" />
-    <Compile Remove="Server\**\AssemblyInfo.cs" />
-    <None    Remove="Server\*.cs" />
-    <ProjectReference Include="Server\Server.csproj"
-                      Condition="Exists('Server\Server.csproj')" />
-    <ProjectReference Include="Server\KinematicEngine\KinematicEngine.csproj"
-                      Condition="Exists('Server\KinematicEngine\KinematicEngine.csproj')" />
-    <ProjectReference Include="Server\TCPServer\TCPServer.csproj"
-                      Condition="Exists('Server\TCPServer\TCPServer.csproj')" />
+  </ItemGroup>
 
-    <PackageReference Include="Avalonia" Version="11.3.0" />
+  <ItemGroup>
+    <ProjectReference Include="Server\Server.csproj" />
+    <ProjectReference Include="Server\KinematicEngine\KinematicEngine.csproj" />
+    <ProjectReference Include="Server\GeometryEngine\GeometryEngine.csproj" />
+    <PackageReference Include="Avalonia" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0-rc1" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0" />
-    <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.3.0">
-      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Avalonia.Xaml.Interactivity" Version="11.3.0.6" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="NewtonSoft.Json" Version="13.0.3" />
     <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.0.2" />
     <PackageReference Include="OxyPlot.Avalonia" Version="2.1.0" />
@@ -53,6 +41,6 @@
     <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageReference Include="System.Data.SQLite.Core" Version="1.0.119" />
+    <PackageReference Include="Avalonia.Labs.Controls" Version="11.3.0-rc1" />
   </ItemGroup>
 </Project>

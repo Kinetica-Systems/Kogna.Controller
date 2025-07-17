@@ -23,6 +23,7 @@ namespace KognaServer.ViewModels
         public TerminalViewModel TerminalViewModel { get; }
         public ConnectionViewModel ConnectionVm { get; }
         public GCodeEditorViewModel GcodeVm { get; }
+        public GCodeGeneratorViewModel GCodeGeneratorViewModel { get; }
         public JoggingViewModel JoggingVm { get; }
       
 
@@ -35,6 +36,7 @@ namespace KognaServer.ViewModels
             DroViewModel droVm,
             TerminalViewModel terminalVm,
             GCodeEditorViewModel gCodeEditor,
+            GCodeGeneratorViewModel gCodeGeneratorViewModel,
             JoggingViewModel joggingVm)
         {
             _server = server;
@@ -42,6 +44,7 @@ namespace KognaServer.ViewModels
             DroVm = droVm;
             TerminalViewModel = terminalVm;
             GcodeVm = gCodeEditor;
+            GCodeGeneratorViewModel = gCodeGeneratorViewModel;
             JoggingVm = joggingVm;
 
         }

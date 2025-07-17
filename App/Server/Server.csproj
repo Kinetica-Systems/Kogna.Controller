@@ -1,25 +1,23 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
-
   <ItemGroup>
+    <!-- Exclude code that belongs to separately-built class-library projects -->
+    <Compile Remove="GeometryEngine\**\*.cs" />
     <Compile Remove="KinematicEngine\**\*.cs" />
-    <Compile Remove="KinematicEngine\**\AssemblyInfo.cs" />
-    <None    Remove="KinematicEngine\*.cs" />
-    <ProjectReference Include="KinematicEngine\KinematicEngine.csproj"
-                      Condition="Exists('KinematicEngine\KinematicEngine.csproj')" />
     <Compile Remove="TCPServer\**\*.cs" />
-    <Compile Remove="TCPServer\**\AssemblyInfo.cs" />
-    <None    Remove="TCPServer\*.cs" />
-    <ProjectReference Include="TCPServer\TCPServer.csproj"
-                      Condition="Exists('TCPServer\TCPServer.csproj')" />
-    <PackageReference Include="Avalonia" Version="11.3.0" />
+    <ProjectReference Include="..\..\Libraries\SharedTypes\SharedTypes.csproj" />
+    <ProjectReference Include="TCPServer\TCPServer.csproj" />
+    <ProjectReference Include="KinematicEngine\KinematicEngine.csproj" />
+    <ProjectReference Include="GeometryEngine\GeometryEngine.csproj" />
+    <PackageReference Include="Avalonia" Version="11.0.6" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 

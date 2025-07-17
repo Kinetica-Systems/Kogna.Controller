@@ -2,15 +2,13 @@
 // Removed FTDI logic; uses TCP socket for communication
 
 using System;
-
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Diagnostics;
 using System.Text;
 using System.IO;
-using System.Threading.Tasks; // Added for Task.Run
-
+using System.Threading.Tasks;
 
 namespace TCPServer
 {
@@ -32,116 +30,167 @@ namespace TCPServer
         // Internal synchronization and state
         private const int CONNECT_TRIES = 5;
         private const double TIME_TO_TRY_TO_OPEN = 3.0;
-        private Socket _socket = null!;
-        private Mutex _mutex;
-        private Stopwatch _timer;
+        private Socket? _socket;
+        private Mutex? _mutex;
+        private readonly Stopwatch _timer;
         private int _token;
-        private ServerConsoleHandler _consoleHandler = null!;
+        private ServerConsoleHandler? _consoleHandler;
+        private const int DEFAULT_CONNECT_TIMEOUT = 10; // seconds
+        private readonly int _connectTimeout;
+        private bool _disposed;
 
-
-        public KognaIO(string ipAddress, int port)
+        public KognaIO(string ipAddress, int port, int connectTimeout = DEFAULT_CONNECT_TIMEOUT)
         {
-            IPAddress = ipAddress;
+            IPAddress = ipAddress ?? throw new ArgumentNullException(nameof(ipAddress));
             Port = port;
-            _mutex = new Mutex(false, nameof(KognaIO));
+            _connectTimeout = connectTimeout;
+            _mutex = new Mutex();
             _timer = new Stopwatch();
-
-            // Default settings
-            SendAbortOnConnect = true;
-            FailMessageAlreadyShown = false;
-            NonRespondingCount = 0;
-            _token = 0;
             Connected = false;
+            NonRespondingCount = 0;
+            FailMessageAlreadyShown = false;
+            _disposed = false;
+        }
+
+        public void SetConsoleCallback(ServerConsoleHandler handler)
+        {
+            ThrowIfDisposed();
+            _consoleHandler = handler;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    if (_socket != null)
+                    {
+                        try
+                        {
+                            if (_socket.Connected)
+                            {
+                                _socket.Shutdown(SocketShutdown.Both);
+                            }
+                            _socket.Close();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error during socket cleanup: {ex.Message}");
+                        }
+                        _socket = null;
+                    }
+
+                    if (_mutex != null)
+                    {
+                        _mutex.Dispose();
+                        _mutex = null;
+                    }
+                }
+
+                // Clean up unmanaged resources (if any) here
+                _disposed = true;
+            }
         }
 
         public void Dispose()
         {
-            _socket?.Close();
-            _mutex?.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
-        // Connect to Kogna over TCP
-        public int Connect()
+        ~KognaIO()
         {
-            if (NonRespondingCount >= CONNECT_TRIES)
-                return KOGNA_ERROR;
+            Dispose(false);
+        }
 
-            _mutex.WaitOne();
+        private void ThrowIfDisposed()
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(KognaIO));
+            }
+        }
+
+        // Add this method to ensure thread-safe access to the socket
+        private void EnsureSocketConnected()
+        {
+            ThrowIfDisposed();
+            if (_socket == null || !_socket.Connected)
+            {
+                throw new InvalidOperationException("Socket is not connected");
+            }
+        }
+
+        public bool Connect()
+        {
+            ThrowIfDisposed();
             try
             {
-                if (!RequestedDeviceAvail(out var reason))
-                {
-                    ErrorMessage(reason);
-                    return KOGNA_ERROR;
-                }
-
-                _timer.Restart();
-                _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-                {
-                    Blocking = true  // switch to blocking mode
-                };
-
-                var endPoint = new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
+                _mutex?.WaitOne();
                 try
                 {
-                    Console.WriteLine($"[KOGNA_IO] Attempting to connect to {IPAddress}:{Port}");
-                    
-                    // Use async connect with timeout to prevent hanging
-                    var connectTask = Task.Run(() => _socket.ConnectAsync(endPoint));
-                    if (connectTask.Wait(TimeSpan.FromSeconds(10))) // 10 second timeout
+                    if (_socket != null)
                     {
-                        if (connectTask.Exception != null)
+                        try
                         {
-                            throw connectTask.Exception.InnerException ?? connectTask.Exception;
+                            if (_socket.Connected)
+                            {
+                                _socket.Shutdown(SocketShutdown.Both);
+                            }
+                            _socket.Close();
                         }
-                        
-                        Connected = true;
-                        NonRespondingCount = 0;
-                        Console.WriteLine($"[KOGNA_IO] Successfully connected to {IPAddress}:{Port}");
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error closing existing socket: {ex.Message}");
+                        }
                     }
-                    else
-                    {
-                        Console.WriteLine($"[KOGNA_IO] Connection timeout to {IPAddress}:{Port}");
-                        ErrorMessage($"Connection timeout to {IPAddress}:{Port}");
-                        return KOGNA_TIMEOUT;
-                    }
-                }
-                catch (SocketException ex)
-                {
-                    Console.WriteLine($"[KOGNA_IO] Socket error connecting to {IPAddress}:{Port}: {ex.Message}");
-                    ErrorMessage($"Unable to connect: {ex.Message}");
-                    return KOGNA_ERROR;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[KOGNA_IO] Unexpected error connecting to {IPAddress}:{Port}: {ex.Message}");
-                    ErrorMessage($"Unexpected error: {ex.Message}");
-                    return KOGNA_ERROR;
-                }
 
-                return KOGNA_OK;
+                    _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    var endpoint = new IPEndPoint(System.Net.IPAddress.Parse(IPAddress), Port);
+                    
+                    var connectResult = _socket.BeginConnect(endpoint, null, null);
+                    bool success = connectResult.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(_connectTimeout));
+                    
+                    if (!success)
+                    {
+                        _socket.Close();
+                        throw new TimeoutException("Connection attempt timed out");
+                    }
+
+                    _socket.EndConnect(connectResult);
+                    Connected = true;
+                    return true;
+                }
+                finally
+                {
+                    _mutex?.ReleaseMutex();
+                }
             }
-            finally
+            catch (Exception ex)
             {
-                _mutex.ReleaseMutex();
+                ErrMsg = $"Connection failed: {ex.Message}";
+                Connected = false;
+                return false;
             }
         }
 
         public int Disconnect()
         {
-            _mutex.WaitOne();
+            _mutex?.WaitOne();
             try
             {
                 Connected = false;
                 _socket?.Close();
                 return KOGNA_OK;
             }
-            finally { _mutex.ReleaseMutex(); }
+            finally { _mutex?.ReleaseMutex(); }
         }
 
         public int Failed()
         {
-            _mutex.WaitOne();
+            _mutex?.WaitOne();
             try
             {
                 Connected = false;
@@ -154,7 +203,7 @@ namespace TCPServer
                 FailMessageAlreadyShown = true;
                 return KOGNA_OK;
             }
-            finally { _mutex.ReleaseMutex(); }
+            finally { _mutex?.ReleaseMutex(); }
         }
 
         
@@ -163,22 +212,23 @@ namespace TCPServer
         // Locking
         public int KognaLock(string callerID)
         {
-            if (!_mutex.WaitOne(3000)) return KOGNA_NOT_CONNECTED;
+            ThrowIfDisposed();
+            if (!_mutex?.WaitOne(3000) ?? false) return KOGNA_NOT_CONNECTED;
             try
             {
                 if (!Connected)
                 {
-                    if (Connect() != KOGNA_OK) return KOGNA_NOT_CONNECTED;
+                    if (!Connect()) return KOGNA_NOT_CONNECTED;
                 }
                 if (_token == 0)
                 {
-                    _token++;
-                    LastCallerID = callerID ?? string.Empty;
-                    return KOGNA_LOCKED;
+                    _token = 1;
+                    LastCallerID = callerID;
+                    return KOGNA_OK;
                 }
                 else return KOGNA_IN_USE;
             }
-            finally { _mutex.ReleaseMutex(); }
+            finally { _mutex?.ReleaseMutex(); }
         }
 
         public int KognaLockRecovery()
@@ -191,34 +241,36 @@ namespace TCPServer
 
         public void ReleaseToken()
         {
-            _mutex.WaitOne();
+            _mutex?.WaitOne();
             try
             {
                 LastCallerID = string.Empty;
                 _token--;
                 if (_token < 0) _token = 0;
             }
-            finally { _mutex.ReleaseMutex(); }
+            finally { _mutex?.ReleaseMutex(); }
         }
 
         public int MakeSureConnected()
         {
-            return Connected ? KOGNA_OK : Connect();
+            return Connected ? KOGNA_OK : Connect() ? KOGNA_OK : KOGNA_ERROR;
             
         }
 
         // I/O
         public int WriteLine(int board, string buf)
         {
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             var data = Encoding.ASCII.GetBytes(buf + "\r");
-            try { _socket.Send(data); return KOGNA_OK; }
+            try { _socket?.Send(data); return KOGNA_OK; }
             catch { return KOGNA_ERROR; }
         }
 
         public int ReadLine(int board, out string buf)
         {
             buf = string.Empty;
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             try
             {
@@ -226,7 +278,7 @@ namespace TCPServer
                 var buffer = new byte[1];
                 while (true)
                 {
-                    if (_socket.Receive(buffer) <= 0) break;
+                    if (_socket?.Receive(buffer) <= 0) break;
                     char c = (char)buffer[0];
                     if (c == '\n') break;
                     sb.Append(c);
@@ -241,14 +293,15 @@ namespace TCPServer
 
 public int WriteLineReadLine(int board, string send, out string response)
 {
-    _mutex.WaitOne();
+    ThrowIfDisposed();
+    _mutex?.WaitOne();
 
     try
             {
                 // 1) Make sure we’re still connected
                 if (!Connected) { response = ""; return KOGNA_NOT_CONNECTED; }
                 // 2) Flush any stray bytes on the socket
-                while (_socket.Available > 0)
+                while (_socket?.Available > 0)
                     _socket.Receive(new byte[_socket.Available]);
 
                 // 3) Trim off any CR/LF/NUL the caller may have left on
@@ -258,7 +311,7 @@ public int WriteLineReadLine(int board, string send, out string response)
                 //    This is exactly what CKMotionIO::WriteLine does under the hood.
                 var cmd = "\x1B\x01" + send + "\r";
                 var data = Encoding.ASCII.GetBytes(cmd);
-                _socket.Send(data);
+                _socket?.Send(data);
 
                 // 5) Now read back until '\n', dropping any leading ESC or CR
                 var sb = new StringBuilder();
@@ -268,7 +321,7 @@ public int WriteLineReadLine(int board, string send, out string response)
                 while (sw.ElapsedMilliseconds < timeoutMs)
                 {
                     // Check if data is available before blocking
-                    if (_socket.Available > 0)
+                    if (_socket?.Available > 0)
                     {
                         if (_socket.Receive(one, 1, SocketFlags.None) == 1)
                         {
@@ -305,7 +358,7 @@ public int WriteLineReadLine(int board, string send, out string response)
             }
             finally
             {
-                _mutex.ReleaseMutex();
+                _mutex?.ReleaseMutex();
             }
 }
 
@@ -318,10 +371,11 @@ public int WriteLineReadLine(int board, string send, out string response)
 
         public int FlushInputBuffer()
         {
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             try
             {
-                while (_socket.Available > 0)
+                while (_socket?.Available > 0)
                 {
                     var dummy = new byte[_socket.Available];
                     _socket.Receive(dummy);
@@ -333,20 +387,21 @@ public int WriteLineReadLine(int board, string send, out string response)
 
         public int NumberBytesAvailToRead(out int navail, bool showMessage)
         {
-            navail = Connected ? _socket.Available : 0;
+            navail = Connected ? _socket?.Available ?? 0 : 0;
             return KOGNA_OK;
         }
 
         public int ReadBytesAvailable(int board, byte[] rxBuffer, int maxbytes, out int bytesReceived, int timeoutMs)
         {
             bytesReceived = 0;
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             var sw = Stopwatch.StartNew();
             try
             {
-                while (_socket.Available == 0 && sw.ElapsedMilliseconds < timeoutMs)
+                while (_socket?.Available == 0 && sw.ElapsedMilliseconds < timeoutMs)
                     Thread.Sleep(1);
-                bytesReceived = _socket.Receive(rxBuffer, 0, Math.Min(maxbytes, _socket.Available), SocketFlags.None);
+                bytesReceived = _socket?.Receive(rxBuffer, 0, Math.Min(maxbytes, _socket.Available), SocketFlags.None) ?? 0;
                 return KOGNA_OK;
             }
             catch { return KOGNA_ERROR; }
@@ -354,6 +409,7 @@ public int WriteLineReadLine(int board, string send, out string response)
 
         public int ReadSendNextLine(int board, StreamReader reader)
         {
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             var line = reader.ReadLine();
             if (line != null) return WriteLine(board, line);
@@ -362,6 +418,7 @@ public int WriteLineReadLine(int board, string send, out string response)
 
         public int HandleDiskIO(int board, string filePath)
         {
+            ThrowIfDisposed();
             try
             {
                 using (var reader = new StreamReader(filePath))
@@ -379,24 +436,20 @@ public int WriteLineReadLine(int board, string send, out string response)
         }
 
         // Console callback and service
-        public int SetConsoleCallback(ServerConsoleHandler handler)
-        {
-            _consoleHandler = handler;
-            return KOGNA_OK;
-        }
-
         public int LogToConsole(int board, string s)
         {
+            ThrowIfDisposed();
             _consoleHandler?.Invoke(board, s);
             return KOGNA_OK;
         }
 
         public int ServiceConsole()
         {
+            ThrowIfDisposed();
             if (!Connected) return KOGNA_NOT_CONNECTED;
             try
             {
-                while (_socket.Available > 0)
+                while (_socket?.Available > 0)
                 {
                     if (ReadLine(0, out string line) == KOGNA_OK)
                         _consoleHandler?.Invoke(0, line);
@@ -409,6 +462,7 @@ public int WriteLineReadLine(int board, string send, out string response)
 
         public int CheckForReady(int board)
         {
+            ThrowIfDisposed();
             if (ServiceConsole() != KOGNA_OK) return KOGNA_TIMEOUT;
             if (ReadLine(board, out string line) != KOGNA_OK) return KOGNA_TIMEOUT;
             var lower = line.ToLowerInvariant();
@@ -426,6 +480,7 @@ public int WriteLineReadLine(int board, string send, out string response)
         /// </summary>
         public int ReadLineTimeOut(int board, out string response, int timeoutMs = 20000)
         {
+            ThrowIfDisposed();
             response = string.Empty;
 
             // Ensure we have a live connection
@@ -438,7 +493,7 @@ public int WriteLineReadLine(int board, string send, out string response)
             {
                 while (sw.ElapsedMilliseconds < timeoutMs)
                 {
-                    if (_socket.Available > 0)
+                    if (_socket?.Available > 0)
                     {
                         int r = ReadLine(board, out response);
                         if (r != KOGNA_OK)

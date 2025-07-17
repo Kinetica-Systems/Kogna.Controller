@@ -1,0 +1,128 @@
+<AvaloniaXaml xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:KognaServer.ViewModels"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="KognaServer.Views.GCodeGeneratorView"
+             x:DataType="vm:GCodeGeneratorViewModel">
+  <Grid RowDefinitions="Auto,*,Auto" Margin="10">
+    <!-- File Selection -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+      <TextBox Grid.Column="0" Text="{Binding SelectedStlFile}" IsReadOnly="True" 
+               Watermark="Select STL file..." Margin="0,0,10,0"/>
+      <Button Grid.Column="1" Content="Browse..." Command="{Binding SelectStlFileCommand}" 
+              Margin="0,0,10,0"/>
+      <Button Grid.Column="2" Content="Generate G-code" Command="{Binding GenerateGCodeCommand}"/>
+    </Grid>
+
+    <!-- Settings -->
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Spacing="10">
+        <!-- Layer Settings -->
+        <HeaderedContentControl Header="Layer Settings">
+          <Border BorderThickness="1" Padding="6" Margin="0,6,0,0">
+            <StackPanel Spacing="5">
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Layer Height (mm):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding LayerHeight}" 
+                              Increment="0.05" Minimum="0.05" Maximum="0.5"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Perimeter Count:" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding PerimeterCount}" 
+                              Increment="1" Minimum="1" Maximum="10"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </HeaderedContentControl>
+
+        <!-- Infill Settings -->
+        <HeaderedContentControl Header="Infill Settings">
+          <Border BorderThickness="1" Padding="6" Margin="0,6,0,0">
+            <StackPanel Spacing="5">
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Infill Density (%):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding InfillDensity}" 
+                              Increment="0.05" Minimum="0" Maximum="1" FormatString="P0"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Infill Pattern:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding InfillPatterns}" 
+                          SelectedItem="{Binding SelectedInfillPattern}"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </HeaderedContentControl>
+
+        <!-- Print Settings -->
+        <HeaderedContentControl Header="Print Settings">
+          <Border BorderThickness="1" Padding="6" Margin="0,6,0,0">
+            <StackPanel Spacing="5">
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Extrusion Width (mm):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding ExtrusionWidth}" 
+                              Increment="0.05" Minimum="0.2" Maximum="1.0"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Print Speed (mm/s):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding PrintSpeed}" 
+                              Increment="5" Minimum="10" Maximum="200"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Travel Speed (mm/s):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding TravelSpeed}" 
+                              Increment="10" Minimum="50" Maximum="500"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Retract Length (mm):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding RetractLength}" 
+                              Increment="0.5" Minimum="0" Maximum="10"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Retract Speed (mm/s):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding RetractSpeed}" 
+                              Increment="5" Minimum="10" Maximum="100"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </HeaderedContentControl>
+
+        <!-- Temperature Settings -->
+        <HeaderedContentControl Header="Temperature Settings">
+          <Border BorderThickness="1" Padding="6" Margin="0,6,0,0">
+            <StackPanel Spacing="5">
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Hotend Temp (°C):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding HotendTemp}" 
+                              Increment="5" Minimum="150" Maximum="300"/>
+              </Grid>
+              <Grid ColumnDefinitions="150,*">
+                <TextBlock Text="Bed Temp (°C):" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding BedTemp}" 
+                              Increment="5" Minimum="0" Maximum="120"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </HeaderedContentControl>
+
+        <!-- Output Settings -->
+        <HeaderedContentControl Header="Output Settings">
+          <Border BorderThickness="1" Padding="6" Margin="0,6,0,0">
+            <StackPanel Spacing="5">
+              <CheckBox Content="Save to file" IsChecked="{Binding SaveToFile}"/>
+              <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding SaveToFile}">
+                <TextBox Grid.Column="0" Text="{Binding OutputPath}" IsReadOnly="True" 
+                         Watermark="Select output file..." Margin="0,0,10,0"/>
+                <Button Grid.Column="1" Content="Browse..." Command="{Binding SelectOutputPathCommand}"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </HeaderedContentControl>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Status Bar -->
+    <TextBlock Grid.Row="2" Text="{Binding Status}" Margin="0,10,0,0"/>
+  </Grid>
+</AvaloniaXaml> 

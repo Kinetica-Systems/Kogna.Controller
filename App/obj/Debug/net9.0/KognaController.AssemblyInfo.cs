@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KognaController")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+868a342b05c928a81c483923db1b4a88d67811f5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2d519020536c273ea9ac88d753802960db075bc9")]
 [assembly: System.Reflection.AssemblyProductAttribute("KognaController")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KognaController")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

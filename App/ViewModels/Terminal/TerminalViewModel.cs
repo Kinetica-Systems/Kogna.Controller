@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Linq;
 
 namespace KognaServer.ViewModels
 {
@@ -101,10 +102,16 @@ namespace KognaServer.ViewModels
 
             // 3) Echo & enqueue user input
             EnqueueConsole($"> {InputText}\n");
+            
+            // Parse the input into command and arguments
+            var parts = InputText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var command = parts.Length > 0 ? parts[0] : "";
+            var args = parts.Length > 1 ? parts.Skip(1).ToArray() : Array.Empty<string>();
+            
             var ipcReq = new IpcRequest
             {
-                Command = InputText.Trim(),
-                Args = Array.Empty<string>()
+                Command = command,
+                Args = args
             };
 
             try

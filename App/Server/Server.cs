@@ -12,6 +12,9 @@ using KinematicEngine.Kinematics;
 using KinematicEngine;
 using KinematicEngine.Configuration;
 using System.ComponentModel;
+using System.Linq;
+using System.Diagnostics;
+using System.IO;
 
 namespace KognaComms;
 
@@ -42,6 +45,13 @@ public class KognaControl
         var kinematics = new Fanuc6AxisKinematics();
         _engine = new RefactoredKinematicEngine(_coord, kinematics);
         _lastFeedRate = 100.0; // Initialize with default feed rate
+        
+        // Set up console handler to capture C program output
+        _io.SetConsoleCallback((board, message) =>
+        {
+            Console.WriteLine($"[KOGNA_CONSOLE] {message}");
+            return 0;
+        });
     }
     public async Task<bool> Start()
     {
@@ -273,9 +283,603 @@ public class KognaControl
                 _engine.ManualReset();
                 response = "Manual reset completed";
                 return (response, response);
-
             }
 
+            // 5) laser - Laser control commands
+            if (cmd == "laser")
+            {
+                Console.WriteLine($"Laser control called with payload: {payload}");
+                try
+                {
+                    var laserParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (laserParts.Length >= 2)
+                    {
+                        var laser = laserParts[0]; // "1" or "2"
+                        var action = laserParts[1]; // "on", "off", or power value
+                        
+                        string command;
+                        int channel = laser switch
+                        {
+                            "1" => 8,  // Laser 1 on channel 8
+                            "2" => 9,  // Laser 2 on channel 9
+                            _ => 8     // Default to laser 1
+                        };
+                        
+                        switch (action.ToLower())
+                        {
+                            case "on":
+                                command = $"M42 P{channel} S255"; // Full power
+                                break;
+                            case "off":
+                                command = $"M42 P{channel} S0"; // No power
+                                break;
+                            default:
+                                // Assume it's a power value (0-255)
+                                if (int.TryParse(action, out var power) && power >= 0 && power <= 255)
+                                {
+                                    command = $"M42 P{channel} S{power}";
+                                }
+                                else
+                                {
+                                    response = "Error: Power value must be 0-255";
+                                    return (response, response);
+                                }
+                                break;
+                        }
+                        
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        response = ok == KOGNA_OK ? $"Laser {laser} {action}" : "Laser command failed";
+                    }
+                    else
+                    {
+                        response = "Error: Laser command requires laser number and action (usage: laser <1|2> <on|off|0-255>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error controlling laser: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // 6) wirefeeder - Wire feeder control commands
+            if (cmd == "wirefeeder")
+            {
+                Console.WriteLine($"Wire feeder control called with payload: {payload}");
+                try
+                {
+                    var feederParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (feederParts.Length >= 2)
+                    {
+                        var action = feederParts[0]; // "step", "dir", "enable", "disable"
+                        var value = feederParts[1];   // "high", "low", "1", "0"
+                        
+                        int channel = action switch
+                        {
+                            "step" => 10,     // Step signal on channel 10
+                            "dir" => 11,      // Direction signal on channel 11
+                            _ => 10           // Default to step
+                        };
+                        
+                        int state = value switch
+                        {
+                            "high" or "1" => 1,
+                            "low" or "0" => 0,
+                            _ => 0
+                        };
+                        
+                        var command = $"M42 P{channel} S{state}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        response = ok == KOGNA_OK ? $"Wire feeder {action} {value}" : "Wire feeder command failed";
+                    }
+                    else
+                    {
+                        response = "Error: Wire feeder command requires action and value (usage: wirefeeder <step|dir> <high|low|1|0>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error controlling wire feeder: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // 7) pwm - Direct PWM control
+            if (cmd == "pwm")
+            {
+                Console.WriteLine($"PWM control called with payload: {payload}");
+                try
+                {
+                    var pwmParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (pwmParts.Length >= 2)
+                    {
+                        var pin = pwmParts[0];
+                        var value = pwmParts[1];
+                        
+                        if (int.TryParse(pin, out var pinNum) && int.TryParse(value, out var pwmValue))
+                        {
+                            if (pwmValue >= 0 && pwmValue <= 255)
+                            {
+                                var command = $"M42 P{pinNum} S{pwmValue}";
+                                var ok = _io.WriteLineReadLine(1, command, out response);
+                                response = ok == KOGNA_OK ? $"PWM pin {pinNum} set to {pwmValue}" : "PWM command failed";
+                            }
+                            else
+                            {
+                                response = "Error: PWM value must be 0-255";
+                            }
+                        }
+                        else
+                        {
+                            response = "Error: Invalid pin number or PWM value";
+                        }
+                    }
+                    else
+                    {
+                        response = "Error: PWM command requires pin and value (usage: pwm <pin> <0-255>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error setting PWM: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // RS485 Passthrough for FS50L Servo Drives
+            if (cmd == "rs485")
+            {
+                Console.WriteLine($"RS485 passthrough command called with payload: {payload}");
+                try
+                {
+                    var rs485Parts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (rs485Parts.Length >= 2)
+                    {
+                        var slaveAddress = rs485Parts[0]; // Slave address (1-247)
+                        var register = rs485Parts[1];     // Register address (hex or decimal)
+                        var value = rs485Parts.Length > 2 ? rs485Parts[2] : "0"; // Value (0 for read)
+
+                        // Validate slave address
+                        if (!int.TryParse(slaveAddress, out var addr) || addr < 1 || addr > 247)
+                        {
+                            response = "Error: Slave address must be 1-247";
+                            return (response, response);
+                        }
+
+                        // Parse register - support both hex (0x3002) and decimal formats
+                        int regAddr;
+                        if (register.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Parse hex value
+                            if (!int.TryParse(register.Substring(2), System.Globalization.NumberStyles.HexNumber, null, out regAddr))
+                            {
+                                response = "Error: Invalid hex register address";
+                                return (response, response);
+                            }
+                        }
+                        else
+                        {
+                            // Parse decimal value
+                            if (!int.TryParse(register, out regAddr))
+                            {
+                                response = "Error: Register must be a number or hex value (0x...)";
+                                return (response, response);
+                            }
+                        }
+
+                        if (!int.TryParse(value, out var regValue))
+                        {
+                            response = "Error: Value must be an integer (or omitted for read)";
+                            return (response, response);
+                        }
+
+                        Console.WriteLine($"RS485 parameters: slave={addr}, register=0x{regAddr:X4} ({regAddr}), value={regValue}");
+                        
+                        // Set persist data using SetPersistDec
+                        _io.WriteLine(0, $"SetPersistDec 0 {addr}");      // Slave ID
+                        _io.WriteLine(0, $"SetPersistDec 1 {regAddr}");   // Register address
+                        _io.WriteLine(0, $"SetPersistDec 2 {regValue}");  // Value to write
+
+                        // Execute Thread 3 (program should be flashed to Thread 3 on Kogna)
+                        Console.WriteLine("Executing Thread 3...");
+                        
+                        // Send Execute command and wait for response with longer timeout
+                        _io.WriteLine(0, "Execute 3");
+                        var ok = _io.ReadLineTimeOut(0, out var execResponse, 15000); // 15 second timeout
+                        Console.WriteLine($"Execute result: {ok}, response: '{execResponse}'");
+                        
+                        if (ok == KOGNA_OK)
+                        {
+                            // Wait a moment for the C program to execute
+                            await Task.Delay(200);  // Reduced from 500ms to 200ms
+                            
+                            Console.WriteLine("Reading result from persist data...");
+                            // Use GetPersistDec to get the decimal integer value
+                            var persistOk = _io.WriteLineReadLine(0, "GetPersistDec 10", out var persistResponse);
+                            Console.WriteLine($"GetPersistDec returned: {persistOk}, response:'{persistResponse}'");
+                            
+                            if (persistOk == KOGNA_OK && int.TryParse(persistResponse, out var result))
+                            {
+                                Console.WriteLine($"Parsed GetPersistDec value: {result}");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Failed to parse GetPersistDec response: {persistResponse}");
+                            }
+                            
+                            if (hasValidResult)
+                            {
+                                response = $"RS485 {slaveAddress} {register}: Result={result}";
+                            }
+                            else
+                            {
+                                response = $"RS485 {slaveAddress} {register}: Failed to read result from persist data";
+                            }
+                        }
+                        else
+                        {
+                            response = "RS485 command failed: ExecThread 3 failed";
+                        }
+                    }
+                    else
+                    {
+                        response = "Error: RS485 command requires slave address and register (usage: rs485 <slave> <register|0xHEX> [value])";
+                        return (response, response);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error sending RS485 command: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // RS232 Passthrough for LED/Laser Drivers
+            if (cmd == "rs232")
+            {
+                Console.WriteLine($"RS232 passthrough command called with payload: {payload}");
+                try
+                {
+                    var rs232Parts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (rs232Parts.Length >= 3)
+                    {
+                        var slaveAddress = rs232Parts[0]; // Slave address
+                        var register = rs232Parts[1];     // Register address
+                        var value = rs232Parts.Length > 2 ? rs232Parts[2] : ""; // Value (empty for read)
+                        
+                        // Send M101 command to Kogna for RS232 communication
+                        string mCommand = value.Length > 0 
+                            ? $"M101 {slaveAddress} {register} {value}"  // Write command
+                            : $"M101 {slaveAddress} {register}";         // Read command
+                            
+                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
+                        response = ok == KOGNA_OK ? $"RS232 {slaveAddress} {register}: {response}" : "RS232 command failed";
+                    }
+                    else
+                    {
+                        response = "Error: RS232 command requires slave address and register (usage: rs232 <slave> <register> [value])";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error sending RS232 command: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // Convenience commands for common FS50L operations
+            if (cmd == "servostatus")
+            {
+                Console.WriteLine($"Servo status command called with payload: {payload}");
+                try
+                {
+                    var statusParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (statusParts.Length >= 2)
+                    {
+                        var slaveAddress = statusParts[0]; // Servo drive address (1-247)
+                        var statusType = statusParts[1];   // Status type
+                        
+                        // Map status types to FS50L register addresses
+                        string register = statusType.ToLower() switch
+                        {
+                            "running" => "3000",    // Communication set value
+                            "frequency" => "3001",   // Running frequency
+                            "voltage" => "3002",     // Bus voltage
+                            "current" => "3004",     // Output current
+                            "power" => "3005",       // Output power
+                            "torque" => "3006",      // Output torque
+                            "speed" => "3007",       // Running speed
+                            "fault" => "8000",       // Drive fault information
+                            "comfault" => "8001",    // Communication fault
+                            _ => "3000"              // Default to running status
+                        };
+                        
+                        // Send M100 read command
+                        string mCommand = $"M100 {slaveAddress} {register}";
+                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
+                        response = ok == KOGNA_OK ? $"Servo {slaveAddress} {statusType}: {response}" : "Servo status command failed";
+                    }
+                    else
+                    {
+                        response = "Error: Servo status command requires address and status type (usage: servostatus <address> <status_type>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error getting servo status: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            if (cmd == "servocontrol")
+            {
+                Console.WriteLine($"Servo control command called with payload: {payload}");
+                try
+                {
+                    var controlParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (controlParts.Length >= 3)
+                    {
+                        var slaveAddress = controlParts[0]; // Servo drive address (1-247)
+                        var action = controlParts[1];       // Control action
+                        var value = controlParts[2];        // Value
+                        
+                        // Map control actions to FS50L register addresses and values
+                        (string register, string controlValue) = action.ToLower() switch
+                        {
+                            "forward" => ("1000", "0001"),     // Forward run
+                            "reverse" => ("1000", "0002"),     // Reverse run
+                            "jog_forward" => ("1000", "0003"), // Forward jog
+                            "jog_reverse" => ("1000", "0004"), // Reverse jog
+                            "free_stop" => ("1000", "0005"),   // Free stop
+                            "decel_stop" => ("1000", "0006"),  // Deceleration stop
+                            "reset" => ("1000", "0007"),       // Fault reset
+                            "frequency" => ("3000", value),     // Set frequency (0-10000)
+                            _ => ("1000", "0005")              // Default to free stop
+                        };
+                        
+                        // Send M100 write command
+                        string mCommand = $"M100 {slaveAddress} {register} {controlValue}";
+                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
+                        response = ok == KOGNA_OK ? $"Servo {slaveAddress} {action}: {response}" : "Servo control command failed";
+                    }
+                    else
+                    {
+                        response = "Error: Servo control command requires address, action, and value (usage: servocontrol <address> <action> <value>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error controlling servo: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // UART Configuration
+            if (cmd == "uartconfig")
+            {
+                Console.WriteLine($"UART config command called with payload: {payload}");
+                try
+                {
+                    var configParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (configParts.Length >= 3)
+                    {
+                        var uartType = configParts[0]; // "rs485" or "rs232"
+                        var baudRate = configParts[1]; // Baud rate
+                        var port = configParts[2];     // Port number
+                        
+                        // Send M102 command to configure UART
+                        string mCommand = $"M102 {uartType} {baudRate} {port}";
+                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
+                        response = ok == KOGNA_OK ? $"UART {uartType} configured: {response}" : "UART config failed";
+                    }
+                    else
+                    {
+                        response = "Error: UART config requires type, baud rate, and port (usage: uartconfig <rs485|rs232> <baudrate> <port>)";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error configuring UART: {ex.Message}";
+                }
+                return (response, response);
+            }
+
+            // Handle Kogna-specific commands
+            else if (cmd == "setpersist")
+            {
+                Console.WriteLine($"SetPersist command called with payload: {payload}");
+                try
+                {
+                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (persistParts.Length >= 2)
+                    {
+                        var variable = persistParts[0]; // e.g., "UserData[0]"
+                        var value = persistParts[1];    // value to set
+                        
+                        var command = $"SetPersist {variable} {value}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        response = ok == KOGNA_OK ? "SETPERSIST" : "SetPersist failed";
+                    }
+                    else
+                    {
+                        response = "Error: SetPersist requires variable and value";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in SetPersist: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "setpersistdec")
+            {
+                Console.WriteLine($"SetPersistDec command called with payload: {payload}");
+                try
+                {
+                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (persistParts.Length >= 2)
+                    {
+                        var index = persistParts[0]; // e.g., "10"
+                        var value = persistParts[1];    // decimal value to set
+                        
+                        var command = $"SetPersistDec {index} {value}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        response = ok == KOGNA_OK ? "SETPERSISTDEC" : "SetPersistDec failed";
+                    }
+                    else
+                    {
+                        response = "Error: SetPersistDec requires index and decimal value";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in SetPersistDec: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "getpersist")
+            {
+                Console.WriteLine($"GetPersist command called with payload: {payload}");
+                try
+                {
+                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (persistParts.Length >= 1)
+                    {
+                        var variable = persistParts[0]; // e.g., "UserData[10]"
+                        
+                        var command = $"GetPersist {variable}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        if (ok == KOGNA_OK && !string.IsNullOrEmpty(response))
+                        {
+                            // Try to parse the response as a number
+                            if (int.TryParse(response, out var result))
+                            {
+                                response = result.ToString();
+                            }
+                            else
+                            {
+                                response = "0"; // Default to 0 if not a number
+                            }
+                        }
+                        else
+                        {
+                            response = "0"; // Default to 0 on error
+                        }
+                    }
+                    else
+                    {
+                        response = "Error: GetPersist requires variable name";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in GetPersist: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "getpersistdec")
+            {
+                Console.WriteLine($"GetPersistDec command called with payload: {payload}");
+                try
+                {
+                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (persistParts.Length >= 1)
+                    {
+                        var index = persistParts[0]; // e.g., "10"
+                        
+                        var command = $"GetPersistDec {index}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        if (ok == KOGNA_OK && !string.IsNullOrEmpty(response))
+                        {
+                            // Return the decimal value directly
+                            response = response.Trim();
+                        }
+                        else
+                        {
+                            response = "0"; // Default to 0 on error
+                        }
+                    }
+                    else
+                    {
+                        response = "Error: GetPersistDec requires index";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in GetPersistDec: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "getpersisthex")
+            {
+                Console.WriteLine($"GetPersistHex command called with payload: {payload}");
+                try
+                {
+                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (persistParts.Length >= 1)
+                    {
+                        var variable = persistParts[0]; // e.g., "UserData[10]"
+                        
+                        var command = $"GetPersistHex {variable}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        if (ok == KOGNA_OK && !string.IsNullOrEmpty(response))
+                        {
+                            // Return the hex value directly
+                            response = response.Trim();
+                        }
+                        else
+                        {
+                            response = "0"; // Default to 0 on error
+                        }
+                    }
+                    else
+                    {
+                        response = "Error: GetPersistHex requires variable name";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in GetPersistHex: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "execthread")
+            {
+                Console.WriteLine($"ExecThread command called with payload: {payload}");
+                try
+                {
+                    var threadParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (threadParts.Length >= 1 && int.TryParse(threadParts[0], out var threadNum))
+                    {
+                        var command = $"ExecThread {threadNum}";
+                        var ok = _io.WriteLineReadLine(1, command, out response);
+                        response = ok == KOGNA_OK ? "EXECTHREAD" : "ExecThread failed";
+                    }
+                    else
+                    {
+                        response = "Error: ExecThread requires thread number";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in ExecThread: {ex.Message}";
+                }
+                return (response, response);
+            }
+            else if (cmd == "serviceconsole")
+            {
+                Console.WriteLine($"ServiceConsole command called");
+                try
+                {
+                    var ok = _io.ServiceConsole();
+                    response = ok == KOGNA_OK ? "Console serviced - check terminal for output" : "ServiceConsole failed";
+                }
+                catch (Exception ex)
+                {
+                    response = $"Error in ServiceConsole: {ex.Message}";
+                }
+                return (response, response);
+            }
             else
             {
                 Console.WriteLine($"other command called");
@@ -464,6 +1068,44 @@ public class KognaControl
                         case "J":
                             if (double.TryParse(value, out var j)) command.ArcCenter[1] = j;
                             break;
+                        case "M":
+                            // Handle M-codes for hardware control
+                            switch (value)
+                            {
+                                case "42":
+                                    // M42 - Set Pin State (PWM control)
+                                    var pin = parts.FirstOrDefault(p => p.StartsWith("P"))?.Substring(1);
+                                    var state = parts.FirstOrDefault(p => p.StartsWith("S"))?.Substring(1);
+                                    var mode = parts.FirstOrDefault(p => p.StartsWith("T"))?.Substring(1);
+                                    
+                                    if (pin != null && state != null)
+                                    {
+                                        // Send M42 command directly to hardware
+                                        var m42Command = $"M42 P{pin} S{state}";
+                                        if (mode != null) m42Command += $" T{mode}";
+                                        
+                                        _io.WriteLineReadLine(1, m42Command, out var response);
+                                        Console.WriteLine($"[GCODE_PARSER] M42 command sent: {m42Command}, response: {response}");
+                                        return null; // M42 doesn't create motion commands
+                                    }
+                                    break;
+                                case "3":
+                                    // M3 - Spindle CW / Laser On
+                                    _io.WriteLineReadLine(1, "M3", out var m3Response);
+                                    Console.WriteLine($"[GCODE_PARSER] M3 command sent, response: {m3Response}");
+                                    return null;
+                                case "4":
+                                    // M4 - Spindle CCW / Laser On  
+                                    _io.WriteLineReadLine(1, "M4", out var m4Response);
+                                    Console.WriteLine($"[GCODE_PARSER] M4 command sent, response: {m4Response}");
+                                    return null;
+                                case "5":
+                                    // M5 - Spindle / Laser Off
+                                    _io.WriteLineReadLine(1, "M5", out var m5Response);
+                                    Console.WriteLine($"[GCODE_PARSER] M5 command sent, response: {m5Response}");
+                                    return null;
+                            }
+                            break;
                     }
                 }
 
@@ -485,5 +1127,8 @@ public class KognaControl
                 return null;
             }
         }
+
+
+
 }
    

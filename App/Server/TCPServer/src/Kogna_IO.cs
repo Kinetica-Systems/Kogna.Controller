@@ -263,15 +263,37 @@ public int WriteLineReadLine(int board, string send, out string response)
                 // 5) Now read back until '\n', dropping any leading ESC or CR
                 var sb = new StringBuilder();
                 var one = new byte[1];
-                while (_socket.Receive(one, 1, SocketFlags.None) == 1)
+                var sw = Stopwatch.StartNew();
+                const int timeoutMs = 5000; // 5 second timeout
+                while (sw.ElapsedMilliseconds < timeoutMs)
                 {
-                    char c = (char)one[0];
-                    if (c == '\n')      // end-of-line
-                        break;
-                    if (c < ' ')
-                        continue;        // skip CR and any ESC prefixes
-                    sb.Append(c);
+                    // Check if data is available before blocking
+                    if (_socket.Available > 0)
+                    {
+                        if (_socket.Receive(one, 1, SocketFlags.None) == 1)
+                        {
+                            char c = (char)one[0];
+                            if (c == '\n')      // end-of-line
+                                break;
+                            if (c < ' ')
+                                continue;        // skip CR and any ESC prefixes
+                            sb.Append(c);
+                        }
+                    }
+                    else
+                    {
+                        // No data available, wait a bit before checking again
+                        Thread.Sleep(10);
+                    }
                 }
+                
+                if (sw.ElapsedMilliseconds >= timeoutMs)
+                {
+                    Console.WriteLine($"[KOGNA_IO] WriteLineReadLine timeout after {timeoutMs}ms for command: {send}");
+                    response = "";
+                    return KOGNA_TIMEOUT;
+                }
+                
                 response = sb.ToString();
                 return KOGNA_OK;
             }

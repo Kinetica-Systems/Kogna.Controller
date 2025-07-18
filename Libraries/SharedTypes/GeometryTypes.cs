@@ -267,6 +267,10 @@ public class ToolpathConfig
     /// Gets or sets the retraction speed in mm/s
     /// </summary>
     public double RetractSpeed { get; set; } = 45;
+
+    // Laser-wire additive defaults
+    public double DefaultLaserPower { get; set; } = 500; // W
+    public double DefaultWireFeedRate { get; set; } = 50; // mm/s
 }
 
 /// <summary>

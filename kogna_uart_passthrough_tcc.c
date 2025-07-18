@@ -295,15 +295,15 @@ void send_rs232_command(const unsigned char* data, int length)
     }
 }
 
-/* Main function - M-code handler */
+/* Main function for TCC compatibility */
+// In TCC, the main function is the entry point and runs as Thread 3
+// when called with "Execute 3" from KMotion
 main()
 {
-    unsigned char rs232_data[64];
-    int data_len;
-    int i;
     double start_time;
+    int i;
     
-    /* Add safety timeout for entire function */
+    /* Add safety timeout */
     start_time = Time_sec();
     
     /* Initialize RS485 port */
@@ -311,40 +311,43 @@ main()
     DoRS422Cmds = FALSE;
     RS422_SetBaudRate(RS485_BAUD, 8, FALSE, FALSE, TRUE); /* TRUE = RS485 mode */
     
-    /* Fetch parameters from persist mailbox - read as integers directly */
-    /* This matches the working RS485_Push_test.c approach */
-    
     /* Debug: Print raw persist data */
-    printf("Raw persist data: UserData[0]=%d, UserData[1]=%d, UserData[2]=%d\n", 
+    printf("RS485: Raw persist data - UserData[0]=%d, UserData[1]=%d, UserData[2]=%d\n", 
            persist.UserData[0], persist.UserData[1], persist.UserData[2]);
 
-    /* Read persist data as integers directly (no float conversion) */
+    /* Read persist data as integers directly */
     slave = persist.UserData[0];         /* Slave ID */
-    register_addr = persist.UserData[1]; /* Register address */
-    value = persist.UserData[2];         /* Value to write */
+    register_addr = persist.UserData[1];  /* Register address */
+    value = persist.UserData[2];          /* Value to write */
 
-    printf("Converted values: Slave: %d, Reg: %d, Val: %d\n", slave, register_addr, value);
+    printf("RS485: Converted values - Slave: %d, Reg: %d, Val: %d\n", 
+           slave, register_addr, value);
 
     /* Initialize result to -999 to track if it gets set */
     persist.UserData[10] = -999;
-    printf("DEBUG: Initialized persist.UserData[10] = %d\n", persist.UserData[10]);
+    printf("RS485: Initialized persist.UserData[10] = %d\n", persist.UserData[10]);
 
-    /* Apply defaults and validation like working version */
-    if (slave <1|| slave > 247) {
+    /* Apply defaults and validation */
+    if (slave < 1 || slave > 247) {
         slave = DEFAULT_SLAVE;
-        printf("Invalid slave address, using default: %d\n", slave);
+        printf("RS485: Invalid slave address, using default: %d\n", slave);
     }
     
-    /* Check timeout before calling RS485function */
+    /* Check timeout before RS485 call */
     if ((Time_sec() - start_time) > 1.0) {
-        printf("ERROR: Function timeout before RS485 call\n");
+        printf("RS485: ERROR - Function timeout before RS485 call\n");
         persist.UserData[10] = -1; /* Error code */
         return;
     }
     
+    /* Execute the RS485 communication */
     send_rs485_modbus(slave, register_addr, value, (value != 0));
 
-    printf("Function completed in %.3f seconds\n", Time_sec() - start_time);
-    printf("DEBUG: Final persist.UserData[10] = %d\n", persist.UserData[10]);
-    WaitNextTimeSlice();
-} 
+    printf("RS485: Function completed in %.3f seconds\n", Time_sec() - start_time);
+    printf("RS485: Final persist.UserData[10] = %d\n", persist.UserData[10]);
+    
+    /* Indicate completion */
+    printf("RS485: Execution complete\n");
+    
+    return 0;  // TCC expects main to return a value
+}

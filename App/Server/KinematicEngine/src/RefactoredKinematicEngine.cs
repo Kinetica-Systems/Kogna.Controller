@@ -3,6 +3,8 @@ using System.Threading.Tasks;
 using System.Numerics;
 using KinematicEngine.Core;
 using KinematicEngine.Kinematics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using TCPServer;
 using SharedTypes;
 
@@ -18,7 +20,11 @@ public class RefactoredKinematicEngine : IKinematicEngine, IDisposable
     private readonly MotionPlanner _motionPlanner;
     private readonly IKinematics _kinematics;
     private readonly KognaMotion _kognaMotion;
+    private readonly IKognaIO _kognaIO;
     private readonly CoordinateSystemManager _coordinateSystemManager;
+    private readonly ILogger<RefactoredKinematicEngine> _logger;
+    private readonly ILogger<MotionPlanner> _motionPlannerLogger;
+    private readonly MotionStatusService _motionStatusService;
     private readonly object _engineLock = new object();
     
     private EngineConfiguration _config = null!;
@@ -59,18 +65,91 @@ public class RefactoredKinematicEngine : IKinematicEngine, IDisposable
     /// </summary>
     public EngineConfiguration Configuration => _config;
 
-    /// <summary>
-    /// Initializes a new instance of the RefactoredKinematicEngine class.
+
+    /// Initializes a new instance of the <see cref="RefactoredKinematicEngine"/> class.
     /// </summary>
-    /// <param name="kognaMotion">Hardware interface for motion control.</param>
-    /// <param name="kinematics">Kinematic calculations interface for the specific robot type.</param>
-    /// <exception cref="ArgumentNullException">Thrown when kognaMotion or kinematics is null.</exception>
-    public RefactoredKinematicEngine(KognaMotion kognaMotion, IKinematics kinematics)
+    /// <param name="kognaMotion">The Kogna motion controller instance.</param>
+    /// <param name="kognaIO">The Kogna I/O interface for hardware communication.</param>
+    /// <param name="kinematics">The kinematics implementation for the robot.</param>
+    /// <param name="logger">The logger for the kinematic engine.</param>
+    /// <param name="motionPlannerLogger">The logger for the motion planner (optional).</param>
+    /// <param name="statusServiceLogger">The logger for the status service (optional).</param>
+    /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
+    public RefactoredKinematicEngine(KognaMotion kognaMotion, IKognaIO kognaIO, IKinematics kinematics, 
+        ILogger<RefactoredKinematicEngine> logger, 
+        ILogger<MotionPlanner> motionPlannerLogger = null, 
+        ILogger<MotionStatusService> statusServiceLogger = null)
     {
         _kognaMotion = kognaMotion ?? throw new ArgumentNullException(nameof(kognaMotion));
+        _kognaIO = kognaIO ?? throw new ArgumentNullException(nameof(kognaIO));
         _kinematics = kinematics ?? throw new ArgumentNullException(nameof(kinematics));
-        _motionPlanner = new MotionPlanner();
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Initialize logger for MotionPlanner if not provided
+        _motionPlannerLogger = motionPlannerLogger ?? LoggerFactory.Create(builder => 
+        {
+            builder.AddSimpleConsole(options => 
+            {
+                options.SingleLine = true;
+                options.TimestampFormat = "[HH:mm:ss] ";
+            });
+        }).CreateLogger<MotionPlanner>();
+        
+        // Initialize services
         _coordinateSystemManager = new CoordinateSystemManager();
+        
+        // Create a logger for MotionStatusService if not provided
+        var statusLogger = statusServiceLogger ?? LoggerFactory.Create(builder => 
+        {
+            builder.AddSimpleConsole(options => 
+            {
+                options.SingleLine = true;
+                options.TimestampFormat = "[HH:mm:ss] ";
+            });
+        }).CreateLogger<MotionStatusService>();
+        
+        // Initialize motion planner with fallback logger if needed
+        _motionPlannerLogger = motionPlannerLogger ?? 
+            LoggerFactory.Create(builder => builder.AddSimpleConsole()).CreateLogger<MotionPlanner>();
+            
+        // Create a temporary status service that won't be used for real operations
+        var tempStatusService = new NullMotionStatusService();
+        
+        try
+        {
+            // Create the motion planner with the temporary status service
+            _motionPlanner = new MotionPlanner(kognaIO, tempStatusService, _motionPlannerLogger);
+            
+            // Now create the real status service with the motion planner and kognaIO
+            _motionStatusService = new MotionStatusService(
+                statusLogger ?? LoggerFactory.Create(builder => builder.AddSimpleConsole())
+                    .CreateLogger<MotionStatusService>(),
+                _motionPlanner,
+                kognaIO);
+                
+            // Update the motion planner with the real status service using reflection
+            var motionPlannerType = _motionPlanner.GetType();
+            var statusServiceField = motionPlannerType.GetField("_statusService", 
+                System.Reflection.BindingFlags.NonPublic | 
+                System.Reflection.BindingFlags.Instance);
+                
+            if (statusServiceField != null)
+            {
+                statusServiceField.SetValue(_motionPlanner, _motionStatusService);
+            }
+            else
+            {
+                _logger.LogWarning("Could not set status service on motion planner - field not found");
+            }
+        }
+        finally
+        {
+            // Ensure the temporary status service is disposed
+            if (tempStatusService is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
     }
 
     /// <summary>

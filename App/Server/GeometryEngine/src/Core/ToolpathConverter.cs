@@ -63,7 +63,9 @@ public class ToolpathConverter
                 StartPosition = new double[] { _currentPosition.X, _currentPosition.Y, _currentPosition.Z, 0, 0, 0, 0, 0 },
                 EndPosition = new double[] { point.X, point.Y, point.Z, 0, 0, 0, 0, 0 },
                 FeedRate = toolpath.Type == ToolpathType.Travel ? _config.TravelSpeed : toolpath.FeedRate,
-                ExtrusionRate = toolpath.Type == ToolpathType.Extrude ? toolpath.ExtrusionRate : 0
+                ExtrusionRate = toolpath.Type == ToolpathType.Extrude ? toolpath.ExtrusionRate : 0,
+                LaserPower = _config.DefaultLaserPower,
+                WireFeedRate = _config.DefaultWireFeedRate
             };
 
             commands.Add(command);

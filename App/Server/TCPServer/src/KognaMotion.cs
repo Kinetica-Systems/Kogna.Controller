@@ -14,13 +14,13 @@ namespace TCPServer
     /// </summary>
     public class KognaMotion 
     {
-        private readonly KognaIO _io;
+        private readonly IKognaIO _io;
         private int[]   _axes = new int[8];       // channel indices for X,Y,Z,A,B,C,U,V
         private bool             _axesDefined;
         private int _axisCount = 6; // Default to 6 for backward compatibility
         public int AxisCount => _axisCount;
 
-        public KognaMotion(KognaIO io)
+        public KognaMotion(IKognaIO io)
         {
             _io = io;
         }

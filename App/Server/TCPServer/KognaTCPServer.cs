@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -13,12 +13,12 @@ public class KServer
     private readonly int _port;
     private readonly KognaMonitor _monitor;
     private readonly KognaMotion _coord;
-    private readonly KognaIO _io;
+    private readonly IKognaIO _io;
     private bool _isRunning;
     private TcpListener? _listener;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
-    public KServer(string ipAddress, int port, KognaMonitor monitor, KognaMotion coord, KognaIO io)
+    public KServer(string ipAddress, int port, KognaMonitor monitor, KognaMotion coord, IKognaIO io)
     {
         _ipAddress = ipAddress;
         _port = port;

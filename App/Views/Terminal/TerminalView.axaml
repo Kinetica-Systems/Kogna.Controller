@@ -36,12 +36,13 @@
 
     <!-- Input -->
     <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="4">
-      <!-- Bind Text and handle Enter in code‐behind -->
-      <TextBox Width="400"
+      <TextBox x:Name="CommandInput"
+               Width="400"
                Watermark="Enter Kogna command…"
                Text="{Binding InputText}"
-               />
-      <Button Content="Send" Command="{Binding SendCommand}"/>
+               KeyDown="OnCommandKeyDown"
+               VerticalContentAlignment="Center"/>
+      <Button Content="Send" Command="{Binding SendCommand}" IsDefault="True"/>
     </StackPanel>
   </DockPanel>
 </UserControl>

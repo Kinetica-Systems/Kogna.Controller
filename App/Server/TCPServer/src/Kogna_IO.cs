@@ -14,10 +14,18 @@ namespace TCPServer
 {
     public delegate int ServerConsoleHandler(int board, string buf);
 
-    public class KognaIO : IDisposable
+    public class KognaIO : IKognaIO
     {
-        // Public fields and properties
-        public bool FailMessageAlreadyShown;
+        // Private fields
+        private bool _failMessageAlreadyShown;
+        private bool _sendAbortOnConnect;
+        private int _nonRespondingCount;
+        private ServerConsoleHandler? _consoleHandler;
+        
+        // Explicit interface implementation
+        bool IKognaIO.FailMessageAlreadyShown { get => _failMessageAlreadyShown; set => _failMessageAlreadyShown = value; }
+        bool IKognaIO.SendAbortOnConnect { get => _sendAbortOnConnect; set => _sendAbortOnConnect = value; }
+        int IKognaIO.NonRespondingCount { get => _nonRespondingCount; set => _nonRespondingCount = value; }
         public bool SendAbortOnConnect;
         public int NonRespondingCount;
         public bool BoardIDAssigned { get; set; }
@@ -34,7 +42,6 @@ namespace TCPServer
         private Mutex? _mutex;
         private readonly Stopwatch _timer;
         private int _token;
-        private ServerConsoleHandler? _consoleHandler;
         private const int DEFAULT_CONNECT_TIMEOUT = 10; // seconds
         private readonly int _connectTimeout;
         private bool _disposed;
@@ -47,8 +54,9 @@ namespace TCPServer
             _mutex = new Mutex();
             _timer = new Stopwatch();
             Connected = false;
-            NonRespondingCount = 0;
-            FailMessageAlreadyShown = false;
+            _nonRespondingCount = 0;
+            _failMessageAlreadyShown = false;
+            _sendAbortOnConnect = false;
             _disposed = false;
         }
 
@@ -123,7 +131,7 @@ namespace TCPServer
             }
         }
 
-        public bool Connect()
+        public int Connect()
         {
             ThrowIfDisposed();
             try
@@ -144,6 +152,7 @@ namespace TCPServer
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Error closing existing socket: {ex.Message}");
+                            return KOGNA_ERROR;
                         }
                     }
 
@@ -156,12 +165,13 @@ namespace TCPServer
                     if (!success)
                     {
                         _socket.Close();
-                        throw new TimeoutException("Connection attempt timed out");
+                        ErrMsg = "Connection attempt timed out";
+                        return KOGNA_ERROR;
                     }
 
                     _socket.EndConnect(connectResult);
                     Connected = true;
-                    return true;
+                    return KOGNA_OK;
                 }
                 finally
                 {
@@ -172,7 +182,7 @@ namespace TCPServer
             {
                 ErrMsg = $"Connection failed: {ex.Message}";
                 Connected = false;
-                return false;
+                return KOGNA_ERROR;
             }
         }
 
@@ -195,12 +205,12 @@ namespace TCPServer
             {
                 Connected = false;
                 _socket?.Close();
-                if (!FailMessageAlreadyShown)
+                if (!_failMessageAlreadyShown)
                 {
                     ReleaseToken();
                     ErrorMessage("Read Failed - Auto Disconnect");
                 }
-                FailMessageAlreadyShown = true;
+                _failMessageAlreadyShown = true;
                 return KOGNA_OK;
             }
             finally { _mutex?.ReleaseMutex(); }
@@ -218,7 +228,7 @@ namespace TCPServer
             {
                 if (!Connected)
                 {
-                    if (!Connect()) return KOGNA_NOT_CONNECTED;
+                    if (Connect() != KOGNA_OK) return KOGNA_NOT_CONNECTED;
                 }
                 if (_token == 0)
                 {
@@ -253,8 +263,11 @@ namespace TCPServer
 
         public int MakeSureConnected()
         {
-            return Connected ? KOGNA_OK : Connect() ? KOGNA_OK : KOGNA_ERROR;
-            
+            if (Connected) 
+                return KOGNA_OK;
+                
+            int result = Connect();
+            return result == KOGNA_OK ? KOGNA_OK : KOGNA_ERROR;
         }
 
         // I/O
@@ -443,27 +456,31 @@ public int WriteLineReadLine(int board, string send, out string response)
             return KOGNA_OK;
         }
 
-        public int ServiceConsole()
+        public void ServiceConsole()
         {
-            ThrowIfDisposed();
-            if (!Connected) return KOGNA_NOT_CONNECTED;
             try
             {
+                ThrowIfDisposed();
+                if (!Connected) return;
+                
                 while (_socket?.Available > 0)
                 {
                     if (ReadLine(0, out string line) == KOGNA_OK)
                         _consoleHandler?.Invoke(0, line);
                     else break;
                 }
-                return KOGNA_OK;
             }
-            catch { return KOGNA_ERROR; }
+            catch (Exception ex)
+            {
+                // Log the error but don't throw since this is a void method
+                Console.WriteLine($"Error in ServiceConsole: {ex.Message}");
+            }
         }
 
         public int CheckForReady(int board)
         {
             ThrowIfDisposed();
-            if (ServiceConsole() != KOGNA_OK) return KOGNA_TIMEOUT;
+            ServiceConsole(); // No return value to check
             if (ReadLine(board, out string line) != KOGNA_OK) return KOGNA_TIMEOUT;
             var lower = line.ToLowerInvariant();
             if (lower.Contains("error")) return KOGNA_ERROR;

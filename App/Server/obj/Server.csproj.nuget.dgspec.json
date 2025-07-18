@@ -1,7 +1,7 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {}
+    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {}
   },
   "projects": {
     "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj": {
@@ -32,8 +32,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
-                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -104,8 +104,8 @@
               "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
                 "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
               },
-              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
-                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -126,9 +126,25 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "Microsoft.Extensions.Logging": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            },
+            "Microsoft.Extensions.Logging.Console": {
+              "target": "Package",
+              "version": "[9.0.7, )"
+            },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.3, )"
+            },
+            "System.Reactive": {
+              "target": "Package",
+              "version": "[6.0.0, )"
             }
           },
           "imports": [
@@ -151,14 +167,14 @@
         }
       }
     },
-    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {
+    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
+        "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
         "projectName": "Server",
-        "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
+        "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\Server.csproj",
         "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\obj\\",
+        "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -188,8 +204,8 @@
               "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj": {
                 "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\TCPServer\\TCPServer.csproj"
               },
-              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
-                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -267,8 +283,8 @@
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
-                "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+              "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+                "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
               }
             }
           }
@@ -314,14 +330,14 @@
         }
       }
     },
-    "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+    "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
+        "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
         "projectName": "SharedTypes",
-        "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
+        "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj",
         "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\obj\\",
+        "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

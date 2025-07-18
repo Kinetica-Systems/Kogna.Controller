@@ -102,8 +102,8 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "projectReferences": {
-            "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
-              "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
+            "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj": {
+              "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\Libraries\\SharedTypes\\SharedTypes.csproj"
             }
           }
         }

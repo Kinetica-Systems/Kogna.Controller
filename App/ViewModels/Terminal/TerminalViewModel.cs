@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -25,6 +26,10 @@ namespace KognaServer.ViewModels
 
         [ObservableProperty] private string _inputText = "";
         public ObservableCollection<string> Lines { get; } = new();
+        
+        // Command history
+        private readonly List<string> _commandHistory = new();
+        private int _historyIndex = -1;
 
 
 
@@ -136,10 +141,27 @@ namespace KognaServer.ViewModels
                             }
                             finally
                             {
+                                _commandHistory.Add(InputText);
+                                _historyIndex = _commandHistory.Count - 1;
                                 InputText = "";
                             }
         }
 
+        public void NavigateHistory(int direction)
+        {
+            if (_commandHistory.Count == 0) return;
+
+            _historyIndex = Math.Clamp(_historyIndex + direction, -1, _commandHistory.Count - 1);
+            
+            if (_historyIndex >= 0 && _historyIndex < _commandHistory.Count)
+            {
+                InputText = _commandHistory[_historyIndex];
+            }
+            else
+            {
+                InputText = "";
+            }
+        }
 
         private void EnqueueConsole(string line)
         {

@@ -23,13 +23,13 @@ namespace TCPServer
 
     public class KognaMonitor
     {
-        private KognaIO _io;
+        private readonly IKognaIO _io;
         private readonly KognaMotion _coord;
         public event Action<KognaStatus>? OnStatusUpdate;
         const double degPerCount = 360.0 / 2000.0;  // 0.18° per pulse
 
 
-        public KognaMonitor(KognaIO io, KognaMotion coord)
+        public KognaMonitor(IKognaIO io, KognaMotion coord)
         {
             _io = io;
             _coord = coord;

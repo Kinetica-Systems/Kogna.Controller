@@ -2,9 +2,6 @@
 using KognaServer.ViewModels;
 using KognaComms;
 
-using OxyPlot;
-using OxyPlot.Series;
-
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -25,6 +22,7 @@ namespace KognaServer.ViewModels
         public GCodeEditorViewModel GcodeVm { get; }
         public GCodeGeneratorViewModel GCodeGeneratorViewModel { get; }
         public JoggingViewModel JoggingVm { get; }
+        public Debug.DebugPanelViewModel DebugVm { get; }
       
 
         // keep track of elapsed time (ms)
@@ -37,7 +35,8 @@ namespace KognaServer.ViewModels
             TerminalViewModel terminalVm,
             GCodeEditorViewModel gCodeEditor,
             GCodeGeneratorViewModel gCodeGeneratorViewModel,
-            JoggingViewModel joggingVm)
+            JoggingViewModel joggingVm,
+            Debug.DebugPanelViewModel debugVm)
         {
             _server = server;
             ConnectionVm = connectionVm;
@@ -46,6 +45,7 @@ namespace KognaServer.ViewModels
             GcodeVm = gCodeEditor;
             GCodeGeneratorViewModel = gCodeGeneratorViewModel;
             JoggingVm = joggingVm;
+            DebugVm = debugVm;
 
         }
         

@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using TCPServer;
 
 using System.Net;
 using System.Net.Sockets;
@@ -17,6 +18,7 @@ using System.IO;
 using GeometryEngine.Core;
 using GeometryEngine.Implementation;
 using SharedTypes;
+using Microsoft.Extensions.Logging;
 using System.Threading; // add for CancellationTokenSource
 
 namespace KognaComms;
@@ -32,7 +34,7 @@ public class KognaControl : IDisposable
     public RefactoredKinematicEngine _engine { get; private set; }
     public IpcServer _ipcServer { get; private set; }
     public KServer _tcpServer { get; private set; }
-    public KognaIO _io { get; private set; }
+    public IKognaIO _io { get; private set; }
     private readonly int _intPort = 5000;
     private double _lastFeedRate;
 
@@ -43,20 +45,43 @@ public class KognaControl : IDisposable
     private List<Layer>? _slicedLayers;
     private readonly CancellationTokenSource _monitorCts = new();
 
-    public KognaControl(string ipAddress, int port)
+    public KognaControl(string ipAddress, int port) : this(new KognaIO(ipAddress, port), ipAddress, port)
+    {
+    }
+
+    // Public constructor for testing with mock IKognaIO
+    public KognaControl(IKognaIO kognaIo, string ipAddress, int port)
     {
         if (string.IsNullOrEmpty(ipAddress))
         {
             throw new ArgumentNullException(nameof(ipAddress));
         }
+        if (kognaIo == null)
+        {
+            throw new ArgumentNullException(nameof(kognaIo));
+        }
 
-        _io = new KognaIO(ipAddress, port);
+        _io = kognaIo;
         _coord = new KognaMotion(_io);
         _monitor = new KognaMonitor(_io, _coord);
         _tcpServer = new KServer(ipAddress, port, _monitor, _coord, _io);
         _ipcServer = new IpcServer(_intPort, this);
         var kinematics = new Fanuc6AxisKinematics();
-        _engine = new RefactoredKinematicEngine(_coord, kinematics);
+        
+        // Create logger for kinematic engine
+        var loggerFactory = LoggerFactory.Create(builder => 
+        {
+            builder.AddSimpleConsole(options => 
+            {
+                options.SingleLine = true;
+                options.TimestampFormat = "[HH:mm:ss] ";
+            });
+        });
+        
+        var logger = loggerFactory.CreateLogger<RefactoredKinematicEngine>();
+        
+        // Initialize the kinematic engine with both KognaMotion and IKognaIO
+        _engine = new RefactoredKinematicEngine(_coord, _io, kinematics, logger);
         _lastFeedRate = 100.0; // Initialize with default feed rate
         
         // Initialize geometry engine components
@@ -148,7 +173,7 @@ public class KognaControl : IDisposable
             if (!_io.Connected)
             {
                 Console.WriteLine("[KOGNA_CONTROL] Attempting robot connection …");
-                if (_io.Connect())
+                if (_io.Connect() == KOGNA_OK)
                 {
                     Console.WriteLine("[KOGNA_CONTROL] Robot connection established");
                     _ = _monitor.StartAsyncMonitor(_monitorCts.Token); // fire-and-forget
@@ -765,7 +790,8 @@ public class KognaControl : IDisposable
                     {
                         var slaveAddress = rs485Parts[0]; // Slave address (1-247)
                         var register = rs485Parts[1];     // Register address (hex or decimal)
-                        var value = rs485Parts.Length > 2 ? rs485Parts[2] : "0"; // Value (0 for read)
+                        bool isWriteOperation = rs485Parts.Length > 2; // True if a value is provided for writing
+                        var value = isWriteOperation ? rs485Parts[2] : "0"; // Value (0 for read)
 
                         // Validate slave address
                         if (!int.TryParse(slaveAddress, out var addr) || addr < 1 || addr > 247)
@@ -795,47 +821,153 @@ public class KognaControl : IDisposable
                             }
                         }
 
-                        if (!int.TryParse(value, out var regValue))
+                        // For write operations, parse the value to write
+                        int writeValue = 0;
+                        if (isWriteOperation)
                         {
-                            response = "Error: Value must be an integer (or omitted for read)";
-                            return (response, response);
+                            if (!int.TryParse(rs485Parts[2], out writeValue))
+                            {
+                                response = "Error: Value must be an integer for write operations";
+                                return (response, response);
+                            }
+                            Console.WriteLine($"[RS485] Preparing to write value {writeValue} to register {register} on slave {addr}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[RS485] Preparing to read register {register} from slave {addr}");
                         }
 
-                        Console.WriteLine($"RS485 parameters: slave={addr}, register=0x{regAddr:X4} ({regAddr}), value={regValue}");
-                        
-                        // Set persist data using SetPersistDec
-                        _io.WriteLine(0, $"SetPersistDec 0 {addr}");      // Slave ID
-                        _io.WriteLine(0, $"SetPersistDec 1 {regAddr}");   // Register address
-                        _io.WriteLine(0, $"SetPersistDec 2 {regValue}");  // Value to write
+                        // Set persist data for the RS485 command
+                        // UserData[0] = slave address
+                        // UserData[1] = register address (decimal)
+                        // UserData[2] = value to write (0 for read)
+                        int registerAddress = regAddr;
+                        int valueToWrite = isWriteOperation ? writeValue : 0;
 
-                        // Execute Thread 3 (program should be flashed to Thread 3 on Kogna)
-                        Console.WriteLine("Executing Thread 3...");
+                        // Set the persist data values with error checking
+                        Console.WriteLine($"[RS485] Sending SetPersistDec 0 {addr} (Slave ID)");
+                        var setSlaveResult = _io.WriteLine(0, $"SetPersistDec 0 {addr}");
+                        Console.WriteLine($"[RS485] SetPersistDec 0 {addr} result: {setSlaveResult}");
                         
-                        // Send Execute command and wait for response with longer timeout
-                        _io.WriteLine(0, "Execute 3");
-                        var ok = _io.ReadLineTimeOut(0, out var execResponse, 15000); // 15 second timeout
-                        Console.WriteLine($"Execute result: {ok}, response: '{execResponse}'");
+                        Console.WriteLine($"[RS485] Sending SetPersistDec 1 {registerAddress} (Register address)");
+                        var setRegResult = _io.WriteLine(0, $"SetPersistDec 1 {registerAddress}");
+                        Console.WriteLine($"[RS485] SetPersistDec 1 {registerAddress} result: {setRegResult}");
                         
-                        if (ok == KOGNA_OK)
+                        Console.WriteLine($"[RS485] Sending SetPersistDec 2 {valueToWrite} (Value to write)");
+                        var setValueResult = _io.WriteLine(0, $"SetPersistDec 2 {valueToWrite}");
+                        Console.WriteLine($"[RS485] SetPersistDec 2 {valueToWrite} result: {setValueResult}");
+
+                        // Execute Thread 3 which runs our RS485 code
+                        Console.WriteLine("[RS485] Executing Thread 3...");
+                        Console.WriteLine("[RS485] Sending Execute 3 command");
+                        var execResult = _io.WriteLineReadLine(0, "Execute 3", out var execResponse);
+                        Console.WriteLine($"[RS485] Waiting for Execute 3 response...");
+                        Console.WriteLine($"[RS485] Execute result: {execResult}, response: '{execResponse}'");
+                        
+                        if (execResult == KOGNA_OK)
                         {
-                            // Wait a moment for the C program to execute
-                            await Task.Delay(200);  // Reduced from 500ms to 200ms
-                            
+                            // Wait a moment for the C program to complete
+                            await Task.Delay(100);
+                        
+                            // Read the result from persist data location 10
                             Console.WriteLine("Reading result from persist data...");
-                            // Use GetPersistDec to get the decimal integer value
-                            var persistOk = _io.WriteLineReadLine(0, "GetPersistDec 10", out var persistResponse);
-                            Console.WriteLine($"GetPersistDec returned: {persistOk}, response:'{persistResponse}'");
-                            
+                        
+                            // First, try to read the persist data
+                            int maxRetries = 5;
+                            int retryDelay = 100; // ms - increased from 50ms for more reliability
                             int result = 0;
-                            var hasValidResult = persistOk == KOGNA_OK && int.TryParse(persistResponse, out result);
+                            bool hasValidResult = false;
+                        
+                            for (int i = 0; i < maxRetries; i++)
+                            {
+                                Console.WriteLine($"GetPersistDec 10 attempt {i+1}...");
+                                var persistOk = _io.WriteLineReadLine(0, "GetPersistDec 10", out var persistResponse);
+                                Console.WriteLine($"GetPersistDec 10 attempt {i+1}: status={persistOk}, response='{persistResponse}'");
                             
+                                if (persistOk == KOGNA_OK && int.TryParse(persistResponse, out result))
+                                {
+                                    hasValidResult = true;
+                                    break;
+                                }
+                            
+                                // Wait before retrying
+                                await Task.Delay(retryDelay);
+                            }
+                        
                             if (hasValidResult)
                             {
-                                response = $"RS485 {slaveAddress} {register}: Result={result}";
+                                // Check for error conditions
+                                if (result == -2)
+                                {
+                                    response = "RS485 Error: RS422 pointers are NULL";
+                                }
+                                else if (result == -1)
+                                {
+                                    response = "RS485 Error: No response from device";
+                                }
+                                else if (result == -3)
+                                {
+                                    response = "RS485 Error: CRC check failed";
+                                }
+                                else if (result == -4)
+                                {
+                                    response = "RS485 Error: Invalid response from device";
+                                }
+                                else if (isWriteOperation)
+                                {
+                                    // For write operations, a result of 0 typically means success
+                                    response = result == 0 ? 
+                                        $"RS485 {addr} {register}: Write successful" : 
+                                        $"RS485 {addr} {register}: Write completed with result {result}";
+                                    
+                                    // For specific registers, provide more context about the written value
+                                    if (registerAddress >= 0xF100 && registerAddress <= 0xF1FF)
+                                    {
+                                        string registerName = registerAddress switch
+                                        {
+                                            0xF101 => "Rated Power of Motor (F1-01)",
+                                            0xF104 => "Rated Frequency (F1-04)",
+                                            0xF105 => "Rated Speed (F1-05)",
+                                            0xF102 => "Rated Voltage (F1-02)",
+                                            _ => $"Register 0x{registerAddress:X4}"
+                                        };
+                                        
+                                        // Add human-readable interpretation of the value
+                                        string valueDescription = registerAddress switch
+                                        {
+                                            0xF101 => $"{valueToWrite / 100.0:F1} kW",
+                                            0xF104 => $"{valueToWrite / 10.0:F1} Hz",
+                                            0xF105 => $"{valueToWrite} RPM",
+                                            0xF102 => $"{valueToWrite} V",
+                                            _ => valueToWrite.ToString()
+                                        };
+                                        
+                                        response += $" - {registerName} set to {valueDescription}";
+                                    }
+                                }
+                                else
+                                {
+                                    // For read operations, return the actual value with interpretation
+                                    string statusText = (result & 0x01) != 0 ? "Running" : "Stopped";
+                                    string valueDescription = registerAddress switch
+                                    {
+                                        0x3000 => $"0x{result:X4} (Status: {statusText})",
+                                        0x3001 => $"{result / 100.0:F2} Hz",
+                                        0x3002 => $"{result / 10.0:F1} V",
+                                        0x3004 => $"{result / 100.0:F2} A",
+                                        0x3005 => $"{result / 10.0:F1} kW",
+                                        0x3006 => $"{result / 10.0:F1} %",
+                                        0x3007 => $"{result} RPM",
+                                        0x8000 => $"0x{result:X4} (Fault Code)",
+                                        _ => result.ToString()
+                                    };
+                                    
+                                    response = $"RS485 {addr} {register}: {valueDescription}";
+                                }
                             }
                             else
                             {
-                                response = $"RS485 {slaveAddress} {register}: Failed to read result from persist data";
+                                response = $"RS485 {slaveAddress} {register}: Failed to read result from persist data after {maxRetries} attempts";
                             }
                         }
                         else
@@ -856,249 +988,11 @@ public class KognaControl : IDisposable
                 return (response, response);
             }
 
-            // RS232 Passthrough for LED/Laser Drivers
-            if (cmd == "rs232")
-            {
-                Console.WriteLine($"RS232 passthrough command called with payload: {payload}");
-                try
-                {
-                    var rs232Parts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (rs232Parts.Length >= 3)
-                    {
-                        var slaveAddress = rs232Parts[0]; // Slave address
-                        var register = rs232Parts[1];     // Register address
-                        var value = rs232Parts.Length > 2 ? rs232Parts[2] : ""; // Value (empty for read)
-                        
-                        // Send M101 command to Kogna for RS232 communication
-                        string mCommand = value.Length > 0 
-                            ? $"M101 {slaveAddress} {register} {value}"  // Write command
-                            : $"M101 {slaveAddress} {register}";         // Read command
-                            
-                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
-                        response = ok == KOGNA_OK ? $"RS232 {slaveAddress} {register}: {response}" : "RS232 command failed";
-                    }
-                    else
-                    {
-                        response = "Error: RS232 command requires slave address and register (usage: rs232 <slave> <register> [value])";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error sending RS232 command: {ex.Message}";
-                }
-                return (response, response);
-            }
-
             // Convenience commands for common FS50L operations
-            if (cmd == "servostatus")
-            {
-                Console.WriteLine($"Servo status command called with payload: {payload}");
-                try
-                {
-                    var statusParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (statusParts.Length >= 2)
-                    {
-                        var slaveAddress = statusParts[0]; // Servo drive address (1-247)
-                        var statusType = statusParts[1];   // Status type
-                        
-                        // Map status types to FS50L register addresses
-                        string register = statusType.ToLower() switch
-                        {
-                            "running" => "3000",    // Communication set value
-                            "frequency" => "3001",   // Running frequency
-                            "voltage" => "3002",     // Bus voltage
-                            "current" => "3004",     // Output current
-                            "power" => "3005",       // Output power
-                            "torque" => "3006",      // Output torque
-                            "speed" => "3007",       // Running speed
-                            "fault" => "8000",       // Drive fault information
-                            "comfault" => "8001",    // Communication fault
-                            _ => "3000"              // Default to running status
-                        };
-                        
-                        // Send M100 read command
-                        string mCommand = $"M100 {slaveAddress} {register}";
-                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
-                        response = ok == KOGNA_OK ? $"Servo {slaveAddress} {statusType}: {response}" : "Servo status command failed";
-                    }
-                    else
-                    {
-                        response = "Error: Servo status command requires address and status type (usage: servostatus <address> <status_type>)";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error getting servo status: {ex.Message}";
-                }
-                return (response, response);
-            }
-
-            if (cmd == "servocontrol")
-            {
-                Console.WriteLine($"Servo control command called with payload: {payload}");
-                try
-                {
-                    var controlParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (controlParts.Length >= 3)
-                    {
-                        var slaveAddress = controlParts[0]; // Servo drive address (1-247)
-                        var action = controlParts[1];       // Control action
-                        var value = controlParts[2];        // Value
-                        
-                        // Map control actions to FS50L register addresses and values
-                        (string register, string controlValue) = action.ToLower() switch
-                        {
-                            "forward" => ("1000", "0001"),     // Forward run
-                            "reverse" => ("1000", "0002"),     // Reverse run
-                            "jog_forward" => ("1000", "0003"), // Forward jog
-                            "jog_reverse" => ("1000", "0004"), // Reverse jog
-                            "free_stop" => ("1000", "0005"),   // Free stop
-                            "decel_stop" => ("1000", "0006"),  // Deceleration stop
-                            "reset" => ("1000", "0007"),       // Fault reset
-                            "frequency" => ("3000", value),     // Set frequency (0-10000)
-                            _ => ("1000", "0005")              // Default to free stop
-                        };
-                        
-                        // Send M100 write command
-                        string mCommand = $"M100 {slaveAddress} {register} {controlValue}";
-                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
-                        response = ok == KOGNA_OK ? $"Servo {slaveAddress} {action}: {response}" : "Servo control command failed";
-                    }
-                    else
-                    {
-                        response = "Error: Servo control command requires address, action, and value (usage: servocontrol <address> <action> <value>)";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error controlling servo: {ex.Message}";
-                }
-                return (response, response);
-            }
-
-            // UART Configuration
-            if (cmd == "uartconfig")
-            {
-                Console.WriteLine($"UART config command called with payload: {payload}");
-                try
-                {
-                    var configParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (configParts.Length >= 3)
-                    {
-                        var uartType = configParts[0]; // "rs485" or "rs232"
-                        var baudRate = configParts[1]; // Baud rate
-                        var port = configParts[2];     // Port number
-                        
-                        // Send M102 command to configure UART
-                        string mCommand = $"M102 {uartType} {baudRate} {port}";
-                        var ok = _io.WriteLineReadLine(1, mCommand, out response);
-                        response = ok == KOGNA_OK ? $"UART {uartType} configured: {response}" : "UART config failed";
-                    }
-                    else
-                    {
-                        response = "Error: UART config requires type, baud rate, and port (usage: uartconfig <rs485|rs232> <baudrate> <port>)";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error configuring UART: {ex.Message}";
-                }
-                return (response, response);
-            }
+            // UART configuration is handled in the main command processing logic
 
             // Handle Kogna-specific commands
-            else if (cmd == "setpersist")
-            {
-                Console.WriteLine($"SetPersist command called with payload: {payload}");
-                try
-                {
-                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (persistParts.Length >= 2)
-                    {
-                        var variable = persistParts[0]; // e.g., "UserData[0]"
-                        var value = persistParts[1];    // value to set
-                        
-                        var command = $"SetPersist {variable} {value}";
-                        var ok = _io.WriteLineReadLine(1, command, out response);
-                        response = ok == KOGNA_OK ? "SETPERSIST" : "SetPersist failed";
-                    }
-                    else
-                    {
-                        response = "Error: SetPersist requires variable and value";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error in SetPersist: {ex.Message}";
-                }
-                return (response, response);
-            }
-            else if (cmd == "setpersistdec")
-            {
-                Console.WriteLine($"SetPersistDec command called with payload: {payload}");
-                try
-                {
-                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (persistParts.Length >= 2)
-                    {
-                        var index = persistParts[0]; // e.g., "10"
-                        var value = persistParts[1];    // decimal value to set
-                        
-                        var command = $"SetPersistDec {index} {value}";
-                        var ok = _io.WriteLineReadLine(1, command, out response);
-                        response = ok == KOGNA_OK ? "SETPERSISTDEC" : "SetPersistDec failed";
-                    }
-                    else
-                    {
-                        response = "Error: SetPersistDec requires index and decimal value";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error in SetPersistDec: {ex.Message}";
-                }
-                return (response, response);
-            }
-            else if (cmd == "getpersist")
-            {
-                Console.WriteLine($"GetPersist command called with payload: {payload}");
-                try
-                {
-                    var persistParts = payload.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (persistParts.Length >= 1)
-                    {
-                        var variable = persistParts[0]; // e.g., "UserData[10]"
-                        
-                        var command = $"GetPersist {variable}";
-                        var ok = _io.WriteLineReadLine(1, command, out response);
-                        if (ok == KOGNA_OK && !string.IsNullOrEmpty(response))
-                        {
-                            // Try to parse the response as a number
-                            if (int.TryParse(response, out var result))
-                            {
-                                response = result.ToString();
-                            }
-                            else
-                            {
-                                response = "0"; // Default to 0 if not a number
-                            }
-                        }
-                        else
-                        {
-                            response = "0"; // Default to 0 on error
-                        }
-                    }
-                    else
-                    {
-                        response = "Error: GetPersist requires variable name";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response = $"Error in GetPersist: {ex.Message}";
-                }
-                return (response, response);
-            }
+    
             else if (cmd == "getpersistdec")
             {
                 Console.WriteLine($"GetPersistDec command called with payload: {payload}");
@@ -1193,8 +1087,8 @@ public class KognaControl : IDisposable
                 Console.WriteLine($"ServiceConsole command called");
                 try
                 {
-                    var ok = _io.ServiceConsole();
-                    response = ok == KOGNA_OK ? "Console serviced - check terminal for output" : "ServiceConsole failed";
+                    _io.ServiceConsole();
+                    response = "Console serviced - check terminal for output";
                 }
                 catch (Exception ex)
                 {
@@ -1217,15 +1111,14 @@ public class KognaControl : IDisposable
             string response = $"Engine Error: {ex.Message}";
             return (response, response);
         }
-        /*return response;
         /*
-                double ParseAxis(char letter, double current)
-                {
-                    var m = Regex.Match(payload, $@"\b{letter}([-+]?\d*\.?\d+)", RegexOptions.IgnoreCase);
-                    return m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
-                        ? v
-                        : current;
-                }
+        double ParseAxis(char letter, double current)
+        {
+            var m = Regex.Match(payload, $@"\b{letter}([-+]?\d*\.?\d+)", RegexOptions.IgnoreCase);
+            return m.Success && double.TryParse(m.Groups[1].Value, NumberStyles.Any, CultureInfo.InvariantCulture, out var v)
+                ? v
+                : current;
+        }
         */
     }
 
@@ -1246,28 +1139,26 @@ public class KognaControl : IDisposable
         return resp;
     }
 
-
     public string SendCommand(string cmd, int board)
     {
         _io.WriteLineReadLine(board, cmd, out var resp);
         return resp;
-
     }
-    
-        public const int KOGNA_OK = 0;
-        public const int KOGNA_TIMEOUT = 1;
-        public const int KOGNA_ERROR = 2;
-        public const int KOGNA_READY = 3;
-        public const int KOGNA_LOCKED = 4;
-        public const int KOGNA_IN_USE = 5;
-        public const int KOGNA_NOT_CONNECTED = 6;
 
-        /// <summary>
-        /// Parses G-code string into a motion command
-        /// </summary>
-        /// <param name="gcode">G-code string to parse</param>
-        /// <returns>Motion command or null if parsing fails</returns>
-        private MotionCommand? ParseGCodeToMotionCommand(string gcode)
+    public const int KOGNA_OK = 0;
+    public const int KOGNA_TIMEOUT = 1;
+    public const int KOGNA_ERROR = 2;
+    public const int KOGNA_READY = 3;
+    public const int KOGNA_LOCKED = 4;
+    public const int KOGNA_IN_USE = 5;
+    public const int KOGNA_NOT_CONNECTED = 6;
+
+    /// <summary>
+    /// Parses G-code string into a motion command
+    /// </summary>
+    /// <param name="gcode">G-code string to parse</param>
+    /// <returns>Motion command or null if parsing fails</returns>
+    private MotionCommand? ParseGCodeToMotionCommand(string gcode)
         {
             try
             {

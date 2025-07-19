@@ -19,12 +19,20 @@
     <Compile Remove="GeometryEngine\**\*.cs" />
     <Compile Remove="KinematicEngine\**\*.cs" />
     <Compile Remove="TCPServer\**\*.cs" />
+    <Compile Remove="ProcessEngine\**\*.cs" />
     <ProjectReference Include="..\..\Libraries\SharedTypes\SharedTypes.csproj" />
     <ProjectReference Include="TCPServer\TCPServer.csproj" />
     <ProjectReference Include="KinematicEngine\KinematicEngine.csproj" />
     <ProjectReference Include="GeometryEngine\GeometryEngine.csproj" />
-    <PackageReference Include="Avalonia" Version="11.0.6" />
+    <PackageReference Include="Avalonia" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0-rc1" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
+    <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.0.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="OxyPlot.Avalonia" Version="2.1.0" />
   </ItemGroup>
 
 </Project>

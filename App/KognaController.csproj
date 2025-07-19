@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -7,40 +7,51 @@
     <Nullable>enable</Nullable>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaDisableXamlCompilation>true</AvaloniaDisableXamlCompilation>
+    <AvaloniaDisableAOT>true</AvaloniaDisableAOT>
+    <AvaloniaXamlIlDebuggerLaunch>false</AvaloniaXamlIlDebuggerLaunch>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AvaloniaSkipXamlCompilation>true</AvaloniaSkipXamlCompilation>
   </PropertyGroup>
 
   <ItemGroup>
     <Folder Include="Models\" />
     <Folder Include="Server\" />
-    <Folder Include="Views\" />
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="Assets\**\*.png" />
   </ItemGroup>
+  
+  <!-- Temporarily commenting out this section to fix duplicate x:Class issue -->
+  <!--<ItemGroup>
+    <AvaloniaResource Include="Views\**\*.axaml" />
+  </ItemGroup>-->
 
   <ItemGroup>
     <Compile Remove="Server\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="Server\Server.csproj" />
-    <ProjectReference Include="Server\KinematicEngine\KinematicEngine.csproj" />
-    <ProjectReference Include="Server\GeometryEngine\GeometryEngine.csproj" />
     <PackageReference Include="Avalonia" Version="11.3.0-rc1" />
     <PackageReference Include="Avalonia.Desktop" Version="11.3.0-rc1" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.0-rc1" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.0-rc1" />
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="NewtonSoft.Json" Version="13.0.3" />
     <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.0.2" />
+    <PackageReference Include="Avalonia.Labs.Controls" Version="11.3.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.VisualBasic" Version="10.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Semi.Avalonia" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.ColorPicker" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.DataGrid" Version="11.2.1.8" />
     <PackageReference Include="Semi.Avalonia.TreeDataGrid" Version="11.0.10.4" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageReference Include="Avalonia.Labs.Controls" Version="11.3.0-rc1" />
     <PackageReference Include="ScottPlot.Avalonia" Version="5.0.55" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="9.0.7" />
+    <ProjectReference Include="Server\Server.csproj" />
+    <ProjectReference Include="Server\KinematicEngine\KinematicEngine.csproj" />
+    <ProjectReference Include="Server\GeometryEngine\GeometryEngine.csproj" />
   </ItemGroup>
 </Project>

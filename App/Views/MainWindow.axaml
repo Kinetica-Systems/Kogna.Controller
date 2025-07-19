@@ -3,7 +3,9 @@
         xmlns:vm="clr-namespace:KognaServer.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:views="clr-namespace:KognaServer.Views"
-        xmlns:oxy="clr-namespace:OxyPlot.Avalonia;assembly=OxyPlot.Avalonia"
+        xmlns:conn="clr-namespace:KognaServer.Views.Connection"
+        xmlns:stereo="clr-namespace:KognaServer.Views.StereoVision"
+
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="KognaServer.Views.MainWindow"
@@ -30,18 +32,15 @@
         <MenuItem Header="Copy"/>
         <MenuItem Header="Paste"/>
       </MenuItem>
-      <MenuItem Header="_Config">
-          <MenuItem Header="_Advanced Kogna" Click="OpenSettings_Click"/>
-      </MenuItem>
+      <!-- Advanced Settings menu removed -->
     </Menu>
 
 
-<Expander HorizontalAlignment="Left" ExpandDirection="Right"           IsExpanded="True">
-        <StackPanel >
-        <views:ConnectionView DataContext="{Binding ConnectionVm}"  />
-
+<Expander HorizontalAlignment="Left" ExpandDirection="Right" IsExpanded="True">
+    <StackPanel>
+        <conn:NetworkConnectionView DataContext="{Binding ConnectionVm}" />
         <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
-        </StackPanel>
+    </StackPanel>
 </Expander>
 
         <TabControl Margin="5">
@@ -59,12 +58,17 @@
         <TabItem Header="Terminal">
           <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
         </TabItem>
+        
+        <!-- Manual Jogging Tab -->
         <TabItem Header="Manual Jogging">
             <views:JoggingView DataContext="{Binding JoggingVm}" />
         </TabItem>
-        <TabItem Header="Tab 3">
-            <TextBlock Margin="5">This is tab 3 content</TextBlock>
+        
+        <!-- Stereo Vision Tab -->
+        <TabItem Header="Stereo Vision">
+            <stereo:StereoVisionView DataContext="{Binding StereoVisionVm}" />
         </TabItem>
+        
         <!-- Debug Tab -->
         <TabItem Header="Debug">
           <views:DebugPanel DataContext="{Binding DebugVm}"/>

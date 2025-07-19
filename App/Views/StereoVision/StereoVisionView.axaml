@@ -1,0 +1,163 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+
+             xmlns:viewmodels="using:KognaServer.ViewModels"
+             xmlns:converters="using:KognaServer.Converters"
+             xmlns:scottplot="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
+             mc:Ignorable="d" 
+             d:DesignWidth="1200" d:DesignHeight="800"
+             x:Class="KognaServer.Views.StereoVision.StereoVisionView"
+             x:DataType="viewmodels:StereoVisionViewModel">
+    
+    <Grid RowDefinitions="Auto,*" ColumnDefinitions="Auto,*,Auto" Margin="10">
+        <!-- Status Bar -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" 
+                Background="{DynamicResource SystemControlBackgroundAltHighBrush}" 
+                CornerRadius="4" Margin="0,0,0,10" Padding="10,5">
+            <StackPanel Orientation="Horizontal" Spacing="20">
+                <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                    <Ellipse Width="10" Height="10" 
+                             Fill="{Binding IsConnected, Converter={StaticResource BoolToBrushConverter}}"
+                             VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                </StackPanel>
+                <TextBlock Text="|" Opacity="0.5" VerticalAlignment="Center"/>
+                <TextBlock Text="Model:" Opacity="0.7"/>
+                <TextBlock Text="{Binding CurrentModel}" FontWeight="SemiBold"/>
+                <TextBlock Text="|" Opacity="0.5" VerticalAlignment="Center"/>
+                <TextBlock Text="Samples:" Opacity="0.7"/>
+                <TextBlock Text="{Binding TotalSamples}" FontWeight="SemiBold"/>
+                <TextBlock Text="(" Opacity="0.5"/>
+                <TextBlock Text="{Binding SamplesToday}" FontWeight="SemiBold"/>
+                <TextBlock Text="today)" Opacity="0.5"/>
+                <TextBlock Text="|" Opacity="0.5" VerticalAlignment="Center"/>
+                <TextBlock Text="Rate:" Opacity="0.7"/>
+                <TextBlock Text="{Binding SampleRate, StringFormat='{}{0:F1}'}" FontWeight="SemiBold"/>
+                <TextBlock Text="samples/s" Opacity="0.7"/>
+            </StackPanel>
+        </Border>
+        
+        <!-- Left Panel - System Metrics -->
+        <ScrollViewer Grid.Row="1" Grid.Column="0" Width="250" Margin="0,0,10,0">
+            <StackPanel Spacing="15">
+                <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4">
+                    <StackPanel>
+                        <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,8" Text="System Metrics"/>
+                        
+                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" 
+                              RowSpacing="8" ColumnSpacing="10">
+                            <TextBlock Text="CPU:" Grid.Row="0" Grid.Column="0" Opacity="0.7" VerticalAlignment="Center"/>
+                            <ProgressBar Value="{Binding CpuUsage}" Maximum="100" Grid.Row="0" Grid.Column="1" Height="16" 
+                                      Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
+                                      Foreground="{DynamicResource SystemAccentColor}"/>
+                            <TextBlock Text="{Binding CpuUsage, StringFormat='{}{0:F1}%'}" Grid.Row="0" Grid.Column="2" 
+                                     MinWidth="40" TextAlignment="Right" VerticalAlignment="Center"/>
+                            
+                            <TextBlock Text="GPU:" Grid.Row="1" Grid.Column="0" Opacity="0.7" VerticalAlignment="Center"/>
+                            <ProgressBar Value="{Binding GpuUsage}" Maximum="100" Grid.Row="1" Grid.Column="1" Height="16"
+                                      Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
+                                      Foreground="{DynamicResource SystemAccentColor}"/>
+                            <TextBlock Text="{Binding GpuUsage, StringFormat='{}{0:F1}%'}" Grid.Row="1" Grid.Column="2" 
+                                     MinWidth="40" TextAlignment="Right" VerticalAlignment="Center"/>
+                            
+                            <TextBlock Text="Memory:" Grid.Row="2" Grid.Column="0" Opacity="0.7" VerticalAlignment="Center"/>
+                            <ProgressBar Value="{Binding MemoryUsage}" Maximum="100" Grid.Row="2" Grid.Column="1" Height="16"
+                                      Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
+                                      Foreground="{DynamicResource SystemAccentColor}"/>
+                            <TextBlock Text="{Binding MemoryUsage, StringFormat='{}{0:F1}%'}" Grid.Row="2" Grid.Column="2" 
+                                     MinWidth="40" TextAlignment="Right" VerticalAlignment="Center"/>
+                            
+                            <TextBlock Text="Disk:" Grid.Row="3" Grid.Column="0" Opacity="0.7" VerticalAlignment="Center"/>
+                            <ProgressBar Value="{Binding DiskUsage}" Maximum="100" Grid.Row="3" Grid.Column="1" Height="16"
+                                      Background="{DynamicResource SystemControlBackgroundBaseMediumLowBrush}"
+                                      Foreground="{DynamicResource SystemAccentColor}"/>
+                            <TextBlock Text="{Binding DiskUsage, StringFormat='{}{0:F1}%'}" Grid.Row="3" Grid.Column="2" 
+                                     MinWidth="40" TextAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+                
+                <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4">
+                    <StackPanel>
+                        <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,8" Text="Detected Defects"/>
+                        <ItemsControl ItemsSource="{Binding Defects}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                        <Border Grid.Column="1" 
+                                               Background="{DynamicResource SystemAccentColor}" 
+                                               CornerRadius="4"
+                                               Padding="8,2"
+                                               MinWidth="40"
+                                               HorizontalAlignment="Right">
+                                            <TextBlock Text="{Binding Count}" 
+                                                     Foreground="White"
+                                                     TextAlignment="Center"
+                                                     FontWeight="SemiBold"/>
+                                        </Border>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+        
+        <!-- Main Content - Plots -->
+        <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="*,*,*" RowSpacing="15">
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,8" Text="Frames Per Second"/>
+                    <scottplot:AvaPlot Grid.Row="1" DataContext="{Binding FpsPlot}" />
+                </Grid>
+            </Border>
+            
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4" Grid.Row="1">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,8" Text="Processing Latency (ms)"/>
+                    <scottplot:AvaPlot Grid.Row="1" DataContext="{Binding LatencyPlot}" />
+                </Grid>
+            </Border>
+            
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4" Grid.Row="2">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,8" Text="Confidence"/>
+                    <scottplot:AvaPlot Grid.Row="1" DataContext="{Binding ConfidencePlot}" />
+                </Grid>
+            </Border>
+        </Grid>
+        
+        <!-- Right Panel - Camera Feeds -->
+        <Grid Grid.Row="1" Grid.Column="2" Width="300" Margin="10,0,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="10"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,5" Text="Left Camera"/>
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4" Grid.Row="1">
+                <Image Source="{Binding LeftCameraImage}" 
+                       Stretch="Uniform" 
+                       MinHeight="200"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+            </Border>
+            
+            <TextBlock FontWeight="Bold" FontSize="14" Margin="0,0,0,5" Text="Right Camera" Grid.Row="3"/>
+            <Border BorderBrush="Gray" BorderThickness="1" CornerRadius="4" Padding="8" Margin="4" Grid.Row="4">
+                <Image Source="{Binding RightCameraImage}" 
+                       Stretch="Uniform" 
+                       MinHeight="200"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -33,11 +33,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
+      "projectUniqueName": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
       "projectName": "GeometryEngine",
-      "projectPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
+      "projectPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\GeometryEngine.csproj",
       "packagesPath": "C:\\Users\\liamb\\.nuget\\packages\\",
-      "outputPath": "c:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\obj\\",
+      "outputPath": "C:\\Users\\liamb\\Programming\\Kogna.Controller\\App\\Server\\GeometryEngine\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -24,22 +24,7 @@ build_property.EnableCodeStyleSeverity =
 [C:/Users/liamb/Programming/Kogna.Controller/App/App.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/AdvancedSettingsWindow/AdvancedSettingsWindow.axaml]
-build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
-
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/AdvancedSettingsWindow/Configuration/Configuration.axaml]
-build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
-
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/AdvancedSettingsWindow/ProgramThreads/ProgramThreads.axaml]
-build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
-
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/AdvancedSettingsWindow/SavedPrograms/SavedPrograms.axaml]
-build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
-
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/AdvancedSettingsWindow/TrajectoryPlanner/TrajectoryPlanner.axaml]
-build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
-
-[C:/Users/liamb/Programming/Kogna.Controller/App/Views/Connection/ConnectionView.axaml]
+[C:/Users/liamb/Programming/Kogna.Controller/App/Views/Connection/NetworkConnectionView.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [C:/Users/liamb/Programming/Kogna.Controller/App/Views/Debug/DebugPanel.axaml]
@@ -61,6 +46,9 @@ build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [C:/Users/liamb/Programming/Kogna.Controller/App/Views/SplashWindow/SplashWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
+[C:/Users/liamb/Programming/Kogna.Controller/App/Views/StereoVision/StereoVisionView.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
 [C:/Users/liamb/Programming/Kogna.Controller/App/Views/Terminal/TerminalView.axaml]

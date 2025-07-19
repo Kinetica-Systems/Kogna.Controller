@@ -1,9 +1,11 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Markup.Xaml.MarkupExtensions;
+using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.Diagnostics;
 
 using System;
 
@@ -19,26 +21,20 @@ namespace KognaServer.Views;
 
 public partial class MainWindow : Window
 {
-
-
-
-
-
     public MainWindow()
     {
         InitializeComponent();
-
-
-
-
-
+#if DEBUG
+        // AttachDevTools removed to fix build error - requires Avalonia.Diagnostics package
+        // which has version conflicts with current Avalonia version
+#endif
     }
 
-    private void OpenSettings_Click(object? sender, RoutedEventArgs e)
+    private void InitializeComponent()
     {
-        var settingsWindow = new AdvancedSettingsWindow();
-        settingsWindow.Show();
+        Avalonia.Markup.Xaml.AvaloniaXamlLoader.Load(this);
     }
+
 
     protected override void OnClosed(EventArgs e)
     {

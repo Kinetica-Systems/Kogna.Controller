@@ -228,11 +228,39 @@
           "dependencies": {
             "Avalonia": {
               "target": "Package",
-              "version": "[11.0.6, )"
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.AvaloniaEdit": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
+            "Avalonia.Desktop": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Fonts.Inter": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Themes.Fluent": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Xaml.Behaviors": {
+              "target": "Package",
+              "version": "[11.0.2, )"
+            },
+            "CommunityToolkit.Mvvm": {
+              "target": "Package",
+              "version": "[8.2.2, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.3, )"
+            },
+            "OxyPlot.Avalonia": {
+              "target": "Package",
+              "version": "[2.1.0, )"
             }
           },
           "imports": [

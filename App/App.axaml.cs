@@ -76,12 +76,13 @@ namespace KognaServer
                     var gCodeGeneratorVm = new GCodeGeneratorViewModel(new AppIpcClient(serverHost));
                     var joggingVm = new JoggingViewModel(serverHost);
                     var debugVm  = new KognaServer.ViewModels.Debug.DebugPanelViewModel();
+                    var stereoVisionVm = new StereoVisionViewModel();
                     // var Advanced        = new AdvancedSettingsWindowViewModel();
 
                     // Build MainWindowViewModel
                     Console.WriteLine("[APP] Creating MainWindowViewModel");
                     splash.ReportProgress(100);
-                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm, GcodeVm, gCodeGeneratorVm, joggingVm, debugVm);
+                    return new MainWindowViewModel(serverHost, connectionVm, droVm, terminalVm, GcodeVm, gCodeGeneratorVm, joggingVm, debugVm, stereoVisionVm);
                 });
 
                 // 5) Initialize and show MainWindow

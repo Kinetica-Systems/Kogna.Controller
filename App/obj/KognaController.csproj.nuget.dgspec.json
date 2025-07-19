@@ -78,7 +78,7 @@
             },
             "Avalonia.Labs.Controls": {
               "target": "Package",
-              "version": "[11.3.0-rc1, )"
+              "version": "[11.3.0, )"
             },
             "Avalonia.Themes.Fluent": {
               "target": "Package",
@@ -92,7 +92,11 @@
               "target": "Package",
               "version": "[8.2.2, )"
             },
-            "NewtonSoft.Json": {
+            "Microsoft.VisualBasic": {
+              "target": "Package",
+              "version": "[10.3.0, )"
+            },
+            "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.3, )"
             },
@@ -119,6 +123,10 @@
             "System.Data.SQLite": {
               "target": "Package",
               "version": "[1.0.119, )"
+            },
+            "System.Diagnostics.PerformanceCounter": {
+              "target": "Package",
+              "version": "[9.0.7, )"
             }
           },
           "imports": [
@@ -365,11 +373,39 @@
           "dependencies": {
             "Avalonia": {
               "target": "Package",
-              "version": "[11.0.6, )"
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.AvaloniaEdit": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
+            "Avalonia.Desktop": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Fonts.Inter": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Themes.Fluent": {
+              "target": "Package",
+              "version": "[11.3.0-rc1, )"
+            },
+            "Avalonia.Xaml.Behaviors": {
+              "target": "Package",
+              "version": "[11.0.2, )"
+            },
+            "CommunityToolkit.Mvvm": {
+              "target": "Package",
+              "version": "[8.2.2, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.3, )"
+            },
+            "OxyPlot.Avalonia": {
+              "target": "Package",
+              "version": "[2.1.0, )"
             }
           },
           "imports": [

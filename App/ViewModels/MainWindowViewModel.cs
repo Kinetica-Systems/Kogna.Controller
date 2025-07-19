@@ -1,4 +1,4 @@
-﻿using KognaServer;
+using KognaServer;
 using KognaServer.ViewModels;
 using KognaComms;
 
@@ -23,8 +23,8 @@ namespace KognaServer.ViewModels
         public GCodeGeneratorViewModel GCodeGeneratorViewModel { get; }
         public JoggingViewModel JoggingVm { get; }
         public Debug.DebugPanelViewModel DebugVm { get; }
+        public StereoVisionViewModel StereoVisionVm { get; }
       
-
         // keep track of elapsed time (ms)
 
 
@@ -36,7 +36,8 @@ namespace KognaServer.ViewModels
             GCodeEditorViewModel gCodeEditor,
             GCodeGeneratorViewModel gCodeGeneratorViewModel,
             JoggingViewModel joggingVm,
-            Debug.DebugPanelViewModel debugVm)
+            Debug.DebugPanelViewModel debugVm,
+            StereoVisionViewModel stereoVisionVm)
         {
             _server = server;
             ConnectionVm = connectionVm;
@@ -46,6 +47,7 @@ namespace KognaServer.ViewModels
             GCodeGeneratorViewModel = gCodeGeneratorViewModel;
             JoggingVm = joggingVm;
             DebugVm = debugVm;
+            StereoVisionVm = stereoVisionVm;
 
         }
         

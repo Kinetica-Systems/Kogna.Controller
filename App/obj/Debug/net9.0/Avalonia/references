@@ -59,6 +59,8 @@ C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\Microso
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\mscorlib.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\netstandard.dll
 C:\Users\liamb\.nuget\packages\newtonsoft.json\13.0.3\lib\net6.0\Newtonsoft.Json.dll
+C:\Users\liamb\.nuget\packages\oxyplot.avalonia\2.1.0\lib\netstandard2.0\OxyPlot.Avalonia.dll
+C:\Users\liamb\.nuget\packages\oxyplot.core\2.1.0\lib\netstandard2.0\OxyPlot.dll
 C:\Users\liamb\.nuget\packages\scottplot.avalonia\5.0.55\lib\net8.0\ScottPlot.Avalonia.dll
 C:\Users\liamb\.nuget\packages\scottplot\5.0.55\lib\net8.0\ScottPlot.dll
 C:\Users\liamb\.nuget\packages\semi.avalonia.colorpicker\11.2.1.8\lib\net8.0\Semi.Avalonia.ColorPicker.dll
@@ -83,7 +85,7 @@ C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.ComponentModel.EventBasedAsync.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.ComponentModel.Primitives.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.ComponentModel.TypeConverter.dll
-C:\Users\liamb\.nuget\packages\system.configuration.configurationmanager\4.7.0\ref\netstandard2.0\System.Configuration.ConfigurationManager.dll
+C:\Users\liamb\.nuget\packages\system.configuration.configurationmanager\9.0.7\lib\net9.0\System.Configuration.ConfigurationManager.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Configuration.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Console.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Core.dll
@@ -96,7 +98,9 @@ C:\Users\liamb\.nuget\packages\system.data.sqlite.ef6\1.0.119\lib\netstandard2.1
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.Contracts.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.Debug.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.DiagnosticSource.dll
+C:\Users\liamb\.nuget\packages\system.diagnostics.eventlog\9.0.7\lib\net9.0\System.Diagnostics.EventLog.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.FileVersionInfo.dll
+C:\Users\liamb\.nuget\packages\system.diagnostics.performancecounter\9.0.7\lib\net9.0\System.Diagnostics.PerformanceCounter.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.Process.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.StackTrace.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Diagnostics.TextWriterTraceListener.dll
@@ -193,9 +197,9 @@ C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Cryptography.Encoding.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Cryptography.OpenSsl.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Cryptography.Primitives.dll
+C:\Users\liamb\.nuget\packages\system.security.cryptography.protecteddata\9.0.7\lib\net9.0\System.Security.Cryptography.ProtectedData.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Cryptography.X509Certificates.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.dll
-C:\Users\liamb\.nuget\packages\system.security.permissions\4.7.0\ref\netcoreapp3.0\System.Security.Permissions.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Principal.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.Principal.Windows.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Security.SecureString.dll
@@ -223,7 +227,6 @@ C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Web.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Web.HttpUtility.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Windows.dll
-C:\Users\liamb\.nuget\packages\system.windows.extensions\4.7.0\ref\netcoreapp3.0\System.Windows.Extensions.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Xml.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Xml.Linq.dll
 C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Ref\9.0.7\ref\net9.0\System.Xml.ReaderWriter.dll

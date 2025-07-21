@@ -15,16 +15,17 @@ namespace KognaServer.ViewModels
     public partial class ConnectionViewModel : ObservableObject
     {
         // --- IPC client fields ---
-        private readonly TcpClient    _ipcClient;
-        private readonly StreamReader _ipcReader;
-        private readonly StreamWriter _ipcWriter;
+        private TcpClient?    _ipcClient;
+        private StreamReader? _ipcReader;
+        private StreamWriter? _ipcWriter;
         private readonly CancellationTokenSource _cts = new();
 
-        [ObservableProperty]
-        private bool _isConnected;
+      //  [ObservableProperty]
+        private bool _kognaIsConnected {get; set;}
+        private bool _isConnected { get; }
 
-        public string ButtonConnectionStatus => IsConnected ? "Connected" : "Disconnected";
-        public IBrush ButtonBrush        => IsConnected ? Brushes.Green : Brushes.Red;
+        public string ButtonConnectionStatus => _kognaIsConnected ? "Connected" : "Disconnected";
+        public IBrush ButtonBrush        => _kognaIsConnected ? Brushes.Green : Brushes.Red;
 
         public ConnectionViewModel()
         {
@@ -43,7 +44,7 @@ namespace KognaServer.ViewModels
                 _ipcClient = new TcpClient();                  // not connected
                 _ipcReader = new StreamReader(Stream.Null);        
                 _ipcWriter = new StreamWriter(Stream.Null){AutoFlush=true};
-                _isConnected = false;
+                _kognaIsConnected = false;
             }
 
             // 2) Start polling the KognaServer connection state
@@ -54,15 +55,9 @@ namespace KognaServer.ViewModels
         [RelayCommand]
         public async Task ConnectAsync()
         {
-            await SendCommandAsync("Start");
+            await SendCommandAsync("IsConnected");
         }
 
-        // 4) (Optional) you could add a DisconnectAsync similarly:
-        // [RelayCommand]
-        // public async Task DisconnectAsync()
-        // {
-        //     await SendCommandAsync("Stop");
-        // }
 
         // 5) Periodically ask the server if it's connected
         private async Task PollConnectionLoopAsync(CancellationToken ct)
@@ -75,7 +70,7 @@ namespace KognaServer.ViewModels
                     // marshal back onto UI thread
                     Dispatcher.UIThread.Post(() =>
                     {
-                        IsConnected = connected;
+                        _kognaIsConnected = connected;
                         OnPropertyChanged(nameof(ButtonConnectionStatus));
                         OnPropertyChanged(nameof(ButtonBrush));
                     });
@@ -84,10 +79,40 @@ namespace KognaServer.ViewModels
             }
         }
 
+        private async Task EnsureConnectedAsync()
+        {
+            if (_ipcClient?.Connected == true)
+                return;
+
+            const int maxAttempts = 10;
+            var delay = TimeSpan.FromMilliseconds(500);
+            for (int attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                try
+                {
+                    _ipcClient?.Dispose();
+                    _ipcClient = new TcpClient();
+                    await _ipcClient.ConnectAsync("localhost", 5000);
+                    var stream = _ipcClient.GetStream();
+                    _ipcReader = new StreamReader(stream, Encoding.UTF8);
+                    _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
+                    Console.WriteLine($"[CONNECTION_VM] IPC connected on attempt {attempt}");
+                    return;
+                }
+                catch (SocketException)
+                {
+                    await Task.Delay(delay);
+                    delay += delay;
+                }
+            }
+        }
+
         // 6) Core JSON send/receive
         private async Task<string> SendCommandAsync(string cmd, string[] args = null!)
         {
-            if (_ipcWriter == null) return "false";
+            await EnsureConnectedAsync();
+            if (_ipcWriter == null)
+                return "false";
 
             var req = new IpcRequest {
                 Command = cmd,
@@ -107,6 +132,8 @@ namespace KognaServer.ViewModels
             }
             catch
             {
+                try { _ipcClient?.Dispose(); } catch {}
+                _ipcClient = null;
                 return "false";
             }
         }

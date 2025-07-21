@@ -3,6 +3,9 @@
         xmlns:vm="clr-namespace:KognaServer.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:views="clr-namespace:KognaServer.Views"
+        xmlns:conn="clr-namespace:KognaServer.Views.Connection"
+        xmlns:stereo="clr-namespace:KognaServer.Views.StereoVision"
+
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="KognaServer.Views.MainWindow"
@@ -29,30 +32,50 @@
         <MenuItem Header="Copy"/>
         <MenuItem Header="Paste"/>
       </MenuItem>
+      <!-- Advanced Settings menu removed -->
     </Menu>
 
 
-<Expander HorizontalAlignment="Left" ExpandDirection="Right">
-        <StackPanel >
-        <views:ConnectionView DataContext="{Binding ConnectionVm}"  />
-
+<Expander HorizontalAlignment="Left" ExpandDirection="Right" IsExpanded="True">
+    <StackPanel>
+        <conn:NetworkConnectionView DataContext="{Binding ConnectionVm}" />
         <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
-        </StackPanel>
+    </StackPanel>
 </Expander>
 
         <TabControl Margin="5">
-        <TabItem Header="Tab 1">
-            <TextBlock Margin="5">This is tab 1 content</TextBlock>
+        <!-- G-code Editor Tab -->
+        <TabItem Header="G-code Editor">
+          <views:GCodeEditorView DataContext="{Binding GcodeVm}"/>
         </TabItem>
-        <TabItem Header="Tab 2">
-            <TextBlock Margin="5">This is tab 2 content</TextBlock>
+
+        <!-- G-code Generator Tab -->
+        <TabItem Header="G-code Generator">
+          <views:GCodeGeneratorView DataContext="{Binding GCodeGeneratorViewModel}"/>
         </TabItem>
-        <TabItem Header="Tab 3">
-            <TextBlock Margin="5">This is tab 3 content</TextBlock>
+
+        <!-- Terminal Tab -->
+        <TabItem Header="Terminal">
+          <views:TerminalView DataContext="{Binding TerminalViewModel}"/>
+        </TabItem>
+        
+        <!-- Manual Jogging Tab -->
+        <TabItem Header="Manual Jogging">
+            <views:JoggingView DataContext="{Binding JoggingVm}" />
+        </TabItem>
+        
+        <!-- Stereo Vision Tab -->
+        <TabItem Header="Stereo Vision">
+            <stereo:StereoVisionView DataContext="{Binding StereoVisionVm}" />
+        </TabItem>
+        
+        <!-- Debug Tab -->
+        <TabItem Header="Debug">
+          <views:DebugPanel DataContext="{Binding DebugVm}"/>
         </TabItem>
         </TabControl>
 
-<Expander HorizontalAlignment="Right" ExpandDirection="Left">
+<Expander HorizontalAlignment="Right" ExpandDirection="Left"          IsExpanded="True">
         <views:DroView DataContext="{Binding DroVm}" />
 </Expander>
 

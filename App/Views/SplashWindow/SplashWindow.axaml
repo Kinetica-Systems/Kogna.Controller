@@ -2,8 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="KognaServer.Views.SplashWindow"
         WindowStartupLocation="CenterScreen"
-Width="1024"
-Height="1026"
+Width="400"
+Height="400"
         SystemDecorations="None"
         Background="#FF1E1E1E">
    
@@ -15,7 +15,7 @@ Height="1026"
   <Grid>
     <!-- 1) Your logo, centered -->
     <Image Source="avares://KognaController/Assets/splash-logo.png"
-           Width="1024" Height="1026"
+           Width="400" Height="400"
            HorizontalAlignment="Center"
            VerticalAlignment="Center"/>
 

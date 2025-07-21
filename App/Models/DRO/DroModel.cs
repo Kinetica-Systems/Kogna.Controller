@@ -11,7 +11,7 @@ using Avalonia.Threading;
 using KognaServer;
 using KognaServer.Models;
 using KognaServer.Views;
-using KognaServer.Server.KognaServer;
+using KognaComms;
 
 
 namespace KognaServer.Models

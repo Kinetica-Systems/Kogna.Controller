@@ -1,0 +1,10 @@
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\bin\Debug\net9.0\SharedTypes.deps.json
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\bin\Debug\net9.0\SharedTypes.dll
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\bin\Debug\net9.0\SharedTypes.pdb
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\SharedTypes.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\SharedTypes.csproj.CoreCompileInputs.cache
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\SharedTypes.sourcelink.json
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\SharedTypes.dll
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\refint\SharedTypes.dll
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\SharedTypes.pdb
+C:\Users\liamb\Programming\Kogna.Controller\Libraries\SharedTypes\obj\Debug\net9.0\ref\SharedTypes.dll

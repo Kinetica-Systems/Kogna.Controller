@@ -4,12 +4,14 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.Input;
 using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using System.Linq;
 
 namespace KognaServer.ViewModels
 {
@@ -24,6 +26,10 @@ namespace KognaServer.ViewModels
 
         [ObservableProperty] private string _inputText = "";
         public ObservableCollection<string> Lines { get; } = new();
+        
+        // Command history
+        private readonly List<string> _commandHistory = new();
+        private int _historyIndex = -1;
 
 
 
@@ -38,7 +44,7 @@ namespace KognaServer.ViewModels
             // 1) Initialize the socket
             try
             {
-                _ipcClient = new TcpClient("127.0.0.1", 5000);
+                _ipcClient = new TcpClient("localhost", 5000);
                 var stream = _ipcClient.GetStream();
                 _ipcReader = new StreamReader(stream, Encoding.UTF8);
                 _ipcWriter = new StreamWriter(stream, Encoding.UTF8) { AutoFlush = true };
@@ -47,7 +53,7 @@ namespace KognaServer.ViewModels
             }
             catch (Exception ex)
             {
-                EnqueueConsole($"❌ IPC connection failed: {ex.Message}\n");
+                EnqueueConsole($" IPC connection failed: {ex.Message}\n");
 
                 // fall back to harmless, never-null stubs
                 _ipcClient = new TcpClient();                  
@@ -101,10 +107,16 @@ namespace KognaServer.ViewModels
 
             // 3) Echo & enqueue user input
             EnqueueConsole($"> {InputText}\n");
+            
+            // Parse the input into command and arguments
+            var parts = InputText.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var command = parts.Length > 0 ? parts[0] : "";
+            var args = parts.Length > 1 ? parts.Skip(1).ToArray() : Array.Empty<string>();
+            
             var ipcReq = new IpcRequest
             {
-                Command = InputText.Trim(),
-                Args = Array.Empty<string>()
+                Command = command,
+                Args = args
             };
 
             try
@@ -129,10 +141,27 @@ namespace KognaServer.ViewModels
                             }
                             finally
                             {
+                                _commandHistory.Add(InputText);
+                                _historyIndex = _commandHistory.Count - 1;
                                 InputText = "";
                             }
         }
 
+        public void NavigateHistory(int direction)
+        {
+            if (_commandHistory.Count == 0) return;
+
+            _historyIndex = Math.Clamp(_historyIndex + direction, -1, _commandHistory.Count - 1);
+            
+            if (_historyIndex >= 0 && _historyIndex < _commandHistory.Count)
+            {
+                InputText = _commandHistory[_historyIndex];
+            }
+            else
+            {
+                InputText = "";
+            }
+        }
 
         private void EnqueueConsole(string line)
         {

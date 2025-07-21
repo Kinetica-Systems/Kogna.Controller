@@ -3,6 +3,8 @@
              xmlns:semi="https://irihi.tech/semi"
              x:Class="KognaServer.App"
              xmlns:local="using:KognaServer"
+             xmlns:converters="using:KognaServer.Converters"
+             xmlns:oxy="http://oxyplot.org/avalonia"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -15,5 +17,34 @@
         <semi:ColorPickerSemiTheme />
         <semi:DataGridSemiTheme />
         <semi:TreeDataGridSemiTheme />
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
+        
+        <!-- Custom Styles -->
+        <Style Selector="Border.InfoBox">
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+        
+        <Style Selector="TextBlock.SectionHeader">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
     </Application.Styles>
+
+  <Application.Resources>
+        <ResourceDictionary>
+            <!-- Application Resources -->
+            <x:Double x:Key="ControlContentThemeFontSize">14</x:Double>
+            <FontFamily x:Key="ContentControlThemeFontFamily">Segoe UI</FontFamily>
+            
+            <!-- Converters -->
+            <converters:BoolToBrushConverter x:Key="BoolToBrushConverter"
+                                           TrueBrush="LimeGreen"
+                                           FalseBrush="OrangeRed"
+                                           NullBrush="Gray"/>
+        </ResourceDictionary>
+    </Application.Resources>
+
 </Application>

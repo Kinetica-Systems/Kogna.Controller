@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:KognaServer.ViewModels.Debug"
+             xmlns:sp="clr-namespace:ScottPlot.Avalonia;assembly=ScottPlot.Avalonia"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="KognaServer.Views.DebugPanel"
+             x:DataType="vm:DebugPanelViewModel"
+             d:DesignWidth="800" d:DesignHeight="600">
+    <DockPanel>
+        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="4">
+            <Button Content="Clear" Command="{Binding ClearCommand}" Width="80"/>
+            <TextBlock Text="Layer:" Margin="12,0,4,0"/>
+            <TextBlock Text="{Binding Measurements.Count}" />
+        </StackPanel>
+        <Grid ColumnDefinitions="*,*" RowDefinitions="*,Auto,*">
+            <!-- Plots -->
+            <sp:AvaPlot Name="BeadPlot" Grid.Row="0" Grid.Column="0" Margin="4" />
+            <sp:AvaPlot Name="PowerPlot" Grid.Row="0" Grid.Column="1" Margin="4" />
+
+            <!-- Camera overlay placeholder -->
+            <Border Grid.Row="2" Grid.ColumnSpan="2" Height="250" Margin="4" BorderBrush="Gray" BorderThickness="1">
+                <Image Source="{Binding CameraFrame}" Stretch="Uniform"/>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl> 

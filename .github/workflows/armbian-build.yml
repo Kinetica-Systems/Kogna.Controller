@@ -1,0 +1,119 @@
+name: Armbian Image Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_minimal:
+        description: "Set to 'no' to include desktop components"
+        default: 'yes'
+        required: false
+      build_desktop:
+        description: "Set to 'yes' to include desktop components"
+        default: 'no'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    env:
+      ARMBIAN_BUILD_DIR: build
+      BOARD: orangepi5-max
+      BRANCH: current
+      RELEASE: bookworm
+      BUILD_MINIMAL: ${{ inputs.build_minimal || 'yes' }}
+      BUILD_DESKTOP: ${{ inputs.build_desktop || 'no' }}
+      KERNEL_ONLY: "no"
+      KERNEL_CONFIGURE: "no"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Enable git sparse checkout for Armbian build tree (optional)
+        run: |
+          git config --global advice.detachedHead false
+
+      - name: Clone Armbian build tree
+        run: |
+          git clone --depth=1 https://github.com/armbian/build.git "${{ env.ARMBIAN_BUILD_DIR }}"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            bc \
+            bison \
+            build-essential \
+            ccache \
+            cmake \
+            curl \
+            debootstrap \
+            device-tree-compiler \
+            dosfstools \
+            e2fsprogs \
+            fakeroot \
+            flex \
+            gawk \
+            gcc \
+            g++ \
+            genisoimage \
+            git \
+            kmod \
+            libelf-dev \
+            libncurses-dev \
+            libssl-dev \
+            lzop \
+            nfs-kernel-server \
+            pbzip2 \
+            pigz \
+            pkg-config \
+            python3 \
+            python3-distutils \
+            python3-venv \
+            qemu-user-static \
+            rsync \
+            squashfs-tools \
+            u-boot-tools \
+            unzip \
+            wget \
+            xz-utils \
+            zstd
+
+      - name: Run Armbian build
+        working-directory: ${{ env.ARMBIAN_BUILD_DIR }}
+        run: |
+          ./compile.sh \
+            BOARD="${BOARD}" \
+            BRANCH="${BRANCH}" \
+            RELEASE="${RELEASE}" \
+            BUILD_MINIMAL="${BUILD_MINIMAL}" \
+            BUILD_DESKTOP="${BUILD_DESKTOP}" \
+            KERNEL_ONLY="${KERNEL_ONLY}" \
+            KERNEL_CONFIGURE="${KERNEL_CONFIGURE}" \
+            USE_CCACHE=yes \
+            COMPRESS_OUTPUTIMAGE=sha,gpg,7z
+
+      - name: Archive build logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-logs
+          path: |
+            ${{ env.ARMBIAN_BUILD_DIR }}/output/debug
+          if-no-files-found: warn
+
+      - name: Upload images
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-images
+          path: |
+            ${{ env.ARMBIAN_BUILD_DIR }}/output/images
+          if-no-files-found: error
+
+      - name: Upload kernel packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-kernel-debs
+          path: |
+            ${{ env.ARMBIAN_BUILD_DIR }}/output/debs
+          if-no-files-found: warn
